@@ -1,0 +1,35 @@
+/// Supabase project configuration.
+///
+/// SECURITY: Only the public `anon` key belongs here. The anon key is safe
+/// to ship inside the app because every table is protected by Row Level
+/// Security policies on the backend — it cannot read or write anything the
+/// signed-in user isn't allowed to. The `service_role` key must NEVER be
+/// placed in this file, committed to the repo, or shipped in a build: it
+/// bypasses RLS entirely and is for trusted server-side code only.
+class SupabaseConfig {
+  SupabaseConfig._();
+
+  static const String url = 'https://akodhmnaykaifzxxvher.supabase.co';
+
+  /// Replace with the project's anon/public key before running the app.
+  static const String anonKey = 'YOUR_SUPABASE_ANON_KEY_HERE';
+
+  // Storage bucket names used throughout the app.
+  static const String profilePhotosBucket = 'profile-photos';
+  static const String audioIntrosBucket = 'audio-intros';
+  static const String nicDocumentsBucket = 'nic-documents';
+
+  // Edge function names.
+  static const String fnAnalyseProfile = 'analyse-profile';
+  static const String fnSendConnectionRequest = 'send-connection-request';
+  static const String fnRespondToConnection = 'respond-to-connection';
+  static const String fnUpdateConsent = 'update-consent';
+  static const String fnSubmitVerification = 'submit-verification';
+  static const String fnDateCheckin = 'date-checkin';
+
+  /// TODO(backend): not yet in the handoff's function list. Should create a
+  /// PayHere order server-side (where `merchant_secret` can live safely),
+  /// returning a hosted checkout URL with `custom_1` set to the user's id so
+  /// the PayHere webhook can update `users.verification_tier` on payment.
+  static const String fnCreatePayhereOrder = 'create-payhere-order';
+}
