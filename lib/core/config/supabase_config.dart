@@ -12,7 +12,7 @@ class SupabaseConfig {
   static const String url = 'https://akodhmnaykaifzxxvher.supabase.co';
 
   /// Replace with the project's anon/public key before running the app.
-  static const String anonKey = 'YOUR_SUPABASE_ANON_KEY_HERE';
+  static const String anonKey = 'eyJhbGciOiJIUzI1NiIsInR5cCI6IkpXVCJ9.eyJpc3MiOiJzdXBhYmFzZSIsInJlZiI6ImFrb2RobW5heWthaWZ6eHh2aGVyIiwicm9sZSI6ImFub24iLCJpYXQiOjE3ODEzOTQwOTQsImV4cCI6MjA5Njk3MDA5NH0.qqgSQIX9-1z7L04UoVYABBLfIMFXEehVwlDb_2yo-uc';
 
   // Storage bucket names used throughout the app.
   static const String profilePhotosBucket = 'profile-photos';

@@ -113,6 +113,11 @@ class OnboardingController extends Notifier<OnboardingDraft> {
       onboardingComplete: true,
     );
 
+    // Guards against the `profiles.user_id` FK failing when the session was
+    // restored without going through OtpScreen (which is the only other
+    // place that creates the `users` row).
+    await ref.read(authRepositoryProvider).ensureUserRow();
+
     final profileRepo = ref.read(profileRepositoryProvider);
     await profileRepo.saveOnboarding(profile);
 

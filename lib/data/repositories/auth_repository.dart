@@ -29,14 +29,18 @@ class AuthRepository {
   }
 
   /// Creates the `users` row the first time a user signs in. Safe to call
-  /// repeatedly — uses upsert per the handoff doc.
+  /// repeatedly — `ignoreDuplicates` makes this an INSERT-or-noop, since the
+  /// RLS policies on `users` only grant INSERT (not UPDATE) to the owner.
   Future<void> ensureUserRow() async {
     final user = currentUser;
     if (user == null) return;
-    await _client.from('users').upsert({
-      'id': user.id,
-      'phone': user.phone,
-    });
+    await _client.from('users').upsert(
+      {
+        'id': user.id,
+        'phone': user.phone,
+      },
+      ignoreDuplicates: true,
+    );
   }
 
   /// Fetches the `users` row (mainly for `verification_tier`).

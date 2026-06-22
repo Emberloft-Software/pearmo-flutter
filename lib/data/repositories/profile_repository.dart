@@ -16,8 +16,11 @@ class ProfileRepository {
     return Profile.fromJson(row);
   }
 
+  /// Upsert (not insert) so retrying onboarding after a later step fails
+  /// (audio upload, sentiment analysis) doesn't hit a unique-constraint
+  /// error on a `profiles` row already created by the earlier attempt.
   Future<void> saveOnboarding(Profile profile) async {
-    await _client.from('profiles').insert(profile.toInsertJson());
+    await _client.from('profiles').upsert(profile.toInsertJson(), onConflict: 'user_id');
   }
 
   Future<void> runSentimentAnalysis() async {
