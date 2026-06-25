@@ -13,71 +13,19 @@ import '../../../providers/auth_providers.dart';
 import '../../../providers/profile_providers.dart';
 import '../../../providers/repository_providers.dart';
 import '../../../shared/widgets/widgets.dart';
+import '../widgets/liveness_check_screen.dart';
 
-/// ID + selfie verification. NIC photos and a live selfie are uploaded to
-/// the private `nic-documents` bucket, then `submit-verification` queues
-/// them for manual review.
-// TODO(backend): no OCR/liveness check yet — `submit-verification` is
-// manual-review only. An automated pre-check could call an OCR/liveness
-// edge function here before queuing for review.
-class VerificationScreen extends ConsumerStatefulWidget {
+/// Two independently-submittable verification tiers:
+/// 1. Liveliness check + selfie — proves the user is a real person.
+/// 2. NIC front/back, on top of tier 1 — proves the displayed age is real.
+/// Both are uploaded to the private `nic-documents` bucket, then
+/// `submit-verification` queues them for manual review.
+class VerificationScreen extends ConsumerWidget {
   const VerificationScreen({super.key});
 
   @override
-  ConsumerState<VerificationScreen> createState() => _VerificationScreenState();
-}
-
-class _VerificationScreenState extends ConsumerState<VerificationScreen> {
-  final _picker = ImagePicker();
-  File? _nicFront;
-  File? _nicBack;
-  File? _selfie;
-  bool _isSubmitting = false;
-  bool _submitted = false;
-  String? _error;
-
-  Future<void> _pick(ImageSource source, void Function(File) onPicked) async {
-    final picked = await _picker.pickImage(source: source, imageQuality: 85);
-    if (picked != null) {
-      setState(() => onPicked(File(picked.path)));
-    }
-  }
-
-  Future<void> _submit(String userId) async {
-    if (_nicFront == null || _selfie == null) {
-      setState(() => _error = 'Please add at least your NIC front and a selfie.');
-      return;
-    }
-
-    setState(() {
-      _isSubmitting = true;
-      _error = null;
-    });
-    try {
-      final storage = ref.read(storageRepositoryProvider);
-      final nicFrontPath = await storage.uploadNicFront(userId, _nicFront!);
-      final nicBackPath =
-          _nicBack != null ? await storage.uploadNicBack(userId, _nicBack!) : null;
-      final selfiePath = await storage.uploadSelfie(userId, _selfie!);
-
-      await ref.read(verificationRepositoryProvider).submitVerification(
-            nicFrontPath: nicFrontPath,
-            nicBackPath: nicBackPath,
-            selfiePath: selfiePath,
-          );
-      ref.invalidate(myVerificationTierProvider);
-      setState(() => _submitted = true);
-    } catch (e) {
-      setState(() => _error = ErrorMapper.map(e));
-    } finally {
-      if (mounted) setState(() => _isSubmitting = false);
-    }
-  }
-
-  @override
-  Widget build(BuildContext context) {
+  Widget build(BuildContext context, WidgetRef ref) {
     final tierAsync = ref.watch(myVerificationTierProvider);
-    final userId = ref.watch(currentUserIdProvider);
 
     return Scaffold(
       appBar: AppBar(title: const Text('Verification')),
@@ -85,50 +33,14 @@ class _VerificationScreenState extends ConsumerState<VerificationScreen> {
         padding: const EdgeInsets.all(20),
         children: [
           tierAsync.when(
-            data: (tier) => _TierBanner(tier: tier, justSubmitted: _submitted),
+            data: (tier) => _TierBanner(tier: tier),
             loading: () => const LoadingIndicator(),
             error: (error, _) => ErrorBanner(message: ErrorMapper.map(error)),
           ),
           const SizedBox(height: 24),
-          Text(
-            'Verifying your identity unlocks higher visibility for your profile and shows '
-            "matches you're a real person. Your documents are reviewed manually and kept private.",
-            style: AppTextStyles.body,
-          ),
+          _SelfieTierCard(currentTier: tierAsync.valueOrNull),
           const SizedBox(height: 24),
-          const SectionHeader(title: 'National ID — front'),
-          _DocumentPicker(
-            file: _nicFront,
-            label: 'Add NIC front photo',
-            onTap: () => _pick(ImageSource.gallery, (f) => _nicFront = f),
-          ),
-          const SizedBox(height: 20),
-          const SectionHeader(title: 'National ID — back (optional)'),
-          _DocumentPicker(
-            file: _nicBack,
-            label: 'Add NIC back photo',
-            onTap: () => _pick(ImageSource.gallery, (f) => _nicBack = f),
-          ),
-          const SizedBox(height: 20),
-          const SectionHeader(title: 'Selfie'),
-          _DocumentPicker(
-            file: _selfie,
-            label: 'Take a selfie',
-            onTap: () => _pick(ImageSource.camera, (f) => _selfie = f),
-          ),
-          if (_error != null) ...[
-            const SizedBox(height: 20),
-            ErrorBanner(message: _error!),
-          ],
-          const SizedBox(height: 28),
-          PearmoButton(
-            label: _submitted ? 'Submitted for review' : 'Submit for review',
-            icon: Icons.shield_outlined,
-            isLoading: _isSubmitting,
-            onPressed: (_isSubmitting || _submitted || userId == null)
-                ? null
-                : () => _submit(userId),
-          ),
+          _IdTierCard(currentTier: tierAsync.valueOrNull),
         ],
       ),
     );
@@ -136,18 +48,18 @@ class _VerificationScreenState extends ConsumerState<VerificationScreen> {
 }
 
 class _TierBanner extends StatelessWidget {
-  const _TierBanner({required this.tier, required this.justSubmitted});
+  const _TierBanner({required this.tier});
 
   final VerificationTier tier;
-  final bool justSubmitted;
 
   @override
   Widget build(BuildContext context) {
     final (icon, color, message) = switch (tier) {
-      VerificationTier.unverified => justSubmitted
-          ? (Icons.hourglass_top, AppColors.accentLavender, 'Submitted — pending manual review.')
-          : (Icons.shield_outlined, AppColors.textSecondary, 'Not verified yet.'),
-      VerificationTier.idVerified => (Icons.verified, AppColors.secondaryDark, 'ID verified.'),
+      VerificationTier.unverified => (Icons.shield_outlined, AppColors.textSecondary, 'Not verified yet.'),
+      VerificationTier.selfieVerified =>
+        (Icons.verified, AppColors.secondaryDark, "You're verified as a real person."),
+      VerificationTier.idVerified =>
+        (Icons.verified, AppColors.secondaryDark, 'Your age is verified.'),
       VerificationTier.paidVerified =>
         (Icons.workspace_premium, AppColors.secondaryDark, 'Verified Plus.'),
     };
@@ -169,12 +81,242 @@ class _TierBanner extends StatelessWidget {
   }
 }
 
-class _DocumentPicker extends StatelessWidget {
-  const _DocumentPicker({required this.file, required this.label, required this.onTap});
+/// Tier 1 card — liveliness check, then selfie, then submit.
+class _SelfieTierCard extends ConsumerStatefulWidget {
+  const _SelfieTierCard({required this.currentTier});
+
+  final VerificationTier? currentTier;
+
+  @override
+  ConsumerState<_SelfieTierCard> createState() => _SelfieTierCardState();
+}
+
+class _SelfieTierCardState extends ConsumerState<_SelfieTierCard> {
+  File? _selfie;
+  bool _isSubmitting = false;
+  bool _submitted = false;
+  String? _error;
+
+  Future<void> _runLivenessCheck() async {
+    final result = await Navigator.of(context).push<File>(
+      MaterialPageRoute(builder: (_) => const LivenessCheckScreen()),
+    );
+    if (result != null) setState(() => _selfie = result);
+  }
+
+  Future<void> _submit() async {
+    final selfie = _selfie;
+    if (selfie == null) {
+      setState(() => _error = 'Run the liveliness check first.');
+      return;
+    }
+    setState(() {
+      _isSubmitting = true;
+      _error = null;
+    });
+    final userId = ref.read(currentUserIdProvider);
+    try {
+      if (userId == null) throw Exception('Not signed in');
+      final storage = ref.read(storageRepositoryProvider);
+      final selfiePath = await storage.uploadSelfie(userId, selfie);
+      await ref.read(verificationRepositoryProvider).submitSelfieVerification(
+            selfiePath: selfiePath,
+            livelinessPassed: true,
+          );
+      ref.invalidate(myVerificationTierProvider);
+      setState(() => _submitted = true);
+    } catch (e) {
+      setState(() => _error = ErrorMapper.map(e));
+    } finally {
+      if (mounted) setState(() => _isSubmitting = false);
+    }
+  }
+
+  @override
+  Widget build(BuildContext context) {
+    final alreadyVerified = (widget.currentTier?.isAtLeastSelfieVerified ?? false);
+
+    return PearmoCard(
+      child: Column(
+        crossAxisAlignment: CrossAxisAlignment.start,
+        children: [
+          Row(
+            children: [
+              const Icon(Icons.face_retouching_natural, color: AppColors.secondaryDark),
+              const SizedBox(width: 8),
+              Text('1. Verify you\'re real', style: AppTextStyles.title),
+            ],
+          ),
+          const SizedBox(height: 8),
+          Text(
+            'A quick liveliness check (look straight, blink, turn your head) followed by a '
+            "selfie. Reviewed manually — shows matches you're a real person.",
+            style: AppTextStyles.body,
+          ),
+          const SizedBox(height: 16),
+          if (alreadyVerified)
+            Text('Already verified.', style: AppTextStyles.bodyMedium)
+          else ...[
+            _DocumentPreview(
+              file: _selfie,
+              label: 'Run liveliness check',
+              icon: Icons.camera_front_outlined,
+              onTap: _isSubmitting ? null : _runLivenessCheck,
+            ),
+            if (_error != null) ...[
+              const SizedBox(height: 12),
+              ErrorBanner(message: _error!),
+            ],
+            const SizedBox(height: 16),
+            PearmoButton(
+              label: _submitted ? 'Submitted for review' : 'Submit for review',
+              icon: Icons.shield_outlined,
+              isLoading: _isSubmitting,
+              onPressed: (_isSubmitting || _submitted) ? null : _submit,
+            ),
+          ],
+        ],
+      ),
+    );
+  }
+}
+
+/// Tier 2 card — NIC front/back, locked until tier 1 has passed.
+class _IdTierCard extends ConsumerStatefulWidget {
+  const _IdTierCard({required this.currentTier});
+
+  final VerificationTier? currentTier;
+
+  @override
+  ConsumerState<_IdTierCard> createState() => _IdTierCardState();
+}
+
+class _IdTierCardState extends ConsumerState<_IdTierCard> {
+  final _picker = ImagePicker();
+  File? _nicFront;
+  File? _nicBack;
+  bool _isSubmitting = false;
+  bool _submitted = false;
+  String? _error;
+
+  Future<void> _pick(void Function(File) onPicked) async {
+    final picked = await _picker.pickImage(source: ImageSource.gallery, imageQuality: 85);
+    if (picked != null) setState(() => onPicked(File(picked.path)));
+  }
+
+  Future<void> _submit() async {
+    if (_nicFront == null) {
+      setState(() => _error = 'Please add at least the NIC front photo.');
+      return;
+    }
+    setState(() {
+      _isSubmitting = true;
+      _error = null;
+    });
+    final userId = ref.read(currentUserIdProvider);
+    try {
+      if (userId == null) throw Exception('Not signed in');
+      final storage = ref.read(storageRepositoryProvider);
+      final nicFrontPath = await storage.uploadNicFront(userId, _nicFront!);
+      final nicBackPath = _nicBack != null ? await storage.uploadNicBack(userId, _nicBack!) : null;
+      await ref.read(verificationRepositoryProvider).submitIdVerification(
+            nicFrontPath: nicFrontPath,
+            nicBackPath: nicBackPath,
+          );
+      ref.invalidate(myVerificationTierProvider);
+      setState(() => _submitted = true);
+    } catch (e) {
+      setState(() => _error = ErrorMapper.map(e));
+    } finally {
+      if (mounted) setState(() => _isSubmitting = false);
+    }
+  }
+
+  @override
+  Widget build(BuildContext context) {
+    final unlocked = widget.currentTier?.isAtLeastSelfieVerified ?? false;
+    final alreadyVerified = widget.currentTier == VerificationTier.idVerified ||
+        widget.currentTier == VerificationTier.paidVerified;
+
+    return PearmoCard(
+      child: Column(
+        crossAxisAlignment: CrossAxisAlignment.start,
+        children: [
+          Row(
+            children: [
+              Icon(
+                unlocked ? Icons.badge_outlined : Icons.lock_outline,
+                color: unlocked ? AppColors.secondaryDark : AppColors.textSecondary,
+              ),
+              const SizedBox(width: 8),
+              Text('2. Verify your age (optional)', style: AppTextStyles.title),
+            ],
+          ),
+          const SizedBox(height: 8),
+          Text(
+            unlocked
+                ? 'Add your National ID so we can manually confirm the age on your profile '
+                    'matches your document.'
+                : 'Complete step 1 (verify you\'re real) first to unlock this step.',
+            style: AppTextStyles.body,
+          ),
+          if (unlocked) ...[
+            const SizedBox(height: 16),
+            if (alreadyVerified)
+              Text('Already verified.', style: AppTextStyles.bodyMedium)
+            else ...[
+              Row(
+                children: [
+                  Expanded(
+                    child: _DocumentPreview(
+                      file: _nicFront,
+                      label: 'NIC front',
+                      icon: Icons.badge_outlined,
+                      onTap: _isSubmitting ? null : () => _pick((f) => _nicFront = f),
+                    ),
+                  ),
+                  const SizedBox(width: 12),
+                  Expanded(
+                    child: _DocumentPreview(
+                      file: _nicBack,
+                      label: 'NIC back (optional)',
+                      icon: Icons.badge_outlined,
+                      onTap: _isSubmitting ? null : () => _pick((f) => _nicBack = f),
+                    ),
+                  ),
+                ],
+              ),
+              if (_error != null) ...[
+                const SizedBox(height: 12),
+                ErrorBanner(message: _error!),
+              ],
+              const SizedBox(height: 16),
+              PearmoButton(
+                label: _submitted ? 'Submitted for review' : 'Submit for review',
+                icon: Icons.shield_outlined,
+                isLoading: _isSubmitting,
+                onPressed: (_isSubmitting || _submitted) ? null : _submit,
+              ),
+            ],
+          ],
+        ],
+      ),
+    );
+  }
+}
+
+class _DocumentPreview extends StatelessWidget {
+  const _DocumentPreview({
+    required this.file,
+    required this.label,
+    required this.icon,
+    required this.onTap,
+  });
 
   final File? file;
   final String label;
-  final VoidCallback onTap;
+  final IconData icon;
+  final VoidCallback? onTap;
 
   @override
   Widget build(BuildContext context) {
@@ -194,7 +336,7 @@ class _DocumentPicker extends StatelessWidget {
             : Column(
                 mainAxisAlignment: MainAxisAlignment.center,
                 children: [
-                  const Icon(Icons.add_a_photo_outlined, color: AppColors.textSecondary),
+                  Icon(icon, color: AppColors.textSecondary),
                   const SizedBox(height: 8),
                   Text(label, style: AppTextStyles.caption),
                 ],

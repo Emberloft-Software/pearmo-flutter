@@ -9,3 +9,5 @@ export 'loading_indicator.dart';
 export 'pearmo_button.dart';
 export 'pearmo_card.dart';
 export 'section_header.dart';
+export 'signed_avatar_display.dart';
+export 'verify_to_unlock_dialog.dart';

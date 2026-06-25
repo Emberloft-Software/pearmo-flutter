@@ -4,7 +4,9 @@ import '../../core/config/supabase_config.dart';
 import '../../core/constants/enums.dart';
 import '../models/connection.dart';
 
-/// Connection requests and the connection lifecycle (pending -> ... -> ended).
+/// Connection requests and the connection lifecycle (pending -> accepted ->
+/// ice_breaking -> limited_chat -> open_chat -> media_unlocked ->
+/// date_planned, or ended).
 class ConnectionsRepository {
   ConnectionsRepository(this._client);
 

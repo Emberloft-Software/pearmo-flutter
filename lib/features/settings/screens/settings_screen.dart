@@ -1,6 +1,12 @@
+import 'dart:io';
+
 import 'package:flutter/material.dart';
 import 'package:flutter_riverpod/flutter_riverpod.dart';
+import 'package:go_router/go_router.dart';
+import 'package:image_picker/image_picker.dart';
 
+import '../../../core/constants/enums.dart';
+import '../../../core/theme/app_colors.dart';
 import '../../../core/theme/app_text_styles.dart';
 import '../../../core/utils/error_mapper.dart';
 import '../../../data/models/profile.dart';
@@ -29,6 +35,8 @@ class _SettingsScreenState extends ConsumerState<SettingsScreen> {
   bool _isSaving = false;
   String? _error;
   bool _saved = false;
+  bool _isUploadingPhoto = false;
+  String? _photoError;
 
   @override
   void initState() {
@@ -78,6 +86,45 @@ class _SettingsScreenState extends ConsumerState<SettingsScreen> {
     });
   }
 
+  Future<void> _addPicture(String userId, VerificationTier? tier) async {
+    if (!(tier?.isAtLeastSelfieVerified ?? false)) {
+      final wantsToVerify = await VerifyToUnlockDialog.show(context);
+      if (wantsToVerify && mounted) context.push('/verification');
+      return;
+    }
+
+    final picked = await ImagePicker().pickImage(source: ImageSource.gallery, imageQuality: 85);
+    if (picked == null) return;
+
+    setState(() {
+      _isUploadingPhoto = true;
+      _photoError = null;
+    });
+    try {
+      final storage = ref.read(storageRepositoryProvider);
+      final profileRepo = ref.read(profileRepositoryProvider);
+      final path = await storage.uploadProfilePhoto(userId, File(picked.path));
+      await profileRepo.updateProfilePhotoPath(userId, path);
+      await profileRepo.updateSettings(userId: userId, isPhotoPublic: true);
+      setState(() => _isPhotoPublic = true);
+      ref.invalidate(myProfileProvider);
+    } catch (e) {
+      setState(() => _photoError = ErrorMapper.map(e));
+    } finally {
+      if (mounted) setState(() => _isUploadingPhoto = false);
+    }
+  }
+
+  Future<void> _setPhotoVisibility(String userId, bool value) async {
+    setState(() => _isPhotoPublic = value);
+    try {
+      await ref.read(profileRepositoryProvider).updateSettings(userId: userId, isPhotoPublic: value);
+      ref.invalidate(myProfileProvider);
+    } catch (e) {
+      setState(() => _photoError = ErrorMapper.map(e));
+    }
+  }
+
   Future<void> _save(String userId) async {
     setState(() {
       _isSaving = true;
@@ -108,6 +155,7 @@ class _SettingsScreenState extends ConsumerState<SettingsScreen> {
   Widget build(BuildContext context) {
     final profileAsync = ref.watch(myProfileProvider);
     final userId = ref.watch(currentUserIdProvider);
+    final tierAsync = ref.watch(myVerificationTierProvider);
 
     return Scaffold(
       appBar: AppBar(title: const Text('Settings')),
@@ -117,7 +165,7 @@ class _SettingsScreenState extends ConsumerState<SettingsScreen> {
             return const EmptyState(icon: Icons.person_outline, title: 'No profile yet');
           }
           _initFrom(profile);
-          return _buildBody(userId);
+          return _buildBody(userId, profile, tierAsync.valueOrNull);
         },
         loading: () => const LoadingIndicator(),
         error: (error, _) => Padding(
@@ -128,21 +176,49 @@ class _SettingsScreenState extends ConsumerState<SettingsScreen> {
     );
   }
 
-  Widget _buildBody(String userId) {
+  Widget _buildBody(String userId, Profile profile, VerificationTier? tier) {
+    final unlocked = tier?.isAtLeastSelfieVerified ?? false;
+    final hasPhoto = profile.profilePhotoUrl != null && profile.profilePhotoUrl!.isNotEmpty;
+
     return ListView(
       padding: const EdgeInsets.all(20),
       children: [
         const SectionHeader(
-          title: 'Photo privacy',
-          subtitle: 'Avatars are always shown first — your real photo is only shared if you '
-              'allow it here.',
+          title: 'Profile photo',
+          subtitle: 'Avatars are always shown first — add a real photo once you\'re verified.',
         ),
-        SwitchListTile(
+        ListTile(
           contentPadding: EdgeInsets.zero,
-          title: const Text('Show my profile photo'),
-          value: _isPhotoPublic ?? false,
-          onChanged: (value) => setState(() => _isPhotoPublic = value),
+          leading: hasPhoto
+              ? SignedAvatarDisplay(
+                  avatarId: profile.avatarId,
+                  photoPath: profile.profilePhotoUrl,
+                  showPhoto: true,
+                  size: 44,
+                )
+              : Icon(unlocked ? Icons.add_a_photo_outlined : Icons.lock_outline,
+                  color: unlocked ? null : AppColors.textSecondary),
+          title: Text(hasPhoto ? 'Change picture' : 'Add picture'),
+          subtitle: Text(
+            unlocked
+                ? (hasPhoto ? 'Tap to choose a different photo.' : 'Choose a photo to add to your profile.')
+                : 'Verify you\'re real to unlock this.',
+          ),
+          trailing: _isUploadingPhoto ? const LoadingIndicator() : const Icon(Icons.chevron_right),
+          onTap: _isUploadingPhoto ? null : () => _addPicture(userId, tier),
         ),
+        if (hasPhoto) ...[
+          SwitchListTile(
+            contentPadding: EdgeInsets.zero,
+            title: const Text('Visible to others'),
+            value: _isPhotoPublic ?? false,
+            onChanged: (value) => _setPhotoVisibility(userId, value),
+          ),
+        ],
+        if (_photoError != null) ...[
+          const SizedBox(height: 8),
+          ErrorBanner(message: _photoError!),
+        ],
         const SizedBox(height: 16),
         // TODO(backend): this toggle persists to `profiles.hide_from_contacts`,
         // but actually excluding matches requires a contact-hash matching

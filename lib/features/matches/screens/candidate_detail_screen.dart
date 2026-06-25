@@ -121,9 +121,9 @@ class _CandidateDetailScreenState extends ConsumerState<CandidateDetailScreen> {
             padding: const EdgeInsets.all(20),
             children: [
               Center(
-                child: AvatarDisplay(
+                child: SignedAvatarDisplay(
                   avatarId: profile.avatarId,
-                  photoUrl: profile.profilePhotoUrl,
+                  photoPath: profile.profilePhotoUrl,
                   showPhoto: profile.hasPublicPhoto,
                   size: 120,
                 ),

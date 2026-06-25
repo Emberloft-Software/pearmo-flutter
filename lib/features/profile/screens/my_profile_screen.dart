@@ -52,9 +52,9 @@ class MyProfileScreen extends ConsumerWidget {
       padding: const EdgeInsets.all(20),
       children: [
         Center(
-          child: AvatarDisplay(
+          child: SignedAvatarDisplay(
             avatarId: profile.avatarId,
-            photoUrl: profile.profilePhotoUrl,
+            photoPath: profile.profilePhotoUrl,
             showPhoto: profile.isPhotoPublic,
             size: 120,
           ),

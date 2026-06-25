@@ -243,6 +243,7 @@ enum MusicGenre {
 /// Lifecycle stage of a `connections` row.
 enum ConnectionStatus {
   pending,
+  accepted,
   iceBreaking,
   limitedChat,
   openChat,
@@ -252,6 +253,7 @@ enum ConnectionStatus {
 
   String get dbValue => switch (this) {
         ConnectionStatus.pending => 'pending',
+        ConnectionStatus.accepted => 'accepted',
         ConnectionStatus.iceBreaking => 'ice_breaking',
         ConnectionStatus.limitedChat => 'limited_chat',
         ConnectionStatus.openChat => 'open_chat',
@@ -262,6 +264,7 @@ enum ConnectionStatus {
 
   String get label => switch (this) {
         ConnectionStatus.pending => 'Waiting for response',
+        ConnectionStatus.accepted => 'Accepted — break the ice!',
         ConnectionStatus.iceBreaking => 'Breaking the ice',
         ConnectionStatus.limitedChat => 'Limited chat',
         ConnectionStatus.openChat => 'Open chat',
@@ -353,22 +356,35 @@ enum ReportCategory {
 }
 
 /// Identity verification level, drives match visibility.
+///
+/// Tiered: `unverified` -> `selfieVerified` (liveliness check + selfie,
+/// manually reviewed — confirms the user is a real person) ->
+/// `idVerified` (also submitted a NIC, manually compared against the
+/// profile's displayed age — confirms age) -> `paidVerified` (unrelated
+/// payment tier, untouched by the verification flow).
 enum VerificationTier {
   unverified,
+  selfieVerified,
   idVerified,
   paidVerified;
 
   String get dbValue => switch (this) {
         VerificationTier.unverified => 'unverified',
+        VerificationTier.selfieVerified => 'selfie_verified',
         VerificationTier.idVerified => 'id_verified',
         VerificationTier.paidVerified => 'paid_verified',
       };
 
   String get label => switch (this) {
         VerificationTier.unverified => 'Unverified',
-        VerificationTier.idVerified => 'ID verified',
+        VerificationTier.selfieVerified => 'Selfie verified',
+        VerificationTier.idVerified => 'Age verified',
         VerificationTier.paidVerified => 'Verified Plus',
       };
+
+  /// Whether this tier has cleared the liveliness + selfie check — gates
+  /// features like adding a public profile photo.
+  bool get isAtLeastSelfieVerified => index >= VerificationTier.selfieVerified.index;
 
   static VerificationTier fromDb(String value) => VerificationTier.values
       .firstWhere((e) => e.dbValue == value, orElse: () => VerificationTier.unverified);

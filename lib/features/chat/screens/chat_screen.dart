@@ -93,7 +93,8 @@ class _ChatScreenState extends ConsumerState<ChatScreen> {
                   message: connection.status == ConnectionStatus.ended
                       ? 'This connection has ended. Chat is read-only.'
                       : "Chat unlocks once you've broken the ice together.",
-                  action: connection.status == ConnectionStatus.iceBreaking
+                  action: connection.status == ConnectionStatus.accepted ||
+                          connection.status == ConnectionStatus.iceBreaking
                       ? TextButton(
                           onPressed: () => context.push('/connection/${widget.connectionId}/games'),
                           child: const Text('Play a game'),

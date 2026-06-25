@@ -10,17 +10,33 @@ class VerificationRepository {
 
   final SupabaseClient _client;
 
-  Future<void> submitVerification({
-    required String nicFrontPath,
-    String? nicBackPath,
+  /// Tier 1 — liveliness check + selfie. Confirms the user is a real person.
+  Future<void> submitSelfieVerification({
     required String selfiePath,
+    required bool livelinessPassed,
   }) async {
     await _client.functions.invoke(
       SupabaseConfig.fnSubmitVerification,
       body: {
+        'tier': 'selfie',
+        'selfie_path': selfiePath,
+        'liveliness_passed': livelinessPassed,
+      },
+    );
+  }
+
+  /// Tier 2 — NIC submission on top of an existing selfie verification.
+  /// Confirms the profile's displayed age matches the document.
+  Future<void> submitIdVerification({
+    required String nicFrontPath,
+    String? nicBackPath,
+  }) async {
+    await _client.functions.invoke(
+      SupabaseConfig.fnSubmitVerification,
+      body: {
+        'tier': 'id',
         'nic_front_path': nicFrontPath,
         if (nicBackPath != null) 'nic_back_path': nicBackPath,
-        'selfie_path': selfiePath,
       },
     );
   }
