@@ -1,6 +1,7 @@
 import 'package:flutter_riverpod/flutter_riverpod.dart';
 import 'package:supabase_flutter/supabase_flutter.dart';
 
+import '../data/models/app_user.dart';
 import 'repository_providers.dart';
 
 /// Streams Supabase auth state changes — the router listens to this to
@@ -17,4 +18,13 @@ final currentUserIdProvider = Provider<String?>((ref) {
 
 final isLoggedInProvider = Provider<bool>((ref) {
   return ref.watch(currentUserIdProvider) != null;
+});
+
+/// The signed-in user's `public.users` row — used by the router to block
+/// banned/deactivated accounts even while their Supabase Auth session is
+/// still otherwise valid (see CLAUDE.md's ban-enforcement gap).
+final myAppUserProvider = FutureProvider.autoDispose<AppUser?>((ref) async {
+  final userId = ref.watch(currentUserIdProvider);
+  if (userId == null) return null;
+  return ref.watch(authRepositoryProvider).getCurrentAppUser();
 });

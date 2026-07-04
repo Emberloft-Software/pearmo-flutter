@@ -52,6 +52,9 @@ class ErrorMapper {
     if (error.code == '23505') {
       return 'That already exists.';
     }
+    if (error.code == '23514') {
+      return 'That value isn\'t valid. Please double check and try again.';
+    }
     if (error.code == '42501' || message.contains('permission') || message.contains('policy')) {
       return 'You don\'t have permission to do that.';
     }

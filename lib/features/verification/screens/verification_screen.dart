@@ -9,6 +9,7 @@ import '../../../core/theme/app_colors.dart';
 import '../../../core/theme/app_text_styles.dart';
 import '../../../core/theme/app_theme.dart';
 import '../../../core/utils/error_mapper.dart';
+import '../../../data/repositories/verification_repository.dart';
 import '../../../providers/auth_providers.dart';
 import '../../../providers/profile_providers.dart';
 import '../../../providers/repository_providers.dart';
@@ -94,8 +95,29 @@ class _SelfieTierCard extends ConsumerStatefulWidget {
 class _SelfieTierCardState extends ConsumerState<_SelfieTierCard> {
   File? _selfie;
   bool _isSubmitting = false;
-  bool _submitted = false;
+  bool _loadingStatus = true;
+  VerificationSubmissionStatus? _lastSubmission;
   String? _error;
+
+  @override
+  void initState() {
+    super.initState();
+    _loadStatus();
+  }
+
+  Future<void> _loadStatus() async {
+    final userId = ref.read(currentUserIdProvider);
+    if (userId == null) return;
+    final status = await ref
+        .read(verificationRepositoryProvider)
+        .getLatestSubmission(userId: userId, tier: 'selfie');
+    if (mounted) {
+      setState(() {
+        _lastSubmission = status;
+        _loadingStatus = false;
+      });
+    }
+  }
 
   Future<void> _runLivenessCheck() async {
     final result = await Navigator.of(context).push<File>(
@@ -124,7 +146,7 @@ class _SelfieTierCardState extends ConsumerState<_SelfieTierCard> {
             livelinessPassed: true,
           );
       ref.invalidate(myVerificationTierProvider);
-      setState(() => _submitted = true);
+      await _loadStatus();
     } catch (e) {
       setState(() => _error = ErrorMapper.map(e));
     } finally {
@@ -135,6 +157,8 @@ class _SelfieTierCardState extends ConsumerState<_SelfieTierCard> {
   @override
   Widget build(BuildContext context) {
     final alreadyVerified = (widget.currentTier?.isAtLeastSelfieVerified ?? false);
+    final isPending = _lastSubmission?.status == 'pending';
+    final isRejected = _lastSubmission?.status == 'rejected';
 
     return PearmoCard(
       child: Column(
@@ -156,7 +180,17 @@ class _SelfieTierCardState extends ConsumerState<_SelfieTierCard> {
           const SizedBox(height: 16),
           if (alreadyVerified)
             Text('Already verified.', style: AppTextStyles.bodyMedium)
+          else if (_loadingStatus)
+            const LoadingIndicator()
           else ...[
+            if (isRejected) ...[
+              ErrorBanner(
+                message: _lastSubmission?.rejectionReason?.trim().isNotEmpty == true
+                    ? 'Your last submission was rejected: ${_lastSubmission!.rejectionReason}'
+                    : 'Your last submission was rejected. Please try again.',
+              ),
+              const SizedBox(height: 12),
+            ],
             _DocumentPreview(
               file: _selfie,
               label: 'Run liveliness check',
@@ -169,10 +203,10 @@ class _SelfieTierCardState extends ConsumerState<_SelfieTierCard> {
             ],
             const SizedBox(height: 16),
             PearmoButton(
-              label: _submitted ? 'Submitted for review' : 'Submit for review',
+              label: isPending ? 'Submitted — awaiting review' : 'Submit for review',
               icon: Icons.shield_outlined,
               isLoading: _isSubmitting,
-              onPressed: (_isSubmitting || _submitted) ? null : _submit,
+              onPressed: (_isSubmitting || isPending) ? null : _submit,
             ),
           ],
         ],
@@ -196,8 +230,29 @@ class _IdTierCardState extends ConsumerState<_IdTierCard> {
   File? _nicFront;
   File? _nicBack;
   bool _isSubmitting = false;
-  bool _submitted = false;
+  bool _loadingStatus = true;
+  VerificationSubmissionStatus? _lastSubmission;
   String? _error;
+
+  @override
+  void initState() {
+    super.initState();
+    _loadStatus();
+  }
+
+  Future<void> _loadStatus() async {
+    final userId = ref.read(currentUserIdProvider);
+    if (userId == null) return;
+    final status = await ref
+        .read(verificationRepositoryProvider)
+        .getLatestSubmission(userId: userId, tier: 'id');
+    if (mounted) {
+      setState(() {
+        _lastSubmission = status;
+        _loadingStatus = false;
+      });
+    }
+  }
 
   Future<void> _pick(void Function(File) onPicked) async {
     final picked = await _picker.pickImage(source: ImageSource.gallery, imageQuality: 85);
@@ -224,7 +279,7 @@ class _IdTierCardState extends ConsumerState<_IdTierCard> {
             nicBackPath: nicBackPath,
           );
       ref.invalidate(myVerificationTierProvider);
-      setState(() => _submitted = true);
+      await _loadStatus();
     } catch (e) {
       setState(() => _error = ErrorMapper.map(e));
     } finally {
@@ -237,6 +292,8 @@ class _IdTierCardState extends ConsumerState<_IdTierCard> {
     final unlocked = widget.currentTier?.isAtLeastSelfieVerified ?? false;
     final alreadyVerified = widget.currentTier == VerificationTier.idVerified ||
         widget.currentTier == VerificationTier.paidVerified;
+    final isPending = _lastSubmission?.status == 'pending';
+    final isRejected = _lastSubmission?.status == 'rejected';
 
     return PearmoCard(
       child: Column(
@@ -264,7 +321,17 @@ class _IdTierCardState extends ConsumerState<_IdTierCard> {
             const SizedBox(height: 16),
             if (alreadyVerified)
               Text('Already verified.', style: AppTextStyles.bodyMedium)
+            else if (_loadingStatus)
+              const LoadingIndicator()
             else ...[
+              if (isRejected) ...[
+                ErrorBanner(
+                  message: _lastSubmission?.rejectionReason?.trim().isNotEmpty == true
+                      ? 'Your last submission was rejected: ${_lastSubmission!.rejectionReason}'
+                      : 'Your last submission was rejected. Please try again.',
+                ),
+                const SizedBox(height: 12),
+              ],
               Row(
                 children: [
                   Expanded(
@@ -292,10 +359,10 @@ class _IdTierCardState extends ConsumerState<_IdTierCard> {
               ],
               const SizedBox(height: 16),
               PearmoButton(
-                label: _submitted ? 'Submitted for review' : 'Submit for review',
+                label: isPending ? 'Submitted — awaiting review' : 'Submit for review',
                 icon: Icons.shield_outlined,
                 isLoading: _isSubmitting,
-                onPressed: (_isSubmitting || _submitted) ? null : _submit,
+                onPressed: (_isSubmitting || isPending) ? null : _submit,
               ),
             ],
           ],

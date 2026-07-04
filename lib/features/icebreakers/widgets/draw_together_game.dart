@@ -38,9 +38,13 @@ class _DrawTogetherGameState extends ConsumerState<DrawTogetherGame> {
           ? IcebreakerContent.colorA
           : IcebreakerContent.colorB;
 
+  /// Normalizes `state['strokes']` defensively — same RLS-has-no-shape-check
+  /// caveat as `PromptsGame._qa` (see CLAUDE.md); drop non-Map entries so a
+  /// malformed write from either client doesn't crash the whole canvas.
   List<Map<String, dynamic>> get _strokes =>
       (widget.session.state['strokes'] as List? ?? const [])
-          .map((e) => Map<String, dynamic>.from(e as Map))
+          .whereType<Map>()
+          .map((e) => Map<String, dynamic>.from(e))
           .toList();
 
   void _onPanUpdate(DragUpdateDetails details, Size size) {
@@ -152,11 +156,26 @@ class _DrawingPainter extends CustomPainter {
   @override
   void paint(Canvas canvas, Size size) {
     for (final stroke in strokes) {
-      final color = _parseColor(stroke['color'] as String? ?? IcebreakerContent.colorA);
-      final points = (stroke['points'] as List)
-          .map((p) => Offset((p[0] as num).toDouble() * size.width, (p[1] as num).toDouble() * size.height))
-          .toList();
-      _drawPath(canvas, points, color);
+      // Points are written as [num, num] but nothing enforces that shape
+      // server-side — skip a malformed stroke rather than crashing the
+      // whole canvas render.
+      try {
+        final rawPoints = stroke['points'];
+        if (rawPoints is! List) continue;
+        final points = rawPoints
+            .whereType<List>()
+            .where((p) => p.length >= 2)
+            .map((p) => Offset(
+                  (p[0] as num).toDouble() * size.width,
+                  (p[1] as num).toDouble() * size.height,
+                ))
+            .toList();
+        if (points.length < 2) continue;
+        final color = _parseColor(stroke['color'] as String? ?? IcebreakerContent.colorA);
+        _drawPath(canvas, points, color);
+      } catch (_) {
+        continue;
+      }
     }
 
     if (liveStroke.length > 1) {

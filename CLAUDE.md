@@ -357,12 +357,13 @@ everyone (unchanged). Confirmed via
 function (candidate filters, `score_compatibility` call, the
 24h-expiry/no-op-if-unexpired guard) is untouched.
 
-**Still outside this repo, not yet done:** `submit-verification`'s edge
-function source needs updating to accept `{tier, selfie_path,
-liveliness_passed}` or `{tier, nic_front_path, nic_back_path}` and write
-these columns; on approval the Next.js reviewer should set
-`users.verification_tier` to `'selfie_verified'` or `'id_verified'`
-accordingly.
+**Update 2026-07-01:** `submit-verification`'s edge function source has now
+been updated (outside this repo, in the Supabase dashboard) to accept
+`{tier, selfie_path, liveliness_passed}` or `{tier, nic_front_path,
+nic_back_path}` and write only the columns relevant to that tier. On
+approval the Next.js reviewer still needs to set `users.verification_tier`
+to `'selfie_verified'` or `'id_verified'` accordingly (unchanged, still
+outside this repo).
 
 **Confirmed unused, left alone:** `liveness_clip_path`, `face_match_score`,
 `nic_data_extracted`, `nic_number_hash` already existed on
@@ -388,6 +389,197 @@ null/unpopulated; revisit if that automation ever gets built.
   rendered even once a photo existed. Fixed via a new
   [signed_avatar_display.dart](lib/shared/widgets/signed_avatar_display.dart)
   wrapper used in both places.
+
+**Bug found + fixed 2026-07-01 (storage RLS, not `public` schema this
+time):** submitting an ID (`tier: 'id'`) verification failed with a `42501`
+on `storage.objects` — `new row violates row-level security policy (USING
+expression)`, on an `INSERT ... ON CONFLICT (name, bucket_id) DO UPDATE`
+query. Root cause: `StorageRepository._upload()`
+([storage_repository.dart:35-42](lib/data/repositories/storage_repository.dart#L35-L42))
+always uploads with `FileOptions(upsert: true)`, and NIC/selfie/profile-photo
+paths are all deterministic (`$userId/nic_front.jpg` etc.) — so any *second*
+upload to the same path (retaking a photo, resubmitting after rejection)
+becomes an UPDATE on `storage.objects`, which is checked against the
+`USING` clause of an UPDATE policy. Confirmed via `pg_policies` (schemaname
+`storage`, tablename `objects`) that the `nic-documents` bucket only had
+`SELECT` (`users read own files r4fnlf_0`) and `INSERT`
+(`users upload own files r4fnlf_0`) policies — no `UPDATE`. Fixed by adding
+a matching `UPDATE` policy (`users update own files r4fnlf_0`) with the
+same `bucket_id = 'nic-documents' and auth.uid()::text =
+(storage.foldername(name))[1]` condition on both `using` and `with check`.
+**Not yet checked:** `profile-photos` and `audio-intros` likely have the
+same gap, since `uploadProfilePhoto`/`uploadAudioIntro` use the same
+`_upload()` helper with `upsert: true` — re-query `pg_policies` for those
+bucket ids before assuming a second upload to either will work.
+**Update 2026-07-01:** handed the user matching `create policy ... for
+update` statements for both buckets (mirroring the `nic-documents` fix) to
+run after confirming via `pg_policies` — not yet confirmed applied.
+
+## App-flow audit and fixes (2026-07-01)
+
+Did a full sweep of every feature flow (auth/router/onboarding,
+verification, matches/connections/consent, chat/icebreakers,
+safety/reports/ratings/checkins, payments) via parallel deep-read agents,
+each cross-checking client code against this file's documented RLS ground
+truth rather than re-deriving it. Fixed everything fixable from this repo;
+three items need action in the Supabase dashboard directly (SQL/edge
+function source aren't in this repo).
+
+**Fixed in this repo:**
+- **`connections.status` was writable to any value by either participant**
+  — `ConnectionsRepository.endConnection()`
+  ([connections_repository.dart:74-85](lib/data/repositories/connections_repository.dart#L74-L85))
+  does a direct `.update()`, proving the pattern works, and since the
+  `UPDATE` RLS policy has no `WITH CHECK` on the value (documented above),
+  the same pattern could set `status` to `open_chat`/`media_unlocked`/etc.
+  directly, skipping `respond-to-connection`'s consent/business logic
+  entirely. **Not a Dart fix** — needs the restrictive RLS policy below,
+  run by the user.
+- **Banned/deactivated accounts (`users.is_banned`/`is_active`) were never
+  checked anywhere client-side** — a still-valid Supabase Auth session had
+  no gate at all. Added `isBlocked` to `AppUser`
+  ([app_user.dart](lib/data/models/app_user.dart)), a `myAppUserProvider`
+  ([auth_providers.dart](lib/providers/auth_providers.dart)), a new
+  `/blocked` route + `BlockedScreen`
+  ([blocked_screen.dart](lib/features/auth/screens/blocked_screen.dart)),
+  and a router redirect check
+  ([app_router.dart](lib/core/router/app_router.dart)) that routes blocked
+  users there (only exit is signing out) before the onboarding/home checks
+  run. `AuthRepository.getCurrentAppUser()` was dead code before this (zero
+  call sites) — now used, and switched from `.single()` to `.maybeSingle()`
+  since it can be queried in the window between session creation and
+  `ensureUserRow()` completing.
+- **Onboarding marked `onboarding_complete: true` before the audio
+  upload/`analyse-profile` pass ran** — if either failed, the profile row
+  was already "complete" in the DB but `myProfileProvider` was never
+  invalidated (the throw happened first), so the router kept the user
+  stuck on the onboarding screen with no way to distinguish "required
+  onboarding failed" from "an optional follow-up step failed," and no way
+  to add the audio intro later (no such option exists in Settings).
+  `OnboardingController.submit()`
+  ([onboarding_controller.dart](lib/features/onboarding/providers/onboarding_controller.dart))
+  now treats the audio upload + sentiment pass as best-effort — a failure
+  there returns a warning string instead of throwing, and the router still
+  moves the user to `/home` since the required fields are genuinely saved.
+- **Double-tap race on "Send Request"** —
+  [candidate_detail_screen.dart](lib/features/matches/screens/candidate_detail_screen.dart)
+  set `_isActing` only *after* an `await`, so two fast taps could both pass
+  the `canSendRequestProvider` check and both invoke
+  `send-connection-request`. Now set before the first await.
+- **No re-submission guard on connection ratings** — a user could
+  navigate to `/connection/:id/rate` repeatedly and insert multiple rows
+  (no unique constraint confirmed on `(connection_id, rater_id)`), each one
+  factored into `update_trust_score()`'s last-20-ratings average.
+  `RatingsRepository.hasRated()`
+  ([ratings_repository.dart](lib/data/repositories/ratings_repository.dart))
+  checks for a prior rating (RLS already permits selecting your own), and
+  [rating_screen.dart](lib/features/ratings/screens/rating_screen.dart)
+  shows "You've already rated this connection" instead of the form when
+  one exists. Client-side only — still worth adding a DB unique constraint
+  on `(connection_id, rater_id)` if this needs a hard backstop.
+- **No verification rejection/resubmission feedback** —
+  `verification_submissions.status`/`rejection_reason` were never read
+  anywhere client-side; a rejected user just saw a blank form with no
+  explanation, and the "submitted" state was purely local widget state
+  (reset on navigation), not backed by the actual row. Added
+  `VerificationRepository.getLatestSubmission()` and wired both tier cards
+  in [verification_screen.dart](lib/features/verification/screens/verification_screen.dart)
+  to show the real `pending`/`rejected` state (with `rejection_reason`)
+  instead of a transient local flag.
+- **Ice-breaker game state had no defensive parsing of *inner* shape** —
+  `IceBreakerSession.fromJson` already guards the outer `state` shape, but
+  a malformed entry (e.g. a `qa` item missing `question`, or a stroke point
+  that isn't `[num, num]`) would throw uncaught mid-render, since RLS
+  allows any participant to write arbitrary jsonb here with no shape
+  validation (documented above). Hardened
+  `PromptsGame._qa` ([prompts_game.dart](lib/features/icebreakers/widgets/prompts_game.dart))
+  to drop non-conforming entries, and
+  `DrawTogetherGame._strokes`/`_DrawingPainter.paint()`
+  ([draw_together_game.dart](lib/features/icebreakers/widgets/draw_together_game.dart))
+  to skip malformed strokes per-stroke instead of crashing the whole
+  canvas. `WouldYouRatherGame` already used safe casts throughout — no
+  change needed there.
+- **No `23514` (check-constraint violation) mapping** in
+  [error_mapper.dart](lib/core/utils/error_mapper.dart) — latent gap, not
+  currently reachable since rating UI clamps to 1-5, but now mapped to a
+  friendly message instead of raw Postgres text.
+- **OTP resend had no client-side cooldown** —
+  [otp_screen.dart](lib/features/auth/screens/otp_screen.dart) now disables
+  the resend button for 30s after each send (Supabase's own rate limit was
+  always the real backstop; this is just UX).
+
+**Needs action outside this repo (SQL Editor / edge function dashboard):**
+- `connections.status` write-anything gap: add a restrictive UPDATE policy
+  requiring `status = 'ended'` for any client-side write (service-role edge
+  functions bypass RLS entirely, so `respond-to-connection` etc. are
+  unaffected) — exact `create policy` handed to the user, not yet run.
+- Same storage-RLS gap as `nic-documents` (missing `UPDATE` policy) likely
+  also affects `profile-photos` and `audio-intros` — SQL handed to the
+  user, not yet confirmed/run.
+- `submit-verification`
+  ([supabase/functions/submit-verification/index.ts](supabase/functions/submit-verification/index.ts))
+  updated in-repo to (a) reject a `tier: 'id'` submission unless
+  `users.verification_tier` is already past `unverified`, closing the gap
+  where tier ordering was only enforced by hiding the UI card, and (b) scope
+  the "one pending submission" check to the same tier instead of blocking
+  across tiers. **Still needs to be pasted into the actual deployed
+  function in the Supabase dashboard** — editing the file in this repo
+  doesn't deploy it.
+- **Date check-in escalation has no confirmed trigger anywhere — confirmed
+  2026-07-01.** `select jobid, schedule, command, active from cron.job;`
+  ran successfully (so `pg_cron` is installed) but returned **zero rows** —
+  there is no scheduled job of any kind, let alone one that escalates
+  overdue check-ins. A missed check-in currently does nothing at all: no
+  status change, no alert to anyone. Handed the user a `cron.schedule(...)`
+  job (runs every 5 minutes) that does the escalation directly in SQL
+  rather than routing through the `date-checkin` edge function (which
+  isn't built for being invoked on a schedule):
+  ```sql
+  select cron.schedule(
+    'escalate-overdue-checkins',
+    '*/5 * * * *',
+    $$
+    update public.date_checkins
+    set status = 'escalated', escalated_at = now()
+    where status = 'active'
+      and now() > coalesce(last_checked_in_at, scheduled_for) + check_in_interval;
+    $$
+  );
+  ```
+  **This only flips `status`/`escalated_at` in the database — it does not
+  contact the `emergency_contact` number or notify anyone.** That remains
+  a real gap (see the excluded item below) but at least an overdue
+  check-in becomes an observable, queryable state instead of silently
+  never happening. **Not yet confirmed run by the user.**
+- **Bug found + fixed 2026-07-01: `DateCheckin.fromJson` didn't match the
+  real `date_checkins` schema at all, and would crash the moment any
+  check-in row existed.** The model
+  ([date_checkin.dart](lib/data/models/date_checkin.dart)) read
+  `json['created_by']` and `json['acknowledged_at']`, and compared
+  `status` against `'scheduled'`/`'acknowledged'`/`'missed'` — none of
+  which exist in the real schema (`user_id`, no `acknowledged_at` column,
+  status check-constrained to `active`/`checked_in`/`escalated`/
+  `cancelled`, confirmed above). Casting the missing `created_by` key
+  (`null as String`) threw immediately inside `fromJson`, so
+  `CheckinRepository.getCheckins()` — and therefore the whole
+  `CheckinPanel` — crashed to an error banner as soon as one check-in
+  existed for a connection; before that, `canAct`/`needsAcknowledgement`
+  compared against status values the DB never produces, so the
+  Acknowledge/Cancel buttons could never have appeared regardless. Fixed
+  the model's fields/status values to match reality, and updated
+  [checkin_panel.dart](lib/features/safety/widgets/checkin_panel.dart)'s
+  `_CheckinTile` icon/color logic to use `active`/`checked_in`/
+  `cancelled`/`escalated` (added a distinct icon+color for `escalated`,
+  which the old code had no branch for at all). This was missed by the
+  first pass of this audit — the safety-flow review agent read the model
+  but didn't cross-check its field names against this file's schema
+  section the way other agents did for `ConnectionStatus`; found only
+  while manually designing the escalation cron job above.
+- **Not in scope this pass (explicitly excluded by the user):**
+  `emergency_contact` on `date_checkins` is a free-text field with no
+  format validation and no SMS/call integration anywhere in the app —
+  likely misleading given the name, since nothing actually contacts that
+  number automatically today.
 
 ## Fake test accounts seeded for matching/connections UI testing
 

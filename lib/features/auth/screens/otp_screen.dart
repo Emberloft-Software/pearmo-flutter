@@ -1,3 +1,5 @@
+import 'dart:async';
+
 import 'package:flutter/material.dart';
 import 'package:flutter_riverpod/flutter_riverpod.dart';
 import 'package:go_router/go_router.dart';
@@ -26,11 +28,34 @@ class _OtpScreenState extends ConsumerState<OtpScreen> {
   bool _isLoading = false;
   bool _isResending = false;
   String? _error;
+  Timer? _cooldownTimer;
+  int _cooldownSeconds = 0;
+
+  static const _resendCooldown = 30;
 
   @override
   void dispose() {
     _codeController.dispose();
+    _cooldownTimer?.cancel();
     super.dispose();
+  }
+
+  /// Client-side cooldown so a fast double/triple tap can't fire off
+  /// several SMS sends before the first request round-trips — Supabase's
+  /// own rate limit is the real backstop, this is just UX.
+  void _startCooldown() {
+    _cooldownTimer?.cancel();
+    setState(() => _cooldownSeconds = _resendCooldown);
+    _cooldownTimer = Timer.periodic(const Duration(seconds: 1), (timer) {
+      if (!mounted) {
+        timer.cancel();
+        return;
+      }
+      setState(() {
+        _cooldownSeconds--;
+        if (_cooldownSeconds <= 0) timer.cancel();
+      });
+    });
   }
 
   Future<void> _verify() async {
@@ -53,6 +78,7 @@ class _OtpScreenState extends ConsumerState<OtpScreen> {
   }
 
   Future<void> _resend() async {
+    if (_isResending || _cooldownSeconds > 0) return;
     setState(() {
       _isResending = true;
       _error = null;
@@ -60,6 +86,7 @@ class _OtpScreenState extends ConsumerState<OtpScreen> {
     try {
       await ref.read(authRepositoryProvider).sendOtp(widget.phone);
       if (!mounted) return;
+      _startCooldown();
       ScaffoldMessenger.of(context).showSnackBar(
         const SnackBar(content: Text('A new code is on its way.')),
       );
@@ -111,10 +138,10 @@ class _OtpScreenState extends ConsumerState<OtpScreen> {
                 PearmoButton(label: 'Verify', isLoading: _isLoading, onPressed: _verify),
                 const SizedBox(height: 12),
                 PearmoButton(
-                  label: 'Resend code',
+                  label: _cooldownSeconds > 0 ? 'Resend code (${_cooldownSeconds}s)' : 'Resend code',
                   variant: PearmoButtonVariant.text,
                   isLoading: _isResending,
-                  onPressed: _resend,
+                  onPressed: _cooldownSeconds > 0 ? null : _resend,
                 ),
               ],
             ),

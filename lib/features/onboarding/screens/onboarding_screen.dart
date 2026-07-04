@@ -60,7 +60,10 @@ class _OnboardingScreenState extends ConsumerState<OnboardingScreen> {
       _error = null;
     });
     try {
-      await ref.read(onboardingControllerProvider.notifier).submit();
+      final warning = await ref.read(onboardingControllerProvider.notifier).submit();
+      if (warning != null && mounted) {
+        ScaffoldMessenger.of(context).showSnackBar(SnackBar(content: Text(warning)));
+      }
     } catch (e) {
       setState(() => _error = ErrorMapper.map(e));
     } finally {

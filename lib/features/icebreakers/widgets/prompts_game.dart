@@ -42,8 +42,19 @@ class _PromptsGameState extends ConsumerState<PromptsGame> {
     super.dispose();
   }
 
+  /// Normalizes `state['qa']` defensively — RLS lets any participant write
+  /// arbitrary jsonb here with no shape enforcement (see CLAUDE.md), so a
+  /// malformed/garbage entry (e.g. a non-Map, or a missing/non-string
+  /// `question`) is dropped instead of throwing a cast exception mid-build.
   List<Map<String, dynamic>> get _qa => (widget.session.state['qa'] as List? ?? const [])
-      .map((e) => Map<String, dynamic>.from(e as Map))
+      .whereType<Map>()
+      .map((e) => Map<String, dynamic>.from(e))
+      .where((e) => e['question'] is String)
+      .map((e) => {
+            'askedBy': e['askedBy'],
+            'question': e['question'] as String,
+            'answer': e['answer'] is String ? e['answer'] as String : null,
+          })
       .toList();
 
   Future<void> _askQuestion(String question) async {

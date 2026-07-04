@@ -51,22 +51,27 @@ class _CandidateDetailScreenState extends ConsumerState<CandidateDetailScreen> {
   }
 
   Future<void> _sendRequest() async {
+    if (_isActing) return;
     final userId = ref.read(currentUserIdProvider);
     if (userId == null) return;
+
+    // Set before the first await so a second fast tap can't slip through
+    // while this call is still checking `canSendRequestProvider`.
+    setState(() {
+      _isActing = true;
+      _error = null;
+    });
 
     final canSend = await ref.read(canSendRequestProvider.future);
     if (!canSend) {
       setState(() {
+        _isActing = false;
         _error =
             'You already have an active connection. End it before connecting with someone new.';
       });
       return;
     }
 
-    setState(() {
-      _isActing = true;
-      _error = null;
-    });
     try {
       await ref.read(connectionsRepositoryProvider).sendConnectionRequest(
             userId: userId,

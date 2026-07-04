@@ -43,13 +43,15 @@ class AuthRepository {
     );
   }
 
-  /// Fetches the `users` row (mainly for `verification_tier`).
-  Future<AppUser> getCurrentAppUser() async {
+  /// Fetches the `users` row (verification tier, ban/active status). Returns
+  /// null rather than throwing if the row doesn't exist yet — there's a
+  /// window right after OTP verification, before `ensureUserRow()` finishes,
+  /// where a session exists but the `users` row doesn't.
+  Future<AppUser?> getCurrentAppUser() async {
     final user = currentUser;
-    if (user == null) {
-      throw StateError('No authenticated user');
-    }
-    final row = await _client.from('users').select().eq('id', user.id).single();
+    if (user == null) return null;
+    final row = await _client.from('users').select().eq('id', user.id).maybeSingle();
+    if (row == null) return null;
     return AppUser.fromJson(row);
   }
 }

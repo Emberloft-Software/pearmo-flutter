@@ -209,27 +209,31 @@ class _CheckinTile extends StatelessWidget {
 
   @override
   Widget build(BuildContext context) {
-    final canAct = checkin.status == 'scheduled';
+    final canAct = checkin.status == 'active';
     return Padding(
       padding: const EdgeInsets.only(bottom: 8),
       child: PearmoCard(
         child: Row(
           children: [
             Icon(
-              checkin.status == 'acknowledged'
+              checkin.status == 'checked_in'
                   ? Icons.check_circle_outline
                   : checkin.status == 'cancelled'
                       ? Icons.cancel_outlined
-                      : checkin.needsAcknowledgement
-                          ? Icons.notifications_active_outlined
-                          : Icons.schedule_outlined,
-              color: checkin.status == 'acknowledged'
+                      : checkin.status == 'escalated'
+                          ? Icons.warning_amber_outlined
+                          : checkin.needsAcknowledgement
+                              ? Icons.notifications_active_outlined
+                              : Icons.schedule_outlined,
+              color: checkin.status == 'checked_in'
                   ? AppColors.success
                   : checkin.status == 'cancelled'
                       ? AppColors.textSecondary
-                      : checkin.needsAcknowledgement
-                          ? AppColors.warning
-                          : AppColors.primary,
+                      : checkin.status == 'escalated'
+                          ? AppColors.danger
+                          : checkin.needsAcknowledgement
+                              ? AppColors.warning
+                              : AppColors.primary,
             ),
             const SizedBox(width: 12),
             Expanded(

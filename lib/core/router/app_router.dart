@@ -2,6 +2,7 @@ import 'package:flutter/foundation.dart';
 import 'package:flutter_riverpod/flutter_riverpod.dart';
 import 'package:go_router/go_router.dart';
 
+import '../../features/auth/screens/blocked_screen.dart';
 import '../../features/auth/screens/login_screen.dart';
 import '../../features/auth/screens/otp_screen.dart';
 import '../../features/auth/screens/splash_screen.dart';
@@ -26,6 +27,7 @@ import '../../providers/repository_providers.dart';
 class _RouterRefreshNotifier extends ChangeNotifier {
   _RouterRefreshNotifier(Ref ref) {
     ref.listen(authStateChangesProvider, (_, _) => notifyListeners());
+    ref.listen(myAppUserProvider, (_, _) => notifyListeners());
     ref.listen(myProfileProvider, (_, _) => notifyListeners());
   }
 }
@@ -45,6 +47,18 @@ final routerProvider = Provider<GoRouter>((ref) {
 
       if (!isLoggedIn) {
         return onAuthRoute ? null : '/login';
+      }
+
+      // Banned/deactivated accounts can still hold a valid Supabase Auth
+      // session — block them here before anything else, since nothing else
+      // in this repo enforces `users.is_banned`/`is_active`.
+      final appUserAsync = ref.read(myAppUserProvider);
+      if (appUserAsync.isLoading) {
+        return null;
+      }
+      final appUser = appUserAsync.valueOrNull;
+      if (appUser != null && appUser.isBlocked) {
+        return location == '/blocked' ? null : '/blocked';
       }
 
       // Logged in — figure out if onboarding is complete.
@@ -77,6 +91,12 @@ final routerProvider = Provider<GoRouter>((ref) {
           final phone = state.uri.queryParameters['phone'] ?? '';
           return OtpScreen(phone: phone);
         },
+      ),
+      GoRoute(
+        path: '/blocked',
+        builder: (context, state) => BlockedScreen(
+          banReason: ref.read(myAppUserProvider).valueOrNull?.banReason,
+        ),
       ),
       GoRoute(path: '/onboarding', builder: (context, state) => const OnboardingScreen()),
       GoRoute(path: '/home', builder: (context, state) => const HomeShell()),

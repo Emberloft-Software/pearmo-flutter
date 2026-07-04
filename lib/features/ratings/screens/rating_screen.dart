@@ -29,6 +29,29 @@ class _RatingScreenState extends ConsumerState<RatingScreen> {
   int _overall = 3;
   bool _isSubmitting = false;
   String? _error;
+  bool _checkingPriorRating = true;
+  bool _alreadyRated = false;
+
+  @override
+  void initState() {
+    super.initState();
+    _checkPriorRating();
+  }
+
+  Future<void> _checkPriorRating() async {
+    final userId = ref.read(currentUserIdProvider);
+    if (userId == null) return;
+    final rated = await ref.read(ratingsRepositoryProvider).hasRated(
+          connectionId: widget.connectionId,
+          raterId: userId,
+        );
+    if (mounted) {
+      setState(() {
+        _alreadyRated = rated;
+        _checkingPriorRating = false;
+      });
+    }
+  }
 
   Future<void> _submit(String userId) async {
     setState(() {
@@ -56,6 +79,26 @@ class _RatingScreenState extends ConsumerState<RatingScreen> {
   @override
   Widget build(BuildContext context) {
     final userId = ref.watch(currentUserIdProvider);
+
+    if (_checkingPriorRating) {
+      return Scaffold(
+        appBar: AppBar(title: const Text('Rate this connection')),
+        body: const LoadingIndicator(),
+      );
+    }
+
+    if (_alreadyRated) {
+      return Scaffold(
+        appBar: AppBar(title: const Text('Rate this connection')),
+        body: Padding(
+          padding: const EdgeInsets.all(20),
+          child: Text(
+            "You've already rated this connection.",
+            style: AppTextStyles.body,
+          ),
+        ),
+      );
+    }
 
     return Scaffold(
       appBar: AppBar(title: const Text('Rate this connection')),
