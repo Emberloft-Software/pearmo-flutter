@@ -27,6 +27,7 @@ class SettingsScreen extends ConsumerStatefulWidget {
 class _SettingsScreenState extends ConsumerState<SettingsScreen> {
   bool? _isPhotoPublic;
   bool? _hideFromContacts;
+  bool? _isProfileActive;
   TimeOfDay? _activeHoursStart;
   TimeOfDay? _activeHoursEnd;
   late TextEditingController _regionController;
@@ -37,6 +38,8 @@ class _SettingsScreenState extends ConsumerState<SettingsScreen> {
   bool _saved = false;
   bool _isUploadingPhoto = false;
   String? _photoError;
+  bool _isDeletingAccount = false;
+  String? _deleteError;
 
   @override
   void initState() {
@@ -57,6 +60,7 @@ class _SettingsScreenState extends ConsumerState<SettingsScreen> {
     _initialized = true;
     _isPhotoPublic = profile.isPhotoPublic;
     _hideFromContacts = profile.hideFromContacts;
+    _isProfileActive = profile.isProfileActive;
     _activeHoursStart = _parseTime(profile.activeHoursStart);
     _activeHoursEnd = _parseTime(profile.activeHoursEnd);
     _regionController.text = profile.regionName ?? '';
@@ -136,6 +140,7 @@ class _SettingsScreenState extends ConsumerState<SettingsScreen> {
             userId: userId,
             isPhotoPublic: _isPhotoPublic,
             hideFromContacts: _hideFromContacts,
+            isProfileActive: _isProfileActive,
             activeHoursStart: _activeHoursStart != null ? _formatTime(_activeHoursStart!) : null,
             activeHoursEnd: _activeHoursEnd != null ? _formatTime(_activeHoursEnd!) : null,
             regionName: _regionController.text.trim().isEmpty ? null : _regionController.text.trim(),
@@ -148,6 +153,40 @@ class _SettingsScreenState extends ConsumerState<SettingsScreen> {
       setState(() => _error = ErrorMapper.map(e));
     } finally {
       if (mounted) setState(() => _isSaving = false);
+    }
+  }
+
+  Future<void> _confirmDeleteAccount() async {
+    final confirmed = await showDialog<bool>(
+      context: context,
+      builder: (context) => AlertDialog(
+        title: const Text('Delete your account?'),
+        content: const Text(
+          'This permanently removes your photos, voice intro, and identity documents, and '
+          'hides your profile from everyone. This cannot be undone.',
+        ),
+        actions: [
+          TextButton(onPressed: () => Navigator.of(context).pop(false), child: const Text('Cancel')),
+          TextButton(
+            onPressed: () => Navigator.of(context).pop(true),
+            child: Text('Delete', style: TextStyle(color: AppColors.danger)),
+          ),
+        ],
+      ),
+    );
+    if (confirmed != true || !mounted) return;
+
+    setState(() {
+      _isDeletingAccount = true;
+      _deleteError = null;
+    });
+    try {
+      await ref.read(authRepositoryProvider).deleteAccount();
+      // Signed out inside deleteAccount() — the router takes over from here.
+    } catch (e) {
+      setState(() => _deleteError = ErrorMapper.map(e));
+    } finally {
+      if (mounted) setState(() => _isDeletingAccount = false);
     }
   }
 
@@ -220,6 +259,18 @@ class _SettingsScreenState extends ConsumerState<SettingsScreen> {
           ErrorBanner(message: _photoError!),
         ],
         const SizedBox(height: 16),
+        const SectionHeader(
+          title: 'Pause my profile',
+          subtitle: "Hide your profile from new matches without deleting anything — existing "
+              'chats stay open, and you can turn this back on any time.',
+        ),
+        SwitchListTile(
+          contentPadding: EdgeInsets.zero,
+          title: const Text('Profile visible to new matches'),
+          value: _isProfileActive ?? true,
+          onChanged: (value) => setState(() => _isProfileActive = value),
+        ),
+        const SizedBox(height: 16),
         // TODO(backend): this toggle persists to `profiles.hide_from_contacts`,
         // but actually excluding matches requires a contact-hash matching
         // step (reading the user's contacts, hashing numbers, and filtering
@@ -285,6 +336,25 @@ class _SettingsScreenState extends ConsumerState<SettingsScreen> {
           icon: Icons.check,
           isLoading: _isSaving,
           onPressed: _isSaving ? null : () => _save(userId),
+        ),
+        const SizedBox(height: 40),
+        const SectionHeader(
+          title: 'Danger zone',
+          subtitle: 'Permanently deletes your photos, voice intro, and identity documents, and '
+              "hides your profile — this can't be undone. Your account can't be recovered "
+              'afterward, but you can always sign up again with a new account.',
+        ),
+        if (_deleteError != null) ...[
+          const SizedBox(height: 8),
+          ErrorBanner(message: _deleteError!),
+        ],
+        const SizedBox(height: 12),
+        PearmoButton(
+          label: 'Delete account',
+          variant: PearmoButtonVariant.danger,
+          icon: Icons.delete_outline,
+          isLoading: _isDeletingAccount,
+          onPressed: _isDeletingAccount ? null : _confirmDeleteAccount,
         ),
       ],
     );

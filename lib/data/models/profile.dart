@@ -8,10 +8,19 @@ class Profile {
   final Gender gender;
   final List<Gender> seeking;
   final RelationshipIntent relationshipIntent;
-  final LifeStage lifeStage;
-  final EnergyType energyType;
-  final ConflictStyle conflictStyle;
-  final LifestylePace lifestylePace;
+  final int seekingAgeMin;
+  final int seekingAgeMax;
+
+  /// PEARMO personality trait scores (1.0-5.0, averaged from the Likert
+  /// questionnaire answers at onboarding) — used by `score_compatibility`,
+  /// never shown to other users.
+  final double traitExtraversion;
+  final double traitAgreeableness;
+  final double traitConscientiousness;
+  final double traitEmotionalStability;
+  final double traitOpenness;
+  final double traitAttachmentSecurity;
+
   final List<PartnerValue> partnerValues;
   final List<MusicGenre> musicGenres;
   final String aboutText;
@@ -26,16 +35,25 @@ class Profile {
   final String? profilePhotoUrl;
   final String? audioIntroUrl;
 
+  /// Whether the profile is currently visible to new matches. Users can
+  /// pause this themselves (reversible — unlike account deletion) without
+  /// losing any data.
+  final bool isProfileActive;
+
   const Profile({
     required this.userId,
     required this.dateOfBirth,
     required this.gender,
     required this.seeking,
     required this.relationshipIntent,
-    required this.lifeStage,
-    required this.energyType,
-    required this.conflictStyle,
-    required this.lifestylePace,
+    required this.seekingAgeMin,
+    required this.seekingAgeMax,
+    required this.traitExtraversion,
+    required this.traitAgreeableness,
+    required this.traitConscientiousness,
+    required this.traitEmotionalStability,
+    required this.traitOpenness,
+    required this.traitAttachmentSecurity,
     required this.partnerValues,
     required this.musicGenres,
     required this.aboutText,
@@ -49,6 +67,7 @@ class Profile {
     this.hideFromContacts = false,
     this.profilePhotoUrl,
     this.audioIntroUrl,
+    this.isProfileActive = true,
   });
 
   int get age {
@@ -70,10 +89,14 @@ class Profile {
           .map((e) => Gender.fromDb(e as String))
           .toList(),
       relationshipIntent: RelationshipIntent.fromDb(json['relationship_intent'] as String),
-      lifeStage: LifeStage.fromDb(json['life_stage'] as String),
-      energyType: EnergyType.fromDb(json['energy_type'] as String),
-      conflictStyle: ConflictStyle.fromDb(json['conflict_style'] as String),
-      lifestylePace: LifestylePace.fromDb(json['lifestyle_pace'] as String),
+      seekingAgeMin: json['seeking_age_min'] as int? ?? 18,
+      seekingAgeMax: json['seeking_age_max'] as int? ?? 99,
+      traitExtraversion: (json['trait_extraversion'] as num?)?.toDouble() ?? 3.0,
+      traitAgreeableness: (json['trait_agreeableness'] as num?)?.toDouble() ?? 3.0,
+      traitConscientiousness: (json['trait_conscientiousness'] as num?)?.toDouble() ?? 3.0,
+      traitEmotionalStability: (json['trait_emotional_stability'] as num?)?.toDouble() ?? 3.0,
+      traitOpenness: (json['trait_openness'] as num?)?.toDouble() ?? 3.0,
+      traitAttachmentSecurity: (json['trait_attachment_security'] as num?)?.toDouble() ?? 3.0,
       partnerValues: ((json['partner_values'] as List?) ?? const [])
           .map((e) => PartnerValue.fromDb(e as String))
           .toList(),
@@ -91,6 +114,7 @@ class Profile {
       hideFromContacts: json['hide_from_contacts'] as bool? ?? false,
       profilePhotoUrl: json['profile_photo_url'] as String?,
       audioIntroUrl: json['audio_intro_url'] as String?,
+      isProfileActive: json['is_profile_active'] as bool? ?? true,
     );
   }
 
@@ -102,10 +126,14 @@ class Profile {
         'gender': gender.dbValue,
         'seeking': seeking.map((e) => e.dbValue).toList(),
         'relationship_intent': relationshipIntent.dbValue,
-        'life_stage': lifeStage.dbValue,
-        'energy_type': energyType.dbValue,
-        'conflict_style': conflictStyle.dbValue,
-        'lifestyle_pace': lifestylePace.dbValue,
+        'seeking_age_min': seekingAgeMin,
+        'seeking_age_max': seekingAgeMax,
+        'trait_extraversion': traitExtraversion,
+        'trait_agreeableness': traitAgreeableness,
+        'trait_conscientiousness': traitConscientiousness,
+        'trait_emotional_stability': traitEmotionalStability,
+        'trait_openness': traitOpenness,
+        'trait_attachment_security': traitAttachmentSecurity,
         'partner_values': partnerValues.map((e) => e.dbValue).toList(),
         'music_genres': musicGenres.map((e) => e.dbValue).toList(),
         'about_text': aboutText,
@@ -131,10 +159,14 @@ class Profile {
       gender: gender,
       seeking: seeking,
       relationshipIntent: relationshipIntent,
-      lifeStage: lifeStage,
-      energyType: energyType,
-      conflictStyle: conflictStyle,
-      lifestylePace: lifestylePace,
+      seekingAgeMin: seekingAgeMin,
+      seekingAgeMax: seekingAgeMax,
+      traitExtraversion: traitExtraversion,
+      traitAgreeableness: traitAgreeableness,
+      traitConscientiousness: traitConscientiousness,
+      traitEmotionalStability: traitEmotionalStability,
+      traitOpenness: traitOpenness,
+      traitAttachmentSecurity: traitAttachmentSecurity,
       partnerValues: partnerValues,
       musicGenres: musicGenres,
       aboutText: aboutText,

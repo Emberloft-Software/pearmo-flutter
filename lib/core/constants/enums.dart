@@ -53,98 +53,36 @@ enum RelationshipIntent {
       .firstWhere((e) => e.dbValue == value, orElse: () => RelationshipIntent.openToSee);
 }
 
-/// Where the user currently is in life.
-enum LifeStage {
-  figuringOut,
-  buildingPath,
-  fairlySettled,
-  established;
+/// The 6 traits scored by the PEARMO personality questionnaire during
+/// onboarding (2 Likert questions each, 1 straightforward + 1 reverse-
+/// scored). Replaces the old single-choice `life_stage`/`energy_type`/
+/// `conflict_style`/`lifestyle_pace` placeholder questions. `dbValue` is the
+/// suffix of the corresponding `profiles.trait_*` column.
+enum PersonalityTrait {
+  extraversion,
+  agreeableness,
+  conscientiousness,
+  emotionalStability,
+  openness,
+  attachmentSecurity;
 
   String get dbValue => switch (this) {
-        LifeStage.figuringOut => 'figuring_out',
-        LifeStage.buildingPath => 'building_path',
-        LifeStage.fairlySettled => 'fairly_settled',
-        LifeStage.established => 'established',
+        PersonalityTrait.extraversion => 'extraversion',
+        PersonalityTrait.agreeableness => 'agreeableness',
+        PersonalityTrait.conscientiousness => 'conscientiousness',
+        PersonalityTrait.emotionalStability => 'emotional_stability',
+        PersonalityTrait.openness => 'openness',
+        PersonalityTrait.attachmentSecurity => 'attachment_security',
       };
 
   String get label => switch (this) {
-        LifeStage.figuringOut => 'Still figuring things out',
-        LifeStage.buildingPath => 'Building my path',
-        LifeStage.fairlySettled => 'Fairly settled',
-        LifeStage.established => 'Established',
+        PersonalityTrait.extraversion => 'Extraversion',
+        PersonalityTrait.agreeableness => 'Agreeableness',
+        PersonalityTrait.conscientiousness => 'Conscientiousness',
+        PersonalityTrait.emotionalStability => 'Emotional Stability',
+        PersonalityTrait.openness => 'Openness',
+        PersonalityTrait.attachmentSecurity => 'Attachment Security',
       };
-
-  static LifeStage fromDb(String value) => LifeStage.values
-      .firstWhere((e) => e.dbValue == value, orElse: () => LifeStage.buildingPath);
-}
-
-/// How a user recharges socially.
-enum EnergyType {
-  introvert,
-  ambivert,
-  extrovert;
-
-  String get dbValue => switch (this) {
-        EnergyType.introvert => 'introvert',
-        EnergyType.ambivert => 'ambivert',
-        EnergyType.extrovert => 'extrovert',
-      };
-
-  String get label => switch (this) {
-        EnergyType.introvert => 'Introvert',
-        EnergyType.ambivert => 'Ambivert',
-        EnergyType.extrovert => 'Extrovert',
-      };
-
-  static EnergyType fromDb(String value) => EnergyType.values
-      .firstWhere((e) => e.dbValue == value, orElse: () => EnergyType.ambivert);
-}
-
-/// How a user tends to handle conflict.
-enum ConflictStyle {
-  talkImmediately,
-  timeThenTalk,
-  letItPass,
-  stillFiguring;
-
-  String get dbValue => switch (this) {
-        ConflictStyle.talkImmediately => 'talk_immediately',
-        ConflictStyle.timeThenTalk => 'time_then_talk',
-        ConflictStyle.letItPass => 'let_it_pass',
-        ConflictStyle.stillFiguring => 'still_figuring',
-      };
-
-  String get label => switch (this) {
-        ConflictStyle.talkImmediately => 'Talk it through immediately',
-        ConflictStyle.timeThenTalk => 'Take time, then talk',
-        ConflictStyle.letItPass => 'Let it pass',
-        ConflictStyle.stillFiguring => 'Still figuring this out',
-      };
-
-  static ConflictStyle fromDb(String value) => ConflictStyle.values
-      .firstWhere((e) => e.dbValue == value, orElse: () => ConflictStyle.stillFiguring);
-}
-
-/// General pace of life.
-enum LifestylePace {
-  slowIntentional,
-  balanced,
-  fastDriven;
-
-  String get dbValue => switch (this) {
-        LifestylePace.slowIntentional => 'slow_intentional',
-        LifestylePace.balanced => 'balanced',
-        LifestylePace.fastDriven => 'fast_driven',
-      };
-
-  String get label => switch (this) {
-        LifestylePace.slowIntentional => 'Slow & intentional',
-        LifestylePace.balanced => 'Balanced',
-        LifestylePace.fastDriven => 'Fast & driven',
-      };
-
-  static LifestylePace fromDb(String value) => LifestylePace.values
-      .firstWhere((e) => e.dbValue == value, orElse: () => LifestylePace.balanced);
 }
 
 /// Traits a user values most in a partner. Onboarding allows picking a

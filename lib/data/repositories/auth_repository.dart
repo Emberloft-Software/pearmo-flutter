@@ -1,5 +1,6 @@
 import 'package:supabase_flutter/supabase_flutter.dart';
 
+import '../../core/config/supabase_config.dart';
 import '../models/app_user.dart';
 
 /// Phone OTP authentication, per the handoff doc's auth flow.
@@ -53,5 +54,13 @@ class AuthRepository {
     final row = await _client.from('users').select().eq('id', user.id).maybeSingle();
     if (row == null) return null;
     return AppUser.fromJson(row);
+  }
+
+  /// Soft-deletes the account (see `delete-account` edge function and
+  /// CLAUDE.md's "Account deletion" section) then signs out locally —
+  /// irreversible from the user's side, distinct from a ban/deactivation.
+  Future<void> deleteAccount() async {
+    await _client.functions.invoke(SupabaseConfig.fnDeleteAccount);
+    await signOut();
   }
 }

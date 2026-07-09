@@ -26,6 +26,7 @@ class SupabaseConfig {
   static const String fnUpdateConsent = 'update-consent';
   static const String fnSubmitVerification = 'submit-verification';
   static const String fnDateCheckin = 'date-checkin';
+  static const String fnDeleteAccount = 'delete-account';
 
   /// TODO(backend): not yet in the handoff's function list. Should create a
   /// PayHere order server-side (where `merchant_secret` can live safely),

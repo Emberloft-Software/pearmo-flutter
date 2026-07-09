@@ -164,12 +164,7 @@ class _CandidateDetailScreenState extends ConsumerState<CandidateDetailScreen> {
               ),
               const SizedBox(height: 24),
               const SectionHeader(title: 'Looking for'),
-              AttributeChipList(labels: [
-                profile.relationshipIntent.label,
-                profile.lifeStage.label,
-                profile.energyType.label,
-                profile.lifestylePace.label,
-              ]),
+              AttributeChipList(labels: [profile.relationshipIntent.label]),
               if (profile.partnerValues.isNotEmpty) ...[
                 const SizedBox(height: 24),
                 const SectionHeader(title: 'Values most in a partner'),

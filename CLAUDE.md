@@ -581,6 +581,146 @@ function source aren't in this repo).
   likely misleading given the name, since nothing actually contacts that
   number automatically today.
 
+## Personality questionnaire + matching algorithm rewrite (2026-07-09)
+
+Replaced the 4 placeholder single-choice onboarding questions
+(`life_stage`/`energy_type`/`conflict_style`/`lifestyle_pace` — always
+labeled as placeholders in this file) with a real personality instrument
+("PEARMO" doc, provided by the user) and rewired `score_compatibility` to
+use it. Also added an age-range match preference alongside gender.
+
+**Schema changes (migration run 2026-07-09):**
+- Dropped `profiles.life_stage`/`energy_type`/`conflict_style`/
+  `lifestyle_pace` (+ their enum types) — confirmed no other reads of these
+  columns anywhere before dropping.
+- Added `profiles.seeking_age_min`/`seeking_age_max` (int, default
+  18/99, check `seeking_age_min >= 18 and seeking_age_max >= seeking_age_min`).
+- Added 6 new numeric(3,2) columns, `profiles.trait_extraversion`/
+  `trait_agreeableness`/`trait_conscientiousness`/`trait_emotional_stability`/
+  `trait_openness`/`trait_attachment_security`, each check-constrained
+  1-5, default 3.0 — the averaged Likert scores from onboarding. **Private
+  matching data, never exposed via `public_profiles`** (same treatment as
+  `profile_vectors`).
+- `public_profiles` view recreated without `life_stage`/`energy_type`/
+  `lifestyle_pace` (had to `drop view` + recreate rather than
+  `create or replace`, since Postgres won't let `create or replace view`
+  remove/reorder existing columns) — otherwise unchanged, still same
+  banned/inactive/`is_profile_active`/`onboarding_complete` filters.
+
+**Onboarding (client):** collects 12 Likert questions (2 per trait — 1
+direct + 1 reverse-scored, cut down from the source doc's 30/5-per-trait
+per the user's request to keep onboarding shorter; averaging still works
+identically with fewer items, just lower precision) via
+[personality_questions.dart](lib/features/onboarding/data/personality_questions.dart)
+and a reusable [likert_scale.dart](lib/features/onboarding/widgets/likert_scale.dart)
+widget. `OnboardingController.submit()` reverse-scores (`6 - answer`) then
+averages each trait client-side before saving — the 6 `trait_*` columns
+store final scores, not raw answers (raw Likert answers aren't persisted
+anywhere). New age-range step uses a `RangeSlider` (18-70), defaulting to
+`[ownAge-8, ownAge+10]` clamped to that range. Onboarding grew from 15 to
+18 steps (-4 old placeholder steps, +1 age range, +6 trait screens).
+
+**`score_compatibility` rewrite:** per explicit user decision, the
+`profile_vectors`-based `cosine_score` term (weight 0.40) was **replaced**
+with a new `trait_compat` term at the same weight — `intent_match`/
+`music_score`/`location_score`/`trust_mult` are untouched, copied verbatim
+from the pre-existing function source. `trait_compat` implements the
+PDF's formula directly: per-trait compatibility = `1 - |diff|/4` (i.e.
+`100 - diff/range*100` scaled to 0-1), weighted Agreeableness 25% /
+Attachment Security 20% / Emotional Stability 20% / Conscientiousness 15% /
+Openness 10% / Extraversion 10%. Also added a **mutual age-range hard
+gate** (return 0 if either person's age falls outside the other's
+`seeking_age_min`/`seeking_age_max`), right alongside the existing
+gender/seeking hard gate, at the user's explicit request (age preference
+excludes candidates entirely rather than just scoring them lower).
+
+**Consequence: `profile_vectors`/`analyse-profile`'s sentiment pass is now
+vestigial for matching.** Onboarding still calls
+`ProfileRepository.runSentimentAnalysis()` (unchanged), and
+`profile_vectors` still gets populated, but nothing in
+`score_compatibility` reads it anymore. Not removed since the client call
+wasn't in scope of this change and it may still be useful for something
+else later — just worth knowing the vector it computes has no effect on
+matches today.
+
+**Fake test accounts (see below) now all share default trait scores
+(3.0/3.0/...) and the default age range (18-99)** post-migration, since
+`ADD COLUMN ... DEFAULT` backfills existing rows — they'll all score as
+maximally trait-compatible with each other. Harmless for UI testing, just
+not meaningful signal if testing the scoring math specifically.
+
+## Account deletion (2026-07-09)
+
+Added a real "Delete account" flow (Settings → Danger zone), plus a
+"Pause my profile" toggle — a deliberate two-tier design discussed with
+the user before building:
+
+- **Pause** (`profiles.is_profile_active`, already existed in the schema
+  but was never surfaced in Settings until now) — fully reversible, hides
+  the profile from `public_profiles`/matching, doesn't touch any data.
+  Persists through the existing `ProfileRepository.updateSettings()` /
+  "Save settings" flow like the other toggles.
+- **Delete** — irreversible from the user's side, but implemented as a
+  **soft delete/anonymize, not a cascading SQL delete**. Reasoning
+  (discussed with the user first): a true cascading delete would let a
+  reported/bad-actor user erase their `reports`/`connection_ratings`/
+  `trust_score` moderation trail and re-register clean — this app's
+  entire trust-score/report system depends on that history surviving.
+  It's also close to an App Store hard requirement (guideline 5.1.1(v):
+  apps with account creation must offer in-app account deletion, not just
+  deactivation), so this needed building regardless.
+
+**New edge function `delete-account`**
+([supabase/functions/delete-account/index.ts](supabase/functions/delete-account/index.ts)) —
+service-role, authenticated via bearer token like `submit-verification`.
+On call:
+- Lists and removes every storage object under `{userId}/` in all three
+  buckets (`profile-photos`, `audio-intros`, `nic-documents`) — actual
+  files, not just DB rows.
+- Wipes `profiles`: `display_name` → `'Deleted user'`, `about_text` → `''`,
+  `avatar_config`/`profile_photo_url`/`audio_intro_url`/`region_name` →
+  `null`, `is_profile_active`/`is_photo_public` → `false`,
+  `hide_from_contacts` → `true`. **Deliberately untouched:**
+  `date_of_birth`/`gender`/`seeking`/`seeking_age_*`/`trait_*`/
+  `relationship_intent`/`partner_values`/`music_genres`/`avatar_id`/
+  `country_code` — none of these are individually identifying, and it
+  doesn't matter what's left since `is_profile_active = false` already
+  hides the row from `public_profiles` regardless.
+- Clears `verification_submissions.nic_front_path`/`nic_back_path`/
+  `selfie_path` (the actual files, already removed from storage above) but
+  **keeps `status`/`tier`/`rejection_reason`/`reviewed_at`/`reviewed_by`**
+  — the review outcome is part of the moderation trail, not PII.
+- Sets `users.is_active = false` and a new `users.deleted_at timestamptz`
+  column (migration: `alter table public.users add column deleted_at
+  timestamptz;`) — **does not touch `phone`, `trust_score`,
+  `report_count`, or `verification_tier`.** The phone number stays
+  permanently tied to this now-unusable identity specifically so
+  delete-then-re-register can't launder a bad trust score onto a fresh
+  account.
+- **`messages`/`connections`/`daily_matches`/`reports`/
+  `connection_ratings`/`date_checkins`/`consent_records`/
+  `ice_breaker_sessions` are completely untouched** — deleting a user's
+  chat history would also delete the *other* participant's side of the
+  conversation, which this design explicitly avoids. A deleted user's old
+  messages remain visible to whoever they talked to (mainstream dating-app
+  behavior — matches how Tinder/Bumble/Hinge handle this).
+
+**Client side:** `AuthRepository.deleteAccount()` invokes the edge
+function then immediately calls `signOut()` — so in the normal case the
+user never sees the `/blocked` screen at all, they just land on `/login`
+once the router re-evaluates `isLoggedIn = false`. `AppUser.deletedAt`/
+`isDeleted` and `BlockedScreen`'s new `isDeleted` branch only matter for
+the edge case where the edge function call succeeds but the app is killed
+before `signOut()` completes and a still-valid session reaches the
+router — that shows "Account deleted" copy instead of the
+ban/suspension copy, since it'd otherwise be confusing to a user who
+deleted their own account on purpose.
+
+**Not yet confirmed run by the user:** `alter table public.users add
+column deleted_at timestamptz;` — needs to be run before the delete flow
+will work end-to-end (the edge function's `users` update will otherwise
+fail on the missing column).
+
 ## Fake test accounts seeded for matching/connections UI testing
 
 Created via Dashboard → Authentication → Add user (email + "Auto Confirm"),

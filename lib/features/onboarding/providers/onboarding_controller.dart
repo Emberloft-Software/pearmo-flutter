@@ -7,6 +7,7 @@ import '../../../data/models/profile.dart';
 import '../../../providers/auth_providers.dart';
 import '../../../providers/profile_providers.dart';
 import '../../../providers/repository_providers.dart';
+import '../data/personality_questions.dart';
 import '../models/onboarding_draft.dart';
 
 final onboardingControllerProvider =
@@ -33,13 +34,18 @@ class OnboardingController extends Notifier<OnboardingDraft> {
   void setRelationshipIntent(RelationshipIntent value) =>
       state = state.clone()..relationshipIntent = value;
 
-  void setLifeStage(LifeStage value) => state = state.clone()..lifeStage = value;
+  void answerPersonalityQuestion(String questionId, int value) {
+    final draft = state.clone();
+    draft.personalityAnswers[questionId] = value;
+    state = draft;
+  }
 
-  void setEnergyType(EnergyType value) => state = state.clone()..energyType = value;
-
-  void setConflictStyle(ConflictStyle value) => state = state.clone()..conflictStyle = value;
-
-  void setLifestylePace(LifestylePace value) => state = state.clone()..lifestylePace = value;
+  void setSeekingAgeRange(int min, int max) {
+    final draft = state.clone();
+    draft.seekingAgeMin = min;
+    draft.seekingAgeMax = max;
+    state = draft;
+  }
 
   /// Enforces the max-2 limit on partner values.
   void togglePartnerValue(PartnerValue value, {required int max}) {
@@ -70,6 +76,21 @@ class OnboardingController extends Notifier<OnboardingDraft> {
 
   void setAudioIntroLocalPath(String? path) => state = state.clone()..audioIntroLocalPath = path;
 
+  /// Averages each trait's answers (reverse-scored items as `6 - answer`
+  /// first), per the PEARMO scoring doc. Assumes every question has already
+  /// been answered — checked in `submit()` before this is called.
+  Map<PersonalityTrait, double> _computeTraitScores(Map<String, int> answers) {
+    final scores = <PersonalityTrait, double>{};
+    for (final trait in PersonalityTrait.values) {
+      final values = PersonalityQuestions.forTrait(trait).map((q) {
+        final raw = answers[q.id]!;
+        return q.isReverse ? 6 - raw : raw;
+      });
+      scores[trait] = values.reduce((a, b) => a + b) / values.length;
+    }
+    return scores;
+  }
+
   /// Saves the profile, uploads the audio intro (if recorded), and triggers
   /// the sentiment-analysis edge function — per the handoff doc's
   /// onboarding sequence. Returns a non-null warning message if the audio
@@ -88,15 +109,16 @@ class OnboardingController extends Notifier<OnboardingDraft> {
         draft.gender == null ||
         draft.seeking.isEmpty ||
         draft.relationshipIntent == null ||
-        draft.lifeStage == null ||
-        draft.energyType == null ||
-        draft.conflictStyle == null ||
-        draft.lifestylePace == null ||
+        draft.seekingAgeMin == null ||
+        draft.seekingAgeMax == null ||
         draft.partnerValues.isEmpty ||
         draft.musicGenres.isEmpty ||
-        draft.aboutText.trim().isEmpty) {
+        draft.aboutText.trim().isEmpty ||
+        PersonalityQuestions.all.any((q) => !draft.personalityAnswers.containsKey(q.id))) {
       throw StateError('Please answer every question before continuing');
     }
+
+    final traitScores = _computeTraitScores(draft.personalityAnswers);
 
     final profile = Profile(
       userId: userId,
@@ -104,16 +126,20 @@ class OnboardingController extends Notifier<OnboardingDraft> {
       gender: draft.gender!,
       seeking: draft.seeking.toList(),
       relationshipIntent: draft.relationshipIntent!,
-      lifeStage: draft.lifeStage!,
-      energyType: draft.energyType!,
-      conflictStyle: draft.conflictStyle!,
-      lifestylePace: draft.lifestylePace!,
       partnerValues: draft.partnerValues.toList(),
       musicGenres: draft.musicGenres.toList(),
       aboutText: draft.aboutText.trim(),
       avatarId: draft.avatarId,
       countryCode: draft.countryCode,
       regionName: draft.regionName,
+      seekingAgeMin: draft.seekingAgeMin!,
+      seekingAgeMax: draft.seekingAgeMax!,
+      traitExtraversion: traitScores[PersonalityTrait.extraversion]!,
+      traitAgreeableness: traitScores[PersonalityTrait.agreeableness]!,
+      traitConscientiousness: traitScores[PersonalityTrait.conscientiousness]!,
+      traitEmotionalStability: traitScores[PersonalityTrait.emotionalStability]!,
+      traitOpenness: traitScores[PersonalityTrait.openness]!,
+      traitAttachmentSecurity: traitScores[PersonalityTrait.attachmentSecurity]!,
       onboardingComplete: true,
     );
 

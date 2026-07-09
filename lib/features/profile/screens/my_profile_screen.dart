@@ -109,10 +109,7 @@ class MyProfileScreen extends ConsumerWidget {
         const SectionHeader(title: 'Looking for'),
         AttributeChipList(labels: [
           profile.relationshipIntent.label,
-          profile.lifeStage.label,
-          profile.energyType.label,
-          profile.conflictStyle.label,
-          profile.lifestylePace.label,
+          'Ages ${profile.seekingAgeMin}–${profile.seekingAgeMax}',
         ]),
         if (profile.partnerValues.isNotEmpty) ...[
           const SizedBox(height: 24),

@@ -9,15 +9,18 @@ import '../../../core/theme/app_text_styles.dart';
 import '../../../core/utils/error_mapper.dart';
 import '../../../core/utils/validators.dart';
 import '../../../shared/widgets/widgets.dart';
+import '../data/personality_questions.dart';
 import '../models/onboarding_draft.dart';
 import '../providers/onboarding_controller.dart';
 import '../widgets/avatar_picker.dart';
 import '../widgets/choice_widgets.dart';
+import '../widgets/likert_scale.dart';
 import '../widgets/onboarding_scaffold.dart';
 
-/// The 10-question onboarding flow described in the handoff doc, plus
-/// avatar selection, an optional voice intro, and region — all saved in
-/// one insert via [OnboardingController.submit].
+/// The onboarding flow described in the handoff doc — identity/preferences,
+/// the PEARMO personality questionnaire (2 questions per trait), partner
+/// preferences, avatar selection, an optional voice intro, and region — all
+/// saved in one insert via [OnboardingController.submit].
 class OnboardingScreen extends ConsumerStatefulWidget {
   const OnboardingScreen({super.key});
 
@@ -31,7 +34,7 @@ class _OnboardingScreenState extends ConsumerState<OnboardingScreen> {
   bool _isSubmitting = false;
   String? _error;
 
-  static const int _totalSteps = 15;
+  static const int _totalSteps = 18;
 
   @override
   void dispose() {
@@ -111,6 +114,11 @@ class _OnboardingScreenState extends ConsumerState<OnboardingScreen> {
         ),
       ),
       _StepDef(
+        title: 'What age range are you open to?',
+        canContinue: draft.seekingAgeMin != null && draft.seekingAgeMax != null,
+        content: _AgeRangeStep(draft: draft, controller: controller),
+      ),
+      _StepDef(
         title: "What are you looking for?",
         canContinue: draft.relationshipIntent != null,
         content: SingleChoiceList<RelationshipIntent>(
@@ -119,42 +127,14 @@ class _OnboardingScreenState extends ConsumerState<OnboardingScreen> {
           onChanged: controller.setRelationshipIntent,
         ),
       ),
-      _StepDef(
-        title: 'Where are you in life right now?',
-        canContinue: draft.lifeStage != null,
-        content: SingleChoiceList<LifeStage>(
-          options: LifeStage.values.map((e) => ChoiceOption(e, e.label)).toList(),
-          selected: draft.lifeStage,
-          onChanged: controller.setLifeStage,
+      for (final trait in PersonalityTrait.values)
+        _StepDef(
+          title: trait.label,
+          subtitle: 'Answer honestly — this is private and only used for matching.',
+          canContinue: PersonalityQuestions.forTrait(trait)
+              .every((q) => draft.personalityAnswers.containsKey(q.id)),
+          content: _PersonalityTraitStep(trait: trait, draft: draft, controller: controller),
         ),
-      ),
-      _StepDef(
-        title: 'How do you recharge?',
-        canContinue: draft.energyType != null,
-        content: SingleChoiceList<EnergyType>(
-          options: EnergyType.values.map((e) => ChoiceOption(e, e.label)).toList(),
-          selected: draft.energyType,
-          onChanged: controller.setEnergyType,
-        ),
-      ),
-      _StepDef(
-        title: 'When there is a disagreement, you tend to...',
-        canContinue: draft.conflictStyle != null,
-        content: SingleChoiceList<ConflictStyle>(
-          options: ConflictStyle.values.map((e) => ChoiceOption(e, e.label)).toList(),
-          selected: draft.conflictStyle,
-          onChanged: controller.setConflictStyle,
-        ),
-      ),
-      _StepDef(
-        title: "What's your pace of life?",
-        canContinue: draft.lifestylePace != null,
-        content: SingleChoiceList<LifestylePace>(
-          options: LifestylePace.values.map((e) => ChoiceOption(e, e.label)).toList(),
-          selected: draft.lifestylePace,
-          onChanged: controller.setLifestylePace,
-        ),
-      ),
       _StepDef(
         title: 'What matters most to you in a partner?',
         subtitle: 'Pick up to ${AppConstants.maxPartnerValues}.',
@@ -315,6 +295,98 @@ class _DateOfBirthStep extends StatelessWidget {
         if (dob != null && error != null) ...[
           const SizedBox(height: 12),
           ErrorBanner(message: error),
+        ],
+      ],
+    );
+  }
+}
+
+class _AgeRangeStep extends StatefulWidget {
+  const _AgeRangeStep({required this.draft, required this.controller});
+
+  final OnboardingDraft draft;
+  final OnboardingController controller;
+
+  @override
+  State<_AgeRangeStep> createState() => _AgeRangeStepState();
+}
+
+class _AgeRangeStepState extends State<_AgeRangeStep> {
+  static const _minAge = 18;
+  static const _maxAge = 70;
+
+  late RangeValues _range;
+
+  @override
+  void initState() {
+    super.initState();
+    final min = widget.draft.seekingAgeMin;
+    final max = widget.draft.seekingAgeMax;
+    if (min != null && max != null) {
+      _range = RangeValues(min.toDouble(), max.toDouble());
+    } else {
+      // Sensible starting point based on the user's own age, if known.
+      final ownAge = widget.draft.dateOfBirth == null
+          ? 25
+          : DateTime.now().year - widget.draft.dateOfBirth!.year;
+      final defaultMin = (ownAge - 8).clamp(_minAge, _maxAge);
+      final defaultMax = (ownAge + 10).clamp(_minAge, _maxAge);
+      _range = RangeValues(defaultMin.toDouble(), defaultMax.toDouble());
+      WidgetsBinding.instance.addPostFrameCallback((_) {
+        widget.controller.setSeekingAgeRange(defaultMin, defaultMax);
+      });
+    }
+  }
+
+  @override
+  Widget build(BuildContext context) {
+    return Column(
+      crossAxisAlignment: CrossAxisAlignment.start,
+      children: [
+        Text(
+          '${_range.start.round()} – ${_range.end.round()}',
+          style: AppTextStyles.headline,
+        ),
+        RangeSlider(
+          values: _range,
+          min: _minAge.toDouble(),
+          max: _maxAge.toDouble(),
+          divisions: _maxAge - _minAge,
+          labels: RangeLabels('${_range.start.round()}', '${_range.end.round()}'),
+          onChanged: (value) {
+            setState(() => _range = value);
+            widget.controller.setSeekingAgeRange(value.start.round(), value.end.round());
+          },
+        ),
+      ],
+    );
+  }
+}
+
+class _PersonalityTraitStep extends StatelessWidget {
+  const _PersonalityTraitStep({
+    required this.trait,
+    required this.draft,
+    required this.controller,
+  });
+
+  final PersonalityTrait trait;
+  final OnboardingDraft draft;
+  final OnboardingController controller;
+
+  @override
+  Widget build(BuildContext context) {
+    final questions = PersonalityQuestions.forTrait(trait);
+    return Column(
+      crossAxisAlignment: CrossAxisAlignment.start,
+      children: [
+        for (final question in questions) ...[
+          LikertQuestion(
+            text: question.text,
+            value: draft.personalityAnswers[question.id],
+            onChanged: (value) => controller.answerPersonalityQuestion(question.id, value),
+          ),
+          const SizedBox(height: 16),
         ],
       ],
     );

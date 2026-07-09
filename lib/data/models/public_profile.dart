@@ -8,9 +8,6 @@ class PublicProfile {
   final int age;
   final Gender gender;
   final RelationshipIntent relationshipIntent;
-  final LifeStage lifeStage;
-  final EnergyType energyType;
-  final LifestylePace lifestylePace;
   final List<PartnerValue> partnerValues;
   final List<MusicGenre> musicGenres;
   final String aboutText;
@@ -27,9 +24,6 @@ class PublicProfile {
     required this.age,
     required this.gender,
     required this.relationshipIntent,
-    required this.lifeStage,
-    required this.energyType,
-    required this.lifestylePace,
     required this.partnerValues,
     required this.musicGenres,
     required this.aboutText,
@@ -54,9 +48,6 @@ class PublicProfile {
       gender: Gender.fromDb(json['gender'] as String? ?? 'other'),
       relationshipIntent:
           RelationshipIntent.fromDb(json['relationship_intent'] as String? ?? 'open_to_see'),
-      lifeStage: LifeStage.fromDb(json['life_stage'] as String? ?? 'building_path'),
-      energyType: EnergyType.fromDb(json['energy_type'] as String? ?? 'ambivert'),
-      lifestylePace: LifestylePace.fromDb(json['lifestyle_pace'] as String? ?? 'balanced'),
       partnerValues: ((json['partner_values'] as List?) ?? const [])
           .map((e) => PartnerValue.fromDb(e as String))
           .toList(),

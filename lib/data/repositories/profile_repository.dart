@@ -35,6 +35,7 @@ class ProfileRepository {
     bool? hideFromContacts,
     String? regionName,
     String? countryCode,
+    bool? isProfileActive,
   }) async {
     final updates = <String, dynamic>{
       if (isPhotoPublic != null) 'is_photo_public': isPhotoPublic,
@@ -43,6 +44,7 @@ class ProfileRepository {
       if (hideFromContacts != null) 'hide_from_contacts': hideFromContacts,
       if (regionName != null) 'region_name': regionName,
       if (countryCode != null) 'country_code': countryCode,
+      if (isProfileActive != null) 'is_profile_active': isProfileActive,
     };
     if (updates.isEmpty) return;
     await _client.from('profiles').update(updates).eq('user_id', userId);
