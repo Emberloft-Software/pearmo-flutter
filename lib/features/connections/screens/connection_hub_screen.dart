@@ -108,37 +108,16 @@ class _ConnectionHubScreenState extends ConsumerState<ConnectionHubScreen> {
                         'each other.',
                   );
                 }
-                return PearmoCard(
+                final statusColor = _statusColor(connection.status.dbValue);
+                final otherUserId = userId != null ? connection.otherUserId(userId) : null;
+                return _ActiveConnectionCard(
+                  otherUserId: otherUserId,
+                  statusLabel: connection.status.label,
+                  statusColor: statusColor,
+                  caption: connection.status.canChat
+                      ? 'Chat is open — keep getting to know each other.'
+                      : 'Break the ice with a quick game before chat unlocks.',
                   onTap: () => context.push('/connection/${connection.id}'),
-                  child: Row(
-                    children: [
-                      Container(
-                        width: 12,
-                        height: 12,
-                        decoration: BoxDecoration(
-                          color: _statusColor(connection.status.dbValue),
-                          shape: BoxShape.circle,
-                        ),
-                      ),
-                      const SizedBox(width: 12),
-                      Expanded(
-                        child: Column(
-                          crossAxisAlignment: CrossAxisAlignment.start,
-                          children: [
-                            Text(connection.status.label, style: AppTextStyles.title),
-                            const SizedBox(height: 4),
-                            Text(
-                              connection.status.canChat
-                                  ? 'Chat is open — keep getting to know each other.'
-                                  : 'Break the ice with a quick game before chat unlocks.',
-                              style: AppTextStyles.caption,
-                            ),
-                          ],
-                        ),
-                      ),
-                      const Icon(Icons.chevron_right, color: AppColors.textSecondary),
-                    ],
-                  ),
                 );
               },
               loading: () => const LoadingIndicator(),
