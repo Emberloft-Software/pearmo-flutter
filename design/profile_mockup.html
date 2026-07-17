@@ -1,0 +1,292 @@
+<!DOCTYPE html>
+<html lang="en">
+<head>
+<meta charset="UTF-8"/>
+<meta name="viewport" content="width=device-width,initial-scale=1"/>
+<title>Pearmo – Profile (Electric Midnight concept)</title>
+<link href="https://fonts.googleapis.com/css2?family=Baloo+2:wght@400;600;700;800&family=Nunito+Sans:wght@400;600;700&display=swap" rel="stylesheet"/>
+<style>
+*{box-sizing:border-box;margin:0;padding:0}
+:root{
+  --bg:#17101F;
+  --purple:#6C4CF1;
+  --pink:#FF3D7F;
+  --lime:#C6FF3D;
+  --magenta:#C4176A;
+  --white:#FAF8FF;
+  --surface:rgba(250,248,255,0.05);
+  --border:rgba(250,248,255,0.10);
+  --text-secondary:rgba(250,248,255,0.55);
+}
+body{background:#0e0a18;display:flex;justify-content:center;align-items:flex-start;min-height:100vh;padding:40px 16px;font-family:'Nunito Sans',sans-serif}
+h1,h2,h3{font-family:'Baloo 2',sans-serif}
+
+/* ── Phone shell ── */
+.phone{width:390px;min-height:844px;background:var(--bg);border-radius:50px;overflow:hidden;position:relative;box-shadow:0 0 0 8px #1e1630,0 0 60px rgba(108,76,241,0.4),0 30px 80px rgba(0,0,0,0.6)}
+
+/* ── Status bar ── */
+.status-bar{display:flex;justify-content:space-between;align-items:center;padding:14px 28px 0;color:var(--white);font-size:13px;font-weight:700;position:relative;z-index:10}
+
+/* ── Hero banner ── */
+.hero{position:relative;height:220px;background:linear-gradient(135deg,var(--magenta) 0%,var(--pink) 40%,var(--purple) 100%);overflow:visible}
+.hero::after{content:'';position:absolute;inset:0;background:url("data:image/svg+xml,%3Csvg xmlns='http://www.w3.org/2000/svg' width='400' height='220'%3E%3Ccircle cx='320' cy='40' r='80' fill='rgba(255,255,255,0.06)'/%3E%3Ccircle cx='60' cy='180' r='60' fill='rgba(255,255,255,0.04)'/%3E%3C/svg%3E") no-repeat;pointer-events:none}
+.hero-settings{position:absolute;top:16px;right:20px;background:rgba(255,255,255,0.15);backdrop-filter:blur(8px);border:1px solid rgba(255,255,255,0.2);border-radius:50%;width:38px;height:38px;display:flex;align-items:center;justify-content:center;cursor:pointer;z-index:5}
+.hero-settings svg{width:18px;height:18px;stroke:var(--white);fill:none;stroke-width:2}
+
+/* ── Avatar zone ── */
+.avatar-wrap{position:absolute;left:50%;bottom:-56px;transform:translateX(-50%);z-index:20}
+.avatar-ring{width:116px;height:116px;border-radius:50%;padding:3px;background:linear-gradient(135deg,var(--pink),var(--purple),var(--lime));animation:spin 4s linear infinite}
+@keyframes spin{to{transform:rotate(360deg)}}
+.avatar-inner{width:100%;height:100%;border-radius:50%;background:var(--bg);display:flex;align-items:center;justify-content:center;overflow:hidden;border:3px solid var(--bg)}
+.avatar-img{width:104px;height:104px;border-radius:50%;background:linear-gradient(135deg,#8B5CF6,#EC4899);display:flex;align-items:center;justify-content:center;font-size:42px}
+.avatar-glow{position:absolute;inset:-8px;border-radius:50%;background:radial-gradient(circle,rgba(255,61,127,0.35) 0%,transparent 70%);animation:pulse 2s ease-in-out infinite alternate;pointer-events:none}
+@keyframes pulse{from{opacity:0.5;transform:scale(0.95)}to{opacity:1;transform:scale(1.05)}}
+
+/* ── Body scroll ── */
+.body{padding:72px 20px 32px;display:flex;flex-direction:column;gap:20px}
+
+/* ── Name block ── */
+.name-block{text-align:center}
+.name-block h1{color:var(--white);font-size:26px;font-weight:800;letter-spacing:-0.5px}
+.name-block .meta{color:var(--text-secondary);font-size:14px;margin-top:4px}
+.badges{display:flex;justify-content:center;gap:8px;margin-top:10px;flex-wrap:wrap}
+.badge{display:flex;align-items:center;gap:5px;padding:4px 12px;border-radius:999px;font-size:12px;font-weight:700}
+.badge-verified{background:rgba(198,255,61,0.15);border:1px solid var(--lime);color:var(--lime)}
+.badge-intent{background:rgba(108,76,241,0.2);border:1px solid var(--purple);color:#b09ff8}
+.badge svg{width:12px;height:12px;fill:currentColor}
+
+/* ── Glass card ── */
+.card{background:var(--surface);border:1px solid var(--border);border-radius:20px;padding:18px;backdrop-filter:blur(12px)}
+.card-label{font-size:11px;font-weight:700;letter-spacing:1.5px;text-transform:uppercase;color:var(--text-secondary);margin-bottom:10px}
+
+/* ── About ── */
+.about-text{color:var(--white);font-size:15px;line-height:1.65}
+
+/* ── Audio waveform ── */
+.audio-row{display:flex;align-items:center;gap:12px}
+.play-btn{width:42px;height:42px;border-radius:50%;background:linear-gradient(135deg,var(--pink),var(--purple));display:flex;align-items:center;justify-content:center;flex-shrink:0;cursor:pointer}
+.play-btn svg{width:16px;height:16px;fill:var(--white);margin-left:2px}
+.waveform{flex:1;height:36px;display:flex;align-items:center;gap:3px}
+.bar{border-radius:4px;background:linear-gradient(to top,var(--purple),var(--pink));opacity:0.7}
+.audio-time{font-size:12px;color:var(--text-secondary);white-space:nowrap}
+
+/* ── Chips ── */
+.chips{display:flex;flex-wrap:wrap;gap:8px}
+.chip{padding:6px 14px;border-radius:999px;font-size:13px;font-weight:600;border:1px solid}
+.chip-pink{border-color:rgba(255,61,127,0.4);color:var(--pink);background:rgba(255,61,127,0.1)}
+.chip-purple{border-color:rgba(108,76,241,0.5);color:#b09ff8;background:rgba(108,76,241,0.12)}
+.chip-lime{border-color:rgba(198,255,61,0.4);color:var(--lime);background:rgba(198,255,61,0.08)}
+
+/* ── Personality traits ── */
+.trait-list{display:flex;flex-direction:column;gap:10px}
+.trait-row{display:flex;align-items:center;gap:10px}
+.trait-name{color:var(--text-secondary);font-size:13px;width:110px;flex-shrink:0}
+.trait-bar-bg{flex:1;height:6px;border-radius:999px;background:rgba(250,248,255,0.1)}
+.trait-bar-fill{height:100%;border-radius:999px;background:linear-gradient(90deg,var(--purple),var(--pink))}
+.trait-val{font-size:12px;color:var(--white);font-weight:700;width:24px;text-align:right}
+
+/* ── Action strip ── */
+.actions{display:flex;flex-direction:column;gap:10px}
+.action-row{display:flex;align-items:center;gap:14px;padding:14px 16px;background:var(--surface);border:1px solid var(--border);border-radius:16px;cursor:pointer;transition:background 0.2s}
+.action-row:hover{background:rgba(250,248,255,0.09)}
+.action-icon{width:38px;height:38px;border-radius:12px;display:flex;align-items:center;justify-content:center;flex-shrink:0}
+.icon-settings{background:rgba(108,76,241,0.2)}
+.icon-verify{background:rgba(198,255,61,0.12)}
+.icon-premium{background:rgba(255,61,127,0.15)}
+.icon-signout{background:rgba(250,248,255,0.06)}
+.action-icon svg{width:18px;height:18px;stroke-width:2;fill:none}
+.icon-settings svg{stroke:var(--purple)}
+.icon-verify svg{stroke:var(--lime)}
+.icon-premium svg{stroke:var(--pink)}
+.icon-signout svg{stroke:var(--text-secondary)}
+.action-text{flex:1}
+.action-text strong{display:block;color:var(--white);font-size:15px;font-weight:700}
+.action-text span{font-size:12px;color:var(--text-secondary)}
+.action-chevron{color:var(--text-secondary);font-size:18px;line-height:1}
+
+/* ── Divider ── */
+.divider{height:1px;background:var(--border);margin:0 -20px}
+
+/* ── Bottom nav ── */
+.bottom-nav{display:flex;justify-content:space-around;padding:12px 0 24px;border-top:1px solid var(--border)}
+.nav-item{display:flex;flex-direction:column;align-items:center;gap:4px;color:var(--text-secondary);font-size:10px;font-weight:700;cursor:pointer;transition:color 0.2s}
+.nav-item.active{color:var(--pink)}
+.nav-item svg{width:22px;height:22px;stroke-width:1.8;fill:none}
+.nav-item.active svg{stroke:var(--pink)}
+.nav-dot{width:4px;height:4px;border-radius:50%;background:var(--pink);margin-top:-2px}
+
+/* Scrollable body area */
+.scroll-body{max-height:680px;overflow-y:auto;scrollbar-width:none}
+.scroll-body::-webkit-scrollbar{display:none}
+</style>
+</head>
+<body>
+
+<div class="phone">
+  <!-- Status bar -->
+  <div class="status-bar">
+    <span>9:41</span>
+    <span>●●●</span>
+  </div>
+
+  <!-- Scrollable content -->
+  <div class="scroll-body">
+    <!-- Hero -->
+    <div class="hero">
+      <div class="hero-settings">
+        <svg viewBox="0 0 24 24"><circle cx="12" cy="12" r="3"/><path d="M12 2v3M12 19v3M4.22 4.22l2.12 2.12M17.66 17.66l2.12 2.12M2 12h3M19 12h3M4.22 19.78l2.12-2.12M17.66 6.34l2.12-2.12"/></svg>
+      </div>
+      <!-- Avatar -->
+      <div class="avatar-wrap">
+        <div class="avatar-glow"></div>
+        <div class="avatar-ring">
+          <div class="avatar-inner">
+            <div class="avatar-img">🌸</div>
+          </div>
+        </div>
+      </div>
+    </div>
+
+    <!-- Body -->
+    <div class="body">
+
+      <!-- Name + badges -->
+      <div class="name-block">
+        <h1>Amara, 26</h1>
+        <p class="meta">Woman · Colombo, Sri Lanka</p>
+        <div class="badges">
+          <span class="badge badge-verified">
+            <svg viewBox="0 0 24 24"><path d="M9 12l2 2 4-4M7.835 4.697a3.42 3.42 0 001.946-.806 3.42 3.42 0 014.438 0 3.42 3.42 0 001.946.806 3.42 3.42 0 013.138 3.138 3.42 3.42 0 00.806 1.946 3.42 3.42 0 010 4.438 3.42 3.42 0 00-.806 1.946 3.42 3.42 0 01-3.138 3.138 3.42 3.42 0 00-1.946.806 3.42 3.42 0 01-4.438 0 3.42 3.42 0 00-1.946-.806 3.42 3.42 0 01-3.138-3.138 3.42 3.42 0 00-.806-1.946 3.42 3.42 0 010-4.438 3.42 3.42 0 00.806-1.946 3.42 3.42 0 013.138-3.138z" fill="currentColor" stroke="none"/></svg>
+            ID Verified
+          </span>
+          <span class="badge badge-intent">✨ Serious relationship</span>
+        </div>
+      </div>
+
+      <!-- Audio intro -->
+      <div class="card">
+        <div class="card-label">Audio Intro</div>
+        <div class="audio-row">
+          <div class="play-btn">
+            <svg viewBox="0 0 24 24"><polygon points="5,3 19,12 5,21"/></svg>
+          </div>
+          <div class="waveform" id="wv"></div>
+          <span class="audio-time">0:42</span>
+        </div>
+      </div>
+
+      <!-- About -->
+      <div class="card">
+        <div class="card-label">About</div>
+        <p class="about-text">Coffee addict who hikes on weekends and binge-reads philosophy on rainy days. Looking for someone who can keep up with my terrible puns and slow-dance in the kitchen.</p>
+      </div>
+
+      <!-- Looking for -->
+      <div class="card">
+        <div class="card-label">Looking for</div>
+        <div class="chips">
+          <span class="chip chip-pink">Serious relationship</span>
+          <span class="chip chip-purple">Ages 24 – 34</span>
+          <span class="chip chip-purple">Men</span>
+          <span class="chip chip-purple">Women</span>
+        </div>
+      </div>
+
+      <!-- Values -->
+      <div class="card">
+        <div class="card-label">Values most in a partner</div>
+        <div class="chips">
+          <span class="chip chip-lime">Honesty</span>
+          <span class="chip chip-lime">Ambition</span>
+          <span class="chip chip-lime">Kindness</span>
+          <span class="chip chip-purple">Humor</span>
+        </div>
+      </div>
+
+      <!-- Music -->
+      <div class="card">
+        <div class="card-label">Music taste</div>
+        <div class="chips">
+          <span class="chip chip-pink">Indie pop</span>
+          <span class="chip chip-pink">Lo-fi</span>
+          <span class="chip chip-purple">Jazz</span>
+          <span class="chip chip-purple">R&amp;B</span>
+        </div>
+      </div>
+
+      <!-- Personality -->
+      <div class="card">
+        <div class="card-label">Personality profile</div>
+        <div class="trait-list">
+          <div class="trait-row"><span class="trait-name">Openness</span><div class="trait-bar-bg"><div class="trait-bar-fill" style="width:82%"></div></div><span class="trait-val">4.1</span></div>
+          <div class="trait-row"><span class="trait-name">Agreeableness</span><div class="trait-bar-bg"><div class="trait-bar-fill" style="width:75%"></div></div><span class="trait-val">3.8</span></div>
+          <div class="trait-row"><span class="trait-name">Extraversion</span><div class="trait-bar-bg"><div class="trait-bar-fill" style="width:55%"></div></div><span class="trait-val">2.8</span></div>
+          <div class="trait-row"><span class="trait-name">Conscientiousness</span><div class="trait-bar-bg"><div class="trait-bar-fill" style="width:90%"></div></div><span class="trait-val">4.5</span></div>
+          <div class="trait-row"><span class="trait-name">Stability</span><div class="trait-bar-bg"><div class="trait-bar-fill" style="width:70%"></div></div><span class="trait-val">3.5</span></div>
+          <div class="trait-row"><span class="trait-name">Attachment</span><div class="trait-bar-bg"><div class="trait-bar-fill" style="width:65%"></div></div><span class="trait-val">3.3</span></div>
+        </div>
+      </div>
+
+      <!-- Action strip -->
+      <div class="actions">
+        <div class="action-row">
+          <div class="action-icon icon-settings"><svg viewBox="0 0 24 24" stroke="currentColor"><circle cx="12" cy="12" r="3"/><path d="M19.4 15a1.65 1.65 0 00.33 1.82l.06.06a2 2 0 010 2.83 2 2 0 01-2.83 0l-.06-.06a1.65 1.65 0 00-1.82-.33 1.65 1.65 0 00-1 1.51V21a2 2 0 01-4 0v-.09A1.65 1.65 0 009 19.4a1.65 1.65 0 00-1.82.33l-.06.06a2 2 0 01-2.83-2.83l.06-.06A1.65 1.65 0 004.68 15a1.65 1.65 0 00-1.51-1H3a2 2 0 010-4h.09A1.65 1.65 0 004.6 9a1.65 1.65 0 00-.33-1.82l-.06-.06a2 2 0 012.83-2.83l.06.06A1.65 1.65 0 009 4.68a1.65 1.65 0 001-1.51V3a2 2 0 014 0v.09a1.65 1.65 0 001 1.51 1.65 1.65 0 001.82-.33l.06-.06a2 2 0 012.83 2.83l-.06.06A1.65 1.65 0 0019.4 9a1.65 1.65 0 001.51 1H21a2 2 0 010 4h-.09a1.65 1.65 0 00-1.51 1z"/></svg></div>
+          <div class="action-text"><strong>Settings</strong><span>Edit profile, privacy &amp; notifications</span></div>
+          <span class="action-chevron">›</span>
+        </div>
+        <div class="action-row">
+          <div class="action-icon icon-verify"><svg viewBox="0 0 24 24" stroke="currentColor"><path d="M9 12l2 2 4-4m5.618-4.016A11.955 11.955 0 0112 2.944a11.955 11.955 0 01-8.618 3.04A12.02 12.02 0 003 9c0 5.591 3.824 10.29 9 11.622 5.176-1.332 9-6.03 9-11.622 0-1.042-.133-2.052-.382-3.016z"/></svg></div>
+          <div class="action-text"><strong>Verification</strong><span>ID Verified · upgrade for more</span></div>
+          <span class="action-chevron">›</span>
+        </div>
+        <div class="action-row">
+          <div class="action-icon icon-premium"><svg viewBox="0 0 24 24" stroke="currentColor"><path d="M5 3l3.057-3L11 3 12 0l2.943 3L19 3l-2.121 13H7.121L5 3zM12 22a1 1 0 100-2 1 1 0 000 2z"/></svg></div>
+          <div class="action-text"><strong>Membership</strong><span>Free plan · Upgrade to Premium</span></div>
+          <span class="action-chevron">›</span>
+        </div>
+        <div class="action-row">
+          <div class="action-icon icon-signout"><svg viewBox="0 0 24 24" stroke="currentColor"><path d="M17 16l4-4m0 0l-4-4m4 4H7m6 4v1a3 3 0 01-3 3H6a3 3 0 01-3-3V7a3 3 0 013-3h4a3 3 0 013 3v1"/></svg></div>
+          <div class="action-text"><strong style="color:var(--text-secondary)">Sign out</strong></div>
+          <span class="action-chevron">›</span>
+        </div>
+      </div>
+
+    </div><!-- /body -->
+
+    <!-- Bottom nav -->
+    <div class="bottom-nav">
+      <div class="nav-item">
+        <svg viewBox="0 0 24 24" stroke="currentColor"><path d="M3 9l9-7 9 7v11a2 2 0 01-2 2H5a2 2 0 01-2-2z"/><polyline points="9 22 9 12 15 12 15 22"/></svg>
+        Home
+      </div>
+      <div class="nav-item">
+        <svg viewBox="0 0 24 24" stroke="currentColor"><path d="M20.84 4.61a5.5 5.5 0 00-7.78 0L12 5.67l-1.06-1.06a5.5 5.5 0 00-7.78 7.78l1.06 1.06L12 21.23l7.78-7.78 1.06-1.06a5.5 5.5 0 000-7.78z"/></svg>
+        Matches
+      </div>
+      <div class="nav-item">
+        <svg viewBox="0 0 24 24" stroke="currentColor"><path d="M21 15a2 2 0 01-2 2H7l-4 4V5a2 2 0 012-2h14a2 2 0 012 2z"/></svg>
+        Chat
+      </div>
+      <div class="nav-item active">
+        <svg viewBox="0 0 24 24" stroke="currentColor"><path d="M20 21v-2a4 4 0 00-4-4H8a4 4 0 00-4 4v2"/><circle cx="12" cy="7" r="4"/></svg>
+        Profile
+        <div class="nav-dot"></div>
+      </div>
+    </div>
+
+  </div><!-- /scroll-body -->
+</div><!-- /phone -->
+
+<script>
+// Generate random-height waveform bars
+const wv = document.getElementById('wv');
+const heights = [14,20,28,18,32,22,12,26,36,24,18,30,16,28,22,32,20,14,26,18];
+heights.forEach((h,i) => {
+  const b = document.createElement('div');
+  b.className = 'bar';
+  b.style.cssText = `width:4px;height:${h}px;opacity:${i<8?'1':'0.35'}`;
+  wv.appendChild(b);
+});
+</script>
+</body>
+</html>

@@ -1,0 +1,322 @@
+<!DOCTYPE html>
+<html lang="en">
+<head>
+<meta charset="UTF-8"/>
+<meta name="viewport" content="width=device-width,initial-scale=1"/>
+<title>Pearmo – Profile (Light)</title>
+<link href="https://fonts.googleapis.com/css2?family=Baloo+2:wght@400;600;700;800&family=Nunito+Sans:ital,wght@0,400;0,600;0,700;1,400&display=swap" rel="stylesheet"/>
+<style>
+*{box-sizing:border-box;margin:0;padding:0}
+:root{
+  --bg:#FAF8FF;
+  --surface:#FFFFFF;
+  --surface2:#F3F0FB;
+  --purple:#6C4CF1;
+  --purple-light:#EDE9FD;
+  --pink:#FF3D7F;
+  --pink-light:#FFE8F1;
+  --lime:#C6FF3D;
+  --lime-dark:#8BB800;
+  --lime-bg:#F2FFD6;
+  --magenta:#C4176A;
+  --dark:#17101F;
+  --text:#1A1330;
+  --text2:#6B6580;
+  --text3:#A09BB8;
+  --border:#EAE6F8;
+  --divider:#F0ECF9;
+}
+body{background:#F0EDF9;display:flex;justify-content:center;align-items:flex-start;min-height:100vh;padding:40px 16px;font-family:'Nunito Sans',sans-serif;color:var(--text)}
+h1,h2,h3,.label{font-family:'Baloo 2',sans-serif}
+
+/* Phone shell */
+.phone{width:390px;min-height:844px;background:var(--bg);border-radius:50px;overflow:hidden;position:relative;box-shadow:0 0 0 8px #fff,0 0 0 10px #E4DFFA,0 30px 80px rgba(108,76,241,0.18),0 8px 32px rgba(0,0,0,0.08)}
+
+/* Status bar */
+.sb{display:flex;justify-content:space-between;align-items:center;padding:14px 28px 0;font-size:13px;font-weight:700;color:var(--text);position:relative;z-index:10}
+
+/* Top nav row */
+.topnav{display:flex;justify-content:space-between;align-items:center;padding:12px 20px 0}
+.back-btn{width:36px;height:36px;border-radius:12px;background:var(--surface);border:1px solid var(--border);display:flex;align-items:center;justify-content:center;cursor:pointer}
+.back-btn svg{width:16px;height:16px;stroke:var(--text);fill:none;stroke-width:2.5}
+.topnav-title{font-family:'Baloo 2',sans-serif;font-size:17px;font-weight:700;color:var(--text)}
+.menu-btn{width:36px;height:36px;border-radius:12px;background:var(--surface);border:1px solid var(--border);display:flex;align-items:center;justify-content:center;cursor:pointer}
+.menu-btn svg{width:16px;height:16px;stroke:var(--text);fill:none;stroke-width:2}
+
+/* Avatar hero */
+.avatar-section{display:flex;flex-direction:column;align-items:center;padding:20px 20px 0}
+.avatar-outer{position:relative;width:110px;height:110px}
+.avatar-ring{width:110px;height:110px;border-radius:50%;background:linear-gradient(135deg,var(--pink),var(--purple));padding:3px}
+.avatar-inner{width:100%;height:100%;border-radius:50%;background:var(--bg);padding:3px;display:flex;align-items:center;justify-content:center}
+.avatar-img{width:96px;height:96px;border-radius:50%;background:linear-gradient(135deg,#C4B5FD,#F9A8D4);display:flex;align-items:center;justify-content:center;font-size:38px}
+.verified-dot{position:absolute;bottom:4px;right:4px;width:24px;height:24px;border-radius:50%;background:var(--lime);border:2.5px solid var(--bg);display:flex;align-items:center;justify-content:center}
+.verified-dot svg{width:12px;height:12px;fill:none;stroke:#3D6600;stroke-width:2.5}
+
+/* Name */
+.name-section{text-align:center;padding:12px 20px 0}
+.name-section h1{font-size:26px;font-weight:800;color:var(--text);letter-spacing:-0.5px}
+.name-section .sub{font-size:13px;color:var(--text2);margin-top:3px}
+.pill-row{display:flex;justify-content:center;gap:7px;margin-top:10px;flex-wrap:wrap}
+.pill{display:inline-flex;align-items:center;gap:5px;padding:5px 13px;border-radius:999px;font-size:12px;font-weight:700;font-family:'Nunito Sans',sans-serif}
+.pill-lime{background:var(--lime-bg);color:var(--lime-dark);border:1.5px solid #B8E800}
+.pill-purple{background:var(--purple-light);color:var(--purple);border:1.5px solid #C9BEFF}
+.pill-pink{background:var(--pink-light);color:var(--magenta);border:1.5px solid #FFC0D6}
+.pill svg{width:11px;height:11px;fill:currentColor}
+
+/* Scroll body */
+.scroll{max-height:580px;overflow-y:auto;scrollbar-width:none;padding:16px 20px 20px}
+.scroll::-webkit-scrollbar{display:none}
+
+/* Section card */
+.card{background:var(--surface);border:1px solid var(--border);border-radius:20px;padding:16px 18px;margin-bottom:12px}
+.card-label{font-size:10.5px;font-weight:700;letter-spacing:1.8px;text-transform:uppercase;color:var(--text3);margin-bottom:10px;font-family:'Baloo 2',sans-serif}
+
+/* About */
+.about-txt{font-size:14.5px;line-height:1.7;color:var(--text)}
+
+/* Audio */
+.audio-row{display:flex;align-items:center;gap:12px}
+.play-btn{width:40px;height:40px;min-width:40px;border-radius:50%;background:linear-gradient(135deg,var(--pink),var(--purple));display:flex;align-items:center;justify-content:center;cursor:pointer;box-shadow:0 4px 14px rgba(255,61,127,0.3)}
+.play-btn svg{width:14px;height:14px;fill:white;margin-left:2px}
+.waveform{flex:1;height:32px;display:flex;align-items:center;gap:2.5px}
+.bar{border-radius:3px}
+.audio-time{font-size:12px;color:var(--text2);font-weight:600}
+
+/* Chips */
+.chips{display:flex;flex-wrap:wrap;gap:8px}
+.chip{padding:6px 14px;border-radius:999px;font-size:13px;font-weight:600;border:1.5px solid}
+.chip-purple{background:var(--purple-light);color:var(--purple);border-color:#C9BEFF}
+.chip-pink{background:var(--pink-light);color:var(--magenta);border-color:#FFC0D6}
+.chip-lime{background:var(--lime-bg);color:var(--lime-dark);border-color:#B8E800}
+
+/* Traits */
+.trait-list{display:flex;flex-direction:column;gap:9px}
+.trait-row{display:flex;align-items:center;gap:10px}
+.trait-name{font-size:12.5px;color:var(--text2);width:110px;flex-shrink:0;font-weight:600}
+.trait-bg{flex:1;height:7px;border-radius:999px;background:var(--divider)}
+.trait-fill{height:100%;border-radius:999px;background:linear-gradient(90deg,var(--purple),var(--pink))}
+.trait-val{font-size:12px;color:var(--purple);font-weight:700;width:26px;text-align:right}
+
+/* Two-col stats */
+.stats-grid{display:grid;grid-template-columns:1fr 1fr;gap:10px}
+.stat-card{background:var(--surface2);border-radius:16px;padding:14px;text-align:center}
+.stat-num{font-family:'Baloo 2',sans-serif;font-size:22px;font-weight:800;color:var(--purple)}
+.stat-lbl{font-size:11px;color:var(--text2);margin-top:2px;font-weight:600}
+
+/* Actions */
+.actions{display:flex;flex-direction:column;gap:8px}
+.act-row{display:flex;align-items:center;gap:13px;padding:13px 15px;background:var(--surface);border:1px solid var(--border);border-radius:16px;cursor:pointer;transition:all .2s}
+.act-row:hover{background:var(--purple-light);border-color:#C9BEFF}
+.act-icon{width:38px;height:38px;min-width:38px;border-radius:12px;display:flex;align-items:center;justify-content:center}
+.ai-purple{background:var(--purple-light)}
+.ai-lime{background:var(--lime-bg)}
+.ai-pink{background:var(--pink-light)}
+.ai-muted{background:var(--divider)}
+.act-icon svg{width:17px;height:17px;stroke-width:2;fill:none}
+.ai-purple svg{stroke:var(--purple)}
+.ai-lime svg{stroke:var(--lime-dark)}
+.ai-pink svg{stroke:var(--magenta)}
+.ai-muted svg{stroke:var(--text2)}
+.act-text{flex:1}
+.act-text strong{display:block;font-size:14.5px;font-weight:700;color:var(--text)}
+.act-text small{font-size:11.5px;color:var(--text2)}
+.act-chev{color:var(--text3);font-size:20px;line-height:1}
+
+/* Bottom nav */
+.bnav{display:flex;justify-content:space-around;padding:10px 0 22px;border-top:1px solid var(--divider);background:var(--surface)}
+.nav-item{display:flex;flex-direction:column;align-items:center;gap:3px;color:var(--text3);font-size:10px;font-weight:700;cursor:pointer}
+.nav-item.active{color:var(--pink)}
+.nav-item svg{width:22px;height:22px;stroke-width:1.8;fill:none}
+.nav-item.active svg{stroke:var(--pink)}
+.nav-pip{width:4px;height:4px;border-radius:50%;background:var(--pink);margin-top:-1px}
+</style>
+</head>
+<body>
+<div class="phone">
+
+  <!-- Status bar -->
+  <div class="sb"><span>9:41</span><span style="letter-spacing:3px">●●●</span></div>
+
+  <!-- Top nav -->
+  <div class="topnav">
+    <div class="back-btn"><svg viewBox="0 0 24 24"><polyline points="15 18 9 12 15 6"/></svg></div>
+    <span class="topnav-title">My Profile</span>
+    <div class="menu-btn"><svg viewBox="0 0 24 24"><circle cx="12" cy="5" r="1.2" fill="currentColor" stroke="none"/><circle cx="12" cy="12" r="1.2" fill="currentColor" stroke="none"/><circle cx="12" cy="19" r="1.2" fill="currentColor" stroke="none"/></svg></div>
+  </div>
+
+  <!-- Avatar -->
+  <div class="avatar-section">
+    <div class="avatar-outer">
+      <div class="avatar-ring">
+        <div class="avatar-inner">
+          <div class="avatar-img">🌸</div>
+        </div>
+      </div>
+      <div class="verified-dot">
+        <svg viewBox="0 0 24 24"><polyline points="20 6 9 17 4 12"/></svg>
+      </div>
+    </div>
+  </div>
+
+  <!-- Name -->
+  <div class="name-section">
+    <h1>Amara, 26</h1>
+    <p class="sub">Woman · Colombo, Sri Lanka</p>
+    <div class="pill-row">
+      <span class="pill pill-lime">
+        <svg viewBox="0 0 24 24"><path d="M9 12l2 2 4-4M7.835 4.697a3.42 3.42 0 001.946-.806 3.42 3.42 0 014.438 0 3.42 3.42 0 001.946.806 3.42 3.42 0 013.138 3.138 3.42 3.42 0 00.806 1.946 3.42 3.42 0 010 4.438 3.42 3.42 0 00-.806 1.946 3.42 3.42 0 01-3.138 3.138 3.42 3.42 0 00-1.946.806 3.42 3.42 0 01-4.438 0 3.42 3.42 0 00-1.946-.806 3.42 3.42 0 01-3.138-3.138 3.42 3.42 0 00-.806-1.946 3.42 3.42 0 010-4.438 3.42 3.42 0 00.806-1.946 3.42 3.42 0 013.138-3.138z"/></svg>
+        ID Verified
+      </span>
+      <span class="pill pill-purple">✨ Serious relationship</span>
+    </div>
+  </div>
+
+  <!-- Scrollable content -->
+  <div class="scroll">
+
+    <!-- Quick stats -->
+    <div class="stats-grid" style="margin-bottom:12px">
+      <div class="stat-card">
+        <div class="stat-num">12</div>
+        <div class="stat-lbl">Connections made</div>
+      </div>
+      <div class="stat-card">
+        <div class="stat-num" style="color:var(--pink)">4.8</div>
+        <div class="stat-lbl">Trust score</div>
+      </div>
+    </div>
+
+    <!-- Audio intro -->
+    <div class="card">
+      <div class="card-label">Audio Intro</div>
+      <div class="audio-row">
+        <div class="play-btn">
+          <svg viewBox="0 0 24 24"><polygon points="5,3 19,12 5,21"/></svg>
+        </div>
+        <div class="waveform" id="wv"></div>
+        <span class="audio-time">0:42</span>
+      </div>
+    </div>
+
+    <!-- About -->
+    <div class="card">
+      <div class="card-label">About</div>
+      <p class="about-txt">Coffee addict who hikes on weekends and binge-reads philosophy on rainy days. Looking for someone who can keep up with my terrible puns and slow-dance in the kitchen. 🍃</p>
+    </div>
+
+    <!-- Looking for -->
+    <div class="card">
+      <div class="card-label">Looking for</div>
+      <div class="chips">
+        <span class="chip chip-pink">Serious relationship</span>
+        <span class="chip chip-purple">Ages 24 – 34</span>
+        <span class="chip chip-purple">Men · Women</span>
+      </div>
+    </div>
+
+    <!-- Values -->
+    <div class="card">
+      <div class="card-label">Values most in a partner</div>
+      <div class="chips">
+        <span class="chip chip-lime">Honesty</span>
+        <span class="chip chip-lime">Ambition</span>
+        <span class="chip chip-lime">Kindness</span>
+        <span class="chip chip-purple">Humor</span>
+      </div>
+    </div>
+
+    <!-- Music -->
+    <div class="card">
+      <div class="card-label">Music taste</div>
+      <div class="chips">
+        <span class="chip chip-pink">Indie pop</span>
+        <span class="chip chip-pink">Lo-fi</span>
+        <span class="chip chip-purple">Jazz</span>
+        <span class="chip chip-purple">R&amp;B</span>
+      </div>
+    </div>
+
+    <!-- Personality traits -->
+    <div class="card">
+      <div class="card-label">Personality profile</div>
+      <div class="trait-list">
+        <div class="trait-row"><span class="trait-name">Openness</span><div class="trait-bg"><div class="trait-fill" style="width:82%"></div></div><span class="trait-val">4.1</span></div>
+        <div class="trait-row"><span class="trait-name">Agreeableness</span><div class="trait-bg"><div class="trait-fill" style="width:76%"></div></div><span class="trait-val">3.8</span></div>
+        <div class="trait-row"><span class="trait-name">Extraversion</span><div class="trait-bg"><div class="trait-fill" style="width:56%"></div></div><span class="trait-val">2.8</span></div>
+        <div class="trait-row"><span class="trait-name">Conscientiousness</span><div class="trait-bg"><div class="trait-fill" style="width:90%"></div></div><span class="trait-val">4.5</span></div>
+        <div class="trait-row"><span class="trait-name">Stability</span><div class="trait-bg"><div class="trait-fill" style="width:70%"></div></div><span class="trait-val">3.5</span></div>
+        <div class="trait-row"><span class="trait-name">Attachment</span><div class="trait-bg"><div class="trait-fill" style="width:66%"></div></div><span class="trait-val">3.3</span></div>
+      </div>
+    </div>
+
+    <!-- Action strip -->
+    <div class="actions">
+      <div class="act-row">
+        <div class="act-icon ai-purple">
+          <svg viewBox="0 0 24 24" stroke="var(--purple)"><circle cx="12" cy="12" r="3"/><path d="M19.4 15a1.65 1.65 0 00.33 1.82l.06.06a2 2 0 010 2.83 2 2 0 01-2.83 0l-.06-.06a1.65 1.65 0 00-1.82-.33 1.65 1.65 0 00-1 1.51V21a2 2 0 01-4 0v-.09A1.65 1.65 0 009 19.4a1.65 1.65 0 00-1.82.33l-.06.06a2 2 0 01-2.83-2.83l.06-.06A1.65 1.65 0 004.68 15a1.65 1.65 0 00-1.51-1H3a2 2 0 010-4h.09A1.65 1.65 0 004.6 9a1.65 1.65 0 00-.33-1.82l-.06-.06a2 2 0 012.83-2.83l.06.06A1.65 1.65 0 009 4.68a1.65 1.65 0 001-1.51V3a2 2 0 014 0v.09a1.65 1.65 0 001 1.51 1.65 1.65 0 001.82-.33l.06-.06a2 2 0 012.83 2.83l-.06.06A1.65 1.65 0 0019.4 9a1.65 1.65 0 001.51 1H21a2 2 0 010 4h-.09a1.65 1.65 0 00-1.51 1z"/></svg>
+        </div>
+        <div class="act-text"><strong>Settings</strong><small>Edit profile, privacy &amp; notifications</small></div>
+        <span class="act-chev">›</span>
+      </div>
+      <div class="act-row">
+        <div class="act-icon ai-lime">
+          <svg viewBox="0 0 24 24" stroke="var(--lime-dark)"><path d="M9 12l2 2 4-4m5.618-4.016A11.955 11.955 0 0112 2.944a11.955 11.955 0 01-8.618 3.04A12.02 12.02 0 003 9c0 5.591 3.824 10.29 9 11.622 5.176-1.332 9-6.03 9-11.622 0-1.042-.133-2.052-.382-3.016z"/></svg>
+        </div>
+        <div class="act-text"><strong>Verification</strong><small>ID Verified · upgrade available</small></div>
+        <span class="act-chev">›</span>
+      </div>
+      <div class="act-row">
+        <div class="act-icon ai-pink">
+          <svg viewBox="0 0 24 24" stroke="var(--magenta)"><path d="M12 2l3.09 6.26L22 9.27l-5 4.87 1.18 6.88L12 17.77l-6.18 3.25L7 14.14 2 9.27l6.91-1.01L12 2z"/></svg>
+        </div>
+        <div class="act-text"><strong>Membership</strong><small>Free plan · Upgrade to Premium</small></div>
+        <span class="act-chev">›</span>
+      </div>
+      <div class="act-row">
+        <div class="act-icon ai-muted">
+          <svg viewBox="0 0 24 24" stroke="var(--text2)"><path d="M17 16l4-4m0 0l-4-4m4 4H7m6 4v1a3 3 0 01-3 3H6a3 3 0 01-3-3V7a3 3 0 013-3h4a3 3 0 013 3v1"/></svg>
+        </div>
+        <div class="act-text"><strong style="color:var(--text2)">Sign out</strong></div>
+        <span class="act-chev">›</span>
+      </div>
+    </div>
+
+  </div><!-- /scroll -->
+
+  <!-- Bottom nav -->
+  <div class="bnav">
+    <div class="nav-item">
+      <svg viewBox="0 0 24 24" stroke="currentColor"><path d="M3 9l9-7 9 7v11a2 2 0 01-2 2H5a2 2 0 01-2-2z"/><polyline points="9 22 9 12 15 12 15 22"/></svg>
+      Home
+    </div>
+    <div class="nav-item">
+      <svg viewBox="0 0 24 24" stroke="currentColor"><path d="M20.84 4.61a5.5 5.5 0 00-7.78 0L12 5.67l-1.06-1.06a5.5 5.5 0 00-7.78 7.78l1.06 1.06L12 21.23l7.78-7.78 1.06-1.06a5.5 5.5 0 000-7.78z"/></svg>
+      Matches
+    </div>
+    <div class="nav-item">
+      <svg viewBox="0 0 24 24" stroke="currentColor"><path d="M21 15a2 2 0 01-2 2H7l-4 4V5a2 2 0 012-2h14a2 2 0 012 2z"/></svg>
+      Chat
+    </div>
+    <div class="nav-item active">
+      <svg viewBox="0 0 24 24" stroke="currentColor"><path d="M20 21v-2a4 4 0 00-4-4H8a4 4 0 00-4 4v2"/><circle cx="12" cy="7" r="4"/></svg>
+      Profile
+      <div class="nav-pip"></div>
+    </div>
+  </div>
+
+</div>
+
+<script>
+// Waveform bars
+const wv = document.getElementById('wv');
+const heights = [12,18,26,16,30,20,10,24,34,22,16,28,14,26,20,30,18,12,24,16,10,20,28];
+heights.forEach((h,i) => {
+  const b = document.createElement('div');
+  b.className = 'bar';
+  const played = i < 9;
+  b.style.cssText = `width:3.5px;height:${h}px;border-radius:3px;background:${played ? 'linear-gradient(to top,#6C4CF1,#FF3D7F)' : '#E4DFFA'};flex-shrink:0`;
+  wv.appendChild(b);
+});
+</script>
+</body>
+</html>

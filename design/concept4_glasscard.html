@@ -1,0 +1,237 @@
+<!DOCTYPE html>
+<html lang="en">
+<head>
+<meta charset="UTF-8"/><meta name="viewport" content="width=device-width,initial-scale=1"/>
+<title>Pearmo C4: Glasscard Stack</title>
+<link href="https://fonts.googleapis.com/css2?family=Fraunces:ital,opsz,wght@0,9..144,400;0,9..144,600;0,9..144,700;1,9..144,400&family=Nunito+Sans:wght@400;600;700&display=swap" rel="stylesheet"/>
+<style>
+*{box-sizing:border-box;margin:0;padding:0}
+:root{--bg:#FAF8FF;--p:#6C4CF1;--pk:#FF3D7F;--lm:#C6FF3D;--mg:#C4176A;--dk:#17101F;--t2:#6B6480;--bd:#E8E2F8}
+body{background:#f5f0ff;display:flex;justify-content:center;padding:40px 16px;font-family:'Nunito Sans',sans-serif}
+.phone{width:390px;background:var(--bg);border-radius:44px;overflow:hidden;box-shadow:0 0 0 8px #fff,0 0 0 10px var(--bd),0 24px 60px rgba(108,76,241,.2)}
+.sb{display:flex;justify-content:space-between;padding:14px 28px 0;font-size:12px;font-weight:700;color:var(--dk)}
+
+/* Header */
+.hdr{display:flex;align-items:center;justify-content:space-between;padding:12px 20px 0}
+.hdr-title{font-family:'Fraunces',serif;font-size:22px;font-weight:700;color:var(--dk)}
+.ibt{width:36px;height:36px;border-radius:12px;background:#EDE9FD;border:1px solid var(--bd);display:flex;align-items:center;justify-content:center;cursor:pointer}
+.ibt svg{width:14px;height:14px;stroke:var(--dk);fill:none;stroke-width:2}
+
+/* Avatar hero */
+.av-hero{display:flex;flex-direction:column;align-items:center;padding:20px 0 0}
+.av-ring{width:100px;height:100px;border-radius:50%;background:linear-gradient(135deg,var(--pk),var(--p));padding:3px}
+.av-inner{width:100%;height:100%;border-radius:50%;background:var(--bg);padding:3px}
+.av-img{width:88px;height:88px;border-radius:50%;background:linear-gradient(135deg,#C4B5FD,#F9A8D4);display:flex;align-items:center;justify-content:center;font-size:36px}
+.av-name{font-family:'Fraunces',serif;font-size:26px;font-weight:700;color:var(--dk);margin-top:12px;text-align:center}
+.av-name em{font-style:italic;color:var(--pk)}
+.av-sub{font-size:13px;color:var(--t2);margin-top:3px;text-align:center}
+.pills{display:flex;gap:7px;margin-top:10px;justify-content:center;flex-wrap:wrap}
+.pill{padding:5px 13px;border-radius:999px;font-size:12px;font-weight:700;border:1.5px solid}
+.pl{background:#F2FFD6;color:#6a9900;border-color:#cef080}
+.pp{background:#EDE9FD;color:var(--p);border-color:#c9beff}
+
+/* Cards stack */
+.stack{display:flex;flex-direction:column;gap:0;padding:18px 20px 20px;position:relative}
+
+/* Each card slightly offset — simulate layering */
+.gcard{border-radius:26px;padding:20px;margin-bottom:12px;position:relative;overflow:hidden}
+
+.gc1{background:linear-gradient(135deg,rgba(108,76,241,.08),rgba(108,76,241,.03));border:1.5px solid rgba(108,76,241,.2)}
+.gc2{background:linear-gradient(135deg,rgba(255,61,127,.08),rgba(196,23,106,.03));border:1.5px solid rgba(255,61,127,.18)}
+.gc3{background:linear-gradient(135deg,rgba(198,255,61,.15),rgba(198,255,61,.05));border:1.5px solid rgba(198,255,61,.4)}
+.gc4{background:#fff;border:1.5px solid var(--bd)}
+.gc5{background:linear-gradient(135deg,rgba(23,16,31,.95),rgba(108,76,241,.7));border:none}
+
+.card-tag{display:inline-flex;align-items:center;gap:5px;font-size:10px;font-weight:700;letter-spacing:1.5px;margin-bottom:12px;padding:4px 10px;border-radius:999px}
+.tag-p{background:rgba(108,76,241,.12);color:var(--p)}
+.tag-pk{background:rgba(255,61,127,.12);color:var(--mg)}
+.tag-lm{background:rgba(198,255,61,.3);color:#6a9900}
+.tag-wh{background:rgba(255,255,255,.15);color:#fff}
+.tag-dk{background:rgba(23,16,31,.08);color:var(--t2)}
+
+/* Radar chart */
+.radar-wrap{display:flex;justify-content:center;margin-bottom:10px}
+canvas{border-radius:50%}
+
+/* Quote */
+.quote-txt{font-family:'Fraunces',serif;font-size:15px;line-height:1.65;color:var(--dk);font-style:italic}
+.quote-txt.wh{color:#FAF8FF}
+
+/* Audio */
+.arow{display:flex;align-items:center;gap:12px;margin-top:4px}
+.play{width:42px;height:42px;min-width:42px;border-radius:50%;background:linear-gradient(135deg,var(--pk),var(--mg));display:flex;align-items:center;justify-content:center;box-shadow:0 4px 14px rgba(255,61,127,.3);cursor:pointer}
+.play svg{width:14px;height:14px;fill:#fff;margin-left:2px}
+.wv{flex:1;height:28px;display:flex;align-items:center;gap:2.5px}
+.atm{font-size:12px;color:var(--mg);font-weight:700}
+
+/* Chips */
+.chips{display:flex;flex-wrap:wrap;gap:8px}
+.chip{padding:7px 16px;border-radius:999px;font-size:13px;font-weight:700;border:1.5px solid}
+.cp{background:#EDE9FD;color:var(--p);border-color:#c9beff}
+.cpk{background:#FFF0F5;color:var(--mg);border-color:#ffd0e3}
+.clm{background:#F2FFD6;color:#6a9900;border-color:#cef080}
+.cwh{background:rgba(255,255,255,.15);color:#FAF8FF;border-color:rgba(255,255,255,.3)}
+
+/* Action list inside dark card */
+.act-list{display:flex;flex-direction:column;gap:10px}
+.act{display:flex;align-items:center;gap:12px;cursor:pointer}
+.aico{width:38px;height:38px;min-width:38px;border-radius:12px;display:flex;align-items:center;justify-content:center;background:rgba(255,255,255,.1)}
+.aico svg{width:16px;height:16px;stroke:#FAF8FF;stroke-width:2;fill:none}
+.atxt strong{display:block;font-size:14px;font-weight:700;color:#FAF8FF}
+.atxt small{font-size:11px;color:rgba(250,248,255,.5)}
+.ach{color:rgba(250,248,255,.4);margin-left:auto;font-size:20px}
+
+/* Nav */
+.bnav{display:flex;justify-content:space-around;padding:10px 0 22px;background:#fff;border-top:1px solid var(--bd)}
+.ni{display:flex;flex-direction:column;align-items:center;gap:3px;font-size:10px;font-weight:700;color:var(--t2);cursor:pointer}
+.ni.a{color:var(--pk)}
+.ni svg{width:22px;height:22px;stroke-width:1.8;fill:none}
+.ni.a svg{stroke:var(--pk)}
+.pip{width:4px;height:4px;border-radius:50%;background:var(--pk)}
+</style>
+</head>
+<body>
+<div class="phone">
+  <div class="sb"><span>9:41</span><span>●●●</span></div>
+  <div class="hdr">
+    <span class="hdr-title">My Profile</span>
+    <div class="ibt"><svg viewBox="0 0 24 24"><circle cx="12" cy="5" r="1" fill="currentColor" stroke="none"/><circle cx="12" cy="12" r="1" fill="currentColor" stroke="none"/><circle cx="12" cy="19" r="1" fill="currentColor" stroke="none"/></svg></div>
+  </div>
+  <div class="av-hero">
+    <div class="av-ring"><div class="av-inner"><div class="av-img">🌸</div></div></div>
+    <div class="av-name">Amara, <em>26</em></div>
+    <div class="av-sub">Woman · Colombo, Sri Lanka</div>
+    <div class="pills">
+      <span class="pill pl">✓ ID Verified</span>
+      <span class="pill pp">✨ Serious relationship</span>
+    </div>
+  </div>
+
+  <div class="stack">
+    <!-- Card 1: About + Audio (purple) -->
+    <div class="gcard gc1">
+      <div class="card-tag tag-p">ABOUT ME</div>
+      <p class="quote-txt">"Coffee addict who hikes on weekends. Looking for someone who slow-dances in the kitchen."</p>
+      <div class="arow" style="margin-top:14px">
+        <div class="play"><svg viewBox="0 0 24 24"><polygon points="5,3 19,12 5,21"/></svg></div>
+        <div class="wv" id="wv4"></div>
+        <span class="atm">0:42</span>
+      </div>
+    </div>
+
+    <!-- Card 2: Looking for (pink) -->
+    <div class="gcard gc2">
+      <div class="card-tag tag-pk">LOOKING FOR</div>
+      <div class="chips">
+        <span class="chip cpk">Serious relationship</span>
+        <span class="chip cp">Ages 24–34</span>
+        <span class="chip cpk">Men &amp; Women</span>
+        <span class="chip clm">Honesty</span>
+        <span class="chip clm">Kindness</span>
+      </div>
+    </div>
+
+    <!-- Card 3: Music (lime) -->
+    <div class="gcard gc3">
+      <div class="card-tag tag-lm">MUSIC TASTE</div>
+      <div class="chips">
+        <span class="chip clm">Indie pop</span>
+        <span class="chip clm">Lo-fi</span>
+        <span class="chip cp">Jazz</span>
+        <span class="chip cpk">R&amp;B</span>
+      </div>
+    </div>
+
+    <!-- Card 4: Personality radar (white) -->
+    <div class="gcard gc4">
+      <div class="card-tag tag-dk">PERSONALITY PROFILE</div>
+      <div class="radar-wrap"><canvas id="radar" width="200" height="200"></canvas></div>
+      <div style="display:flex;justify-content:center;gap:12px;flex-wrap:wrap;margin-top:8px">
+        <span style="font-size:11px;color:var(--t2)"><span style="color:var(--p);font-weight:700">4.1</span> Open</span>
+        <span style="font-size:11px;color:var(--t2)"><span style="color:var(--p);font-weight:700">3.8</span> Agree</span>
+        <span style="font-size:11px;color:var(--t2)"><span style="color:var(--p);font-weight:700">4.5</span> Consci</span>
+        <span style="font-size:11px;color:var(--t2)"><span style="color:var(--p);font-weight:700">3.5</span> Stable</span>
+        <span style="font-size:11px;color:var(--t2)"><span style="color:var(--p);font-weight:700">2.8</span> Extra</span>
+        <span style="font-size:11px;color:var(--t2)"><span style="color:var(--pk);font-weight:700">3.3</span> Attach</span>
+      </div>
+    </div>
+
+    <!-- Card 5: Actions (dark) -->
+    <div class="gcard gc5">
+      <div class="card-tag tag-wh">ACCOUNT</div>
+      <div class="act-list">
+        <div class="act"><div class="aico"><svg viewBox="0 0 24 24"><circle cx="12" cy="12" r="3"/><path d="M19.4 15a1.65 1.65 0 00.33 1.82l.06.06a2 2 0 010 2.83 2 2 0 01-2.83 0l-.06-.06a1.65 1.65 0 00-1.82-.33 1.65 1.65 0 00-1 1.51V21a2 2 0 01-4 0v-.09A1.65 1.65 0 009 19.4a1.65 1.65 0 00-1.82.33l-.06.06a2 2 0 01-2.83-2.83l.06-.06A1.65 1.65 0 004.68 15a1.65 1.65 0 00-1.51-1H3a2 2 0 010-4h.09A1.65 1.65 0 004.6 9a1.65 1.65 0 00-.33-1.82l-.06-.06a2 2 0 012.83-2.83l.06.06A1.65 1.65 0 009 4.68a1.65 1.65 0 001-1.51V3a2 2 0 014 0v.09a1.65 1.65 0 001 1.51 1.65 1.65 0 001.82-.33l.06-.06a2 2 0 012.83 2.83l-.06.06A1.65 1.65 0 0019.4 9a1.65 1.65 0 001.51 1H21a2 2 0 010 4h-.09a1.65 1.65 0 00-1.51 1z"/></svg></div><div class="atxt"><strong>Settings</strong><small>Edit profile & privacy</small></div><span class="ach">›</span></div>
+        <div class="act"><div class="aico"><svg viewBox="0 0 24 24"><path d="M9 12l2 2 4-4m5.618-4.016A11.955 11.955 0 0112 2.944a11.955 11.955 0 01-8.618 3.04A12.02 12.02 0 003 9c0 5.591 3.824 10.29 9 11.622 5.176-1.332 9-6.03 9-11.622 0-1.042-.133-2.052-.382-3.016z"/></svg></div><div class="atxt"><strong>Verification</strong><small>ID Verified</small></div><span class="ach">›</span></div>
+        <div class="act"><div class="aico"><svg viewBox="0 0 24 24"><path d="M12 2l3.09 6.26L22 9.27l-5 4.87 1.18 6.88L12 17.77l-6.18 3.25L7 14.14 2 9.27l6.91-1.01L12 2z"/></svg></div><div class="atxt"><strong>Membership</strong><small>Upgrade to Premium</small></div><span class="ach">›</span></div>
+      </div>
+    </div>
+  </div>
+
+  <div class="bnav">
+    <div class="ni"><svg viewBox="0 0 24 24" stroke="currentColor"><path d="M3 9l9-7 9 7v11a2 2 0 01-2 2H5a2 2 0 01-2-2z"/></svg>Home</div>
+    <div class="ni"><svg viewBox="0 0 24 24" stroke="currentColor"><path d="M20.84 4.61a5.5 5.5 0 00-7.78 0L12 5.67l-1.06-1.06a5.5 5.5 0 00-7.78 7.78l1.06 1.06L12 21.23l7.78-7.78 1.06-1.06a5.5 5.5 0 000-7.78z"/></svg>Matches</div>
+    <div class="ni"><svg viewBox="0 0 24 24" stroke="currentColor"><path d="M21 15a2 2 0 01-2 2H7l-4 4V5a2 2 0 012-2h14a2 2 0 012 2z"/></svg>Chat</div>
+    <div class="ni a"><svg viewBox="0 0 24 24" stroke="currentColor"><path d="M20 21v-2a4 4 0 00-4-4H8a4 4 0 00-4 4v2"/><circle cx="12" cy="7" r="4"/></svg>Profile<div class="pip"></div></div>
+  </div>
+</div>
+<script>
+// Waveform
+const w4=document.getElementById('wv4');
+[12,18,26,16,30,20,10,24,34,22,16,28,14].forEach((h,i)=>{
+  const b=document.createElement('div');
+  b.style.cssText=`width:3.5px;height:${h}px;border-radius:3px;flex-shrink:0;background:${i<8?'linear-gradient(to top,#6C4CF1,#FF3D7F)':'rgba(108,76,241,0.2)'}`;
+  w4.appendChild(b);
+});
+
+// Radar chart
+const canvas=document.getElementById('radar');
+const ctx=canvas.getContext('2d');
+const cx=100,cy=100,r=80;
+const traits=[4.1,3.8,4.5,3.5,2.8,3.3];
+const labels=['Open','Agree','Consci','Stable','Extra','Attach'];
+const n=traits.length;
+// Grid
+for(let ring=1;ring<=4;ring++){
+  ctx.beginPath();
+  for(let i=0;i<n;i++){
+    const angle=(i/n)*Math.PI*2-Math.PI/2;
+    const rr=r*(ring/4);
+    const x=cx+rr*Math.cos(angle),y=cy+rr*Math.sin(angle);
+    i===0?ctx.moveTo(x,y):ctx.lineTo(x,y);
+  }
+  ctx.closePath();
+  ctx.strokeStyle='rgba(108,76,241,0.12)';
+  ctx.lineWidth=1;
+  ctx.stroke();
+}
+// Axes
+for(let i=0;i<n;i++){
+  const angle=(i/n)*Math.PI*2-Math.PI/2;
+  ctx.beginPath();ctx.moveTo(cx,cy);
+  ctx.lineTo(cx+r*Math.cos(angle),cy+r*Math.sin(angle));
+  ctx.strokeStyle='rgba(108,76,241,0.15)';ctx.stroke();
+}
+// Data fill
+ctx.beginPath();
+for(let i=0;i<n;i++){
+  const angle=(i/n)*Math.PI*2-Math.PI/2;
+  const rr=r*(traits[i]/5);
+  const x=cx+rr*Math.cos(angle),y=cy+rr*Math.sin(angle);
+  i===0?ctx.moveTo(x,y):ctx.lineTo(x,y);
+}
+ctx.closePath();
+const grad=ctx.createRadialGradient(cx,cy,0,cx,cy,r);
+grad.addColorStop(0,'rgba(108,76,241,0.4)');
+grad.addColorStop(1,'rgba(255,61,127,0.2)');
+ctx.fillStyle=grad;ctx.fill();
+ctx.strokeStyle='#6C4CF1';ctx.lineWidth=2;ctx.stroke();
+// Dots
+for(let i=0;i<n;i++){
+  const angle=(i/n)*Math.PI*2-Math.PI/2;
+  const rr=r*(traits[i]/5);
+  ctx.beginPath();ctx.arc(cx+rr*Math.cos(angle),cy+rr*Math.sin(angle),4,0,Math.PI*2);
+  ctx.fillStyle='#FF3D7F';ctx.fill();
+}
+</script>
+</body>
+</html>

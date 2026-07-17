@@ -1,0 +1,335 @@
+<!DOCTYPE html>
+<html lang="en">
+<head>
+<meta charset="UTF-8"/><meta name="viewport" content="width=device-width,initial-scale=1"/>
+<title>Pearmo — Bento V1 · Scroll · Urbanist</title>
+<link href="https://fonts.googleapis.com/css2?family=Urbanist:wght@400;500;600;700;800;900&display=swap" rel="stylesheet"/>
+<style>
+*{box-sizing:border-box;margin:0;padding:0}
+:root{--bg:#FAF8FF;--p:#6C4CF1;--pk:#FF3D7F;--lm:#C6FF3D;--mg:#C4176A;--dk:#17101F;--s1:#EDE9FD;--s2:#FFF0F5;--s3:#F2FFD6;--t2:#6B6480;--bd:#E8E2F8}
+body{background:#dbd6f4;display:flex;justify-content:center;padding:40px 16px;font-family:'Urbanist',sans-serif;min-height:100vh}
+.phone{width:390px;background:var(--bg);border-radius:48px;overflow:hidden;box-shadow:0 0 0 8px #fff,0 0 0 10px var(--bd),0 32px 80px rgba(108,76,241,.18)}
+.scroll{overflow-y:auto;max-height:820px;padding-bottom:90px}.scroll::-webkit-scrollbar{display:none}
+.sb{display:flex;justify-content:space-between;padding:14px 28px 0;font-size:11px;font-weight:700;color:var(--dk)}
+.hdr{display:flex;align-items:center;justify-content:space-between;padding:10px 20px 4px}
+.hdr-title{font-size:21px;font-weight:900;color:var(--dk);letter-spacing:-.4px}
+.icon-btn{width:36px;height:36px;border-radius:12px;background:var(--s1);border:1px solid var(--bd);display:flex;align-items:center;justify-content:center;cursor:pointer;transition:background .2s}
+.icon-btn:hover{background:var(--bd)}
+.icon-btn svg{width:16px;height:16px;stroke:var(--p);fill:none;stroke-width:2}
+.hdr-r{display:flex;gap:8px}
+
+/* Bento */
+.bento{display:grid;grid-template-columns:1fr 1fr;gap:10px;padding:6px 16px}
+
+/* Avatar tile */
+.av{background:linear-gradient(150deg,#7b5cf5,var(--pk));border-radius:26px;padding:16px;display:flex;flex-direction:column;align-items:center;justify-content:flex-end;min-height:230px;position:relative;overflow:hidden;grid-row:span 2}
+.av::before{content:'';position:absolute;top:-30px;right:-30px;width:120px;height:120px;border-radius:50%;background:rgba(255,255,255,.09)}
+.av-badge{position:absolute;top:12px;left:12px;background:var(--lm);color:var(--dk);font-size:9px;font-weight:800;padding:4px 10px;border-radius:999px;letter-spacing:.5px}
+.av-img{width:78px;height:78px;border-radius:50%;background:rgba(255,255,255,.18);display:flex;align-items:center;justify-content:center;font-size:32px;border:2px solid rgba(255,255,255,.4);margin-bottom:10px}
+.av-name{color:#fff;font-size:18px;font-weight:900;text-align:center;line-height:1.2}
+.av-meta{color:rgba(255,255,255,.72);font-size:11px;margin-top:4px;text-align:center}
+
+/* Stats tile */
+.stats{background:var(--s1);border-radius:22px;padding:14px;border:1px solid var(--bd);display:flex;flex-direction:column;justify-content:center;gap:4px}
+.stats-num{font-size:34px;font-weight:900;color:var(--p);line-height:1}
+.stats-label{font-size:10px;font-weight:700;color:var(--t2);letter-spacing:.5px;text-transform:uppercase}
+.stats-sub{font-size:11px;color:var(--t2)}
+
+/* Quote tile */
+.qt{background:#fff;border-radius:22px;padding:14px;border:1px solid var(--bd)}
+.qt-lbl{font-size:9px;font-weight:700;letter-spacing:2px;color:var(--p);margin-bottom:6px;text-transform:uppercase}
+.qt p{font-size:12.5px;line-height:1.6;color:var(--dk);font-style:italic;font-weight:500}
+
+/* Section header */
+.sec{padding:18px 20px 6px;display:flex;align-items:center;gap:8px}
+.sec h2{font-size:16px;font-weight:800;color:var(--dk);letter-spacing:-.2px}
+.sec-badge{background:var(--s1);color:var(--p);font-size:10px;font-weight:700;padding:3px 8px;border-radius:999px;border:1px solid var(--bd)}
+
+/* Music bento */
+.music-grid{display:grid;grid-template-columns:1fr 1fr;gap:10px;padding:0 16px}
+.genre-tile{border-radius:20px;padding:14px;display:flex;flex-direction:column;align-items:flex-start;gap:8px;cursor:pointer;transition:transform .15s}
+.genre-tile:hover{transform:scale(1.02)}
+.genre-icon{width:40px;height:40px;border-radius:12px;display:flex;align-items:center;justify-content:center;font-size:20px;flex-shrink:0}
+.genre-name{font-size:13px;font-weight:700;color:var(--dk)}
+.genre-desc{font-size:10px;font-weight:500;color:var(--t2)}
+
+.g-jazz{background:#FFF8E7;border:1.5px solid #FFE0A0}
+.g-jazz .genre-icon{background:#FFE9A0}
+.g-lofi{background:var(--s1);border:1.5px solid var(--bd)}
+.g-lofi .genre-icon{background:#d6ceff}
+.g-hiphop{background:var(--s2);border:1.5px solid #ffd0e3}
+.g-hiphop .genre-icon{background:#ffb3cc}
+.g-indie{background:var(--s3);border:1.5px solid #cef080}
+.g-indie .genre-icon{background:#d8ffa0}
+.g-rnb{background:#FFF0FB;border:1.5px solid #f0c0e8}
+.g-rnb .genre-icon{background:#f0b8e8}
+.g-pop{background:#F0F8FF;border:1.5px solid #b0d4f8}
+.g-pop .genre-icon{background:#b8d8ff}
+
+/* Personality */
+.trait-grid{display:grid;grid-template-columns:1fr 1fr;gap:10px;padding:0 16px}
+.trait-tile{background:#fff;border-radius:20px;padding:14px;border:1px solid var(--bd);display:flex;flex-direction:column;align-items:center;text-align:center;gap:4px;transition:box-shadow .2s}
+.trait-tile:hover{box-shadow:0 4px 16px rgba(108,76,241,.1)}
+.trait-tile.wide{grid-column:span 2;flex-direction:row;text-align:left;gap:14px;align-items:center}
+.arc-wrap{position:relative;width:72px;height:72px;flex-shrink:0}
+.arc-wrap svg{width:72px;height:72px}
+.arc-score{position:absolute;inset:0;display:flex;align-items:center;justify-content:center;font-size:13px;font-weight:800;color:var(--dk)}
+.trait-name{font-size:12px;font-weight:800;color:var(--dk);letter-spacing:-.1px}
+.trait-desc{font-size:10px;font-weight:500;color:var(--t2);line-height:1.4}
+.trait-tile.wide .trait-info{display:flex;flex-direction:column;gap:3px}
+.trait-tile.wide .trait-name{font-size:14px}
+
+/* Values */
+.vals-grid{display:grid;grid-template-columns:1fr 1fr;gap:10px;padding:0 16px}
+.val-tile{background:#fff;border-radius:20px;padding:14px;border:1px solid var(--bd)}
+.val-lbl{font-size:9px;font-weight:700;letter-spacing:1.5px;color:var(--t2);text-transform:uppercase;margin-bottom:8px}
+.chip-wrap{display:flex;flex-wrap:wrap;gap:5px}
+.chip{padding:5px 10px;border-radius:999px;font-size:11px;font-weight:700}
+.chip-p{background:var(--s1);color:var(--p);border:1px solid var(--bd)}
+.chip-pk{background:var(--s2);color:var(--mg);border:1px solid #ffd0e3}
+.chip-lm{background:var(--s3);color:#5a7f00;border:1px solid #cef080}
+
+/* CTA */
+.cta{margin:16px 16px 0;display:flex;flex-direction:column;gap:8px}
+.cta-btn{border:none;border-radius:16px;padding:15px;font-size:15px;font-weight:800;font-family:'Urbanist',sans-serif;cursor:pointer;transition:transform .15s,box-shadow .15s;letter-spacing:-.2px}
+.cta-btn:hover{transform:translateY(-2px)}
+.cta-primary{background:linear-gradient(90deg,var(--p),var(--pk));color:#fff;box-shadow:0 6px 20px rgba(255,61,127,.25)}
+.cta-secondary{background:var(--s1);color:var(--p);border:1.5px solid var(--bd)}
+
+/* Bottom nav */
+.nav{position:sticky;bottom:0;background:rgba(250,248,255,.95);backdrop-filter:blur(12px);border-top:1px solid var(--bd);display:flex;justify-content:space-around;padding:10px 0 20px;margin-top:16px}
+.nav-item{display:flex;flex-direction:column;align-items:center;gap:4px;cursor:pointer}
+.nav-icon{width:44px;height:30px;display:flex;align-items:center;justify-content:center}
+.nav-icon svg{width:22px;height:22px;stroke:var(--t2);fill:none;stroke-width:1.8}
+.nav-item.active .nav-icon svg{stroke:var(--pk)}
+.nav-dot{width:4px;height:4px;border-radius:50%;background:transparent}
+.nav-item.active .nav-dot{background:var(--pk)}
+</style>
+</head>
+<body>
+<div class="phone">
+ <div class="scroll">
+  <!-- Status bar -->
+  <div class="sb"><span>9:41</span><span>●●●</span></div>
+
+  <!-- Header -->
+  <div class="hdr">
+   <span class="hdr-title">My Profile</span>
+   <div class="hdr-r">
+    <div class="icon-btn">
+     <svg viewBox="0 0 24 24"><path d="M11 4H4a2 2 0 00-2 2v14a2 2 0 002 2h14a2 2 0 002-2v-7"/><path d="M18.5 2.5a2.121 2.121 0 013 3L12 15l-4 1 1-4 9.5-9.5z"/></svg>
+    </div>
+    <div class="icon-btn">
+     <svg viewBox="0 0 24 24"><circle cx="12" cy="12" r="3"/><path d="M19.4 15a1.65 1.65 0 00.33 1.82l.06.06a2 2 0 010 2.83 2 2 0 01-2.83 0l-.06-.06a1.65 1.65 0 00-1.82-.33 1.65 1.65 0 00-1 1.51V21a2 2 0 01-4 0v-.09A1.65 1.65 0 009 19.4a1.65 1.65 0 00-1.82.33l-.06.06a2 2 0 01-2.83-2.83l.06-.06A1.65 1.65 0 004.68 15a1.65 1.65 0 00-1.51-1H3a2 2 0 010-4h.09A1.65 1.65 0 004.6 9a1.65 1.65 0 00-.33-1.82l-.06-.06a2 2 0 012.83-2.83l.06.06A1.65 1.65 0 009 4.68a1.65 1.65 0 001-1.51V3a2 2 0 014 0v.09a1.65 1.65 0 001 1.51 1.65 1.65 0 001.82-.33l.06-.06a2 2 0 012.83 2.83l-.06.06A1.65 1.65 0 0019.4 9a1.65 1.65 0 001.51 1H21a2 2 0 010 4h-.09a1.65 1.65 0 00-1.51 1z"/></svg>
+    </div>
+   </div>
+  </div>
+
+  <!-- Hero bento -->
+  <div class="bento">
+   <!-- Avatar tile (tall) -->
+   <div class="av">
+    <span class="av-badge">✓ VERIFIED</span>
+    <div class="av-img">😊</div>
+    <div class="av-name">Anika, 26</div>
+    <div class="av-meta">📍 Colombo · 3 km away</div>
+   </div>
+   <!-- Trust score -->
+   <div class="stats">
+    <div class="stats-label">Trust Score</div>
+    <div class="stats-num">94</div>
+    <div class="stats-sub">Top 5% of profiles</div>
+   </div>
+   <!-- Quote -->
+   <div class="qt">
+    <div class="qt-lbl">In a nutshell</div>
+    <p>"Morning person who can't function without coffee and good playlists."</p>
+   </div>
+  </div>
+
+  <!-- Music section -->
+  <div class="sec">
+   <h2>Music Taste</h2>
+   <span class="sec-badge">6 genres</span>
+  </div>
+  <div class="music-grid">
+   <div class="genre-tile g-jazz">
+    <div class="genre-icon">🎷</div>
+    <div>
+     <div class="genre-name">Jazz</div>
+     <div class="genre-desc">Late night sessions</div>
+    </div>
+   </div>
+   <div class="genre-tile g-lofi">
+    <div class="genre-icon">🌙</div>
+    <div>
+     <div class="genre-name">Lo-fi</div>
+     <div class="genre-desc">Study & chill vibes</div>
+    </div>
+   </div>
+   <div class="genre-tile g-hiphop">
+    <div class="genre-icon">🎤</div>
+    <div>
+     <div class="genre-name">Hip-Hop</div>
+     <div class="genre-desc">Lyricism first</div>
+    </div>
+   </div>
+   <div class="genre-tile g-indie">
+    <div class="genre-icon">🎸</div>
+    <div>
+     <div class="genre-name">Indie</div>
+     <div class="genre-desc">Hidden gems only</div>
+    </div>
+   </div>
+   <div class="genre-tile g-rnb">
+    <div class="genre-icon">🎵</div>
+    <div>
+     <div class="genre-name">R&amp;B</div>
+     <div class="genre-desc">Soulful &amp; smooth</div>
+    </div>
+   </div>
+   <div class="genre-tile g-pop">
+    <div class="genre-icon">⭐</div>
+    <div>
+     <div class="genre-name">Pop</div>
+     <div class="genre-desc">Guilty pleasures</div>
+    </div>
+   </div>
+  </div>
+
+  <!-- Personality section -->
+  <div class="sec">
+   <h2>Personality</h2>
+   <span class="sec-badge">Big Five</span>
+  </div>
+  <div class="trait-grid">
+
+   <!-- Openness -->
+   <div class="trait-tile">
+    <div class="arc-wrap">
+     <svg viewBox="0 0 72 72">
+      <circle cx="36" cy="36" r="28" fill="none" stroke="#EDE9FD" stroke-width="7" stroke-linecap="round"/>
+      <circle cx="36" cy="36" r="28" fill="none" stroke="#6C4CF1" stroke-width="7"
+       stroke-dasharray="138 175.9" stroke-dashoffset="44" stroke-linecap="round" transform="rotate(-90 36 36)"/>
+     </svg>
+     <div class="arc-score">78%</div>
+    </div>
+    <div class="trait-name">Openness</div>
+    <div class="trait-desc">Curious &amp; creative thinker</div>
+   </div>
+
+   <!-- Conscientiousness -->
+   <div class="trait-tile">
+    <div class="arc-wrap">
+     <svg viewBox="0 0 72 72">
+      <circle cx="36" cy="36" r="28" fill="none" stroke="#F2FFD6" stroke-width="7" stroke-linecap="round"/>
+      <circle cx="36" cy="36" r="28" fill="none" stroke="#7aab00" stroke-width="7"
+       stroke-dasharray="114 175.9" stroke-dashoffset="44" stroke-linecap="round" transform="rotate(-90 36 36)"/>
+     </svg>
+     <div class="arc-score" style="color:#5a7f00">65%</div>
+    </div>
+    <div class="trait-name">Conscientiousness</div>
+    <div class="trait-desc">Organized &amp; goal-driven</div>
+   </div>
+
+   <!-- Extraversion -->
+   <div class="trait-tile">
+    <div class="arc-wrap">
+     <svg viewBox="0 0 72 72">
+      <circle cx="36" cy="36" r="28" fill="none" stroke="#FFF0F5" stroke-width="7" stroke-linecap="round"/>
+      <circle cx="36" cy="36" r="28" fill="none" stroke="#FF3D7F" stroke-width="7"
+       stroke-dasharray="97 175.9" stroke-dashoffset="44" stroke-linecap="round" transform="rotate(-90 36 36)"/>
+     </svg>
+     <div class="arc-score" style="color:#FF3D7F">55%</div>
+    </div>
+    <div class="trait-name">Extraversion</div>
+    <div class="trait-desc">Selectively social</div>
+   </div>
+
+   <!-- Agreeableness -->
+   <div class="trait-tile">
+    <div class="arc-wrap">
+     <svg viewBox="0 0 72 72">
+      <circle cx="36" cy="36" r="28" fill="none" stroke="#FFF0FB" stroke-width="7" stroke-linecap="round"/>
+      <circle cx="36" cy="36" r="28" fill="none" stroke="#C4176A" stroke-width="7"
+       stroke-dasharray="144 175.9" stroke-dashoffset="44" stroke-linecap="round" transform="rotate(-90 36 36)"/>
+     </svg>
+     <div class="arc-score" style="color:#C4176A">82%</div>
+    </div>
+    <div class="trait-name">Agreeableness</div>
+    <div class="trait-desc">Warm &amp; empathetic</div>
+   </div>
+
+   <!-- Neuroticism (wide) -->
+   <div class="trait-tile wide">
+    <div class="arc-wrap">
+     <svg viewBox="0 0 72 72">
+      <circle cx="36" cy="36" r="28" fill="none" stroke="#EDE9FD" stroke-width="7" stroke-linecap="round"/>
+      <circle cx="36" cy="36" r="28" fill="none" stroke="#6C4CF1" stroke-width="7" stroke-dasharray="61 175.9" stroke-dashoffset="44" stroke-linecap="round" transform="rotate(-90 36 36)" opacity=".5"/>
+     </svg>
+     <div class="arc-score" style="color:#6C4CF1;font-size:12px">35%</div>
+    </div>
+    <div class="trait-info">
+     <div class="trait-name">Neuroticism</div>
+     <div class="trait-desc">Emotionally stable &amp; grounded — low reactivity, high resilience</div>
+    </div>
+   </div>
+
+  </div>
+
+  <!-- Values & Looking for -->
+  <div class="sec"><h2>About</h2></div>
+  <div class="vals-grid">
+   <div class="val-tile">
+    <div class="val-lbl">Values</div>
+    <div class="chip-wrap">
+     <span class="chip chip-p">Honesty</span>
+     <span class="chip chip-p">Growth</span>
+     <span class="chip chip-lm">Creativity</span>
+     <span class="chip chip-pk">Empathy</span>
+    </div>
+   </div>
+   <div class="val-tile">
+    <div class="val-lbl">Looking for</div>
+    <div class="chip-wrap">
+     <span class="chip chip-pk">Long-term</span>
+     <span class="chip chip-p">Deep talks</span>
+     <span class="chip chip-lm">Adventures</span>
+    </div>
+   </div>
+  </div>
+
+  <!-- CTA -->
+  <div class="cta">
+   <button class="cta-btn cta-primary">✨ Boost Profile</button>
+   <button class="cta-btn cta-secondary">Share My Profile</button>
+  </div>
+
+  <!-- Bottom nav -->
+  <div class="nav">
+   <div class="nav-item">
+    <div class="nav-icon"><svg viewBox="0 0 24 24"><path d="M3 9l9-7 9 7v11a2 2 0 01-2 2H5a2 2 0 01-2-2z"/><polyline points="9 22 9 12 15 12 15 22"/></svg></div>
+    <div class="nav-dot"></div>
+   </div>
+   <div class="nav-item">
+    <div class="nav-icon"><svg viewBox="0 0 24 24"><circle cx="11" cy="11" r="8"/><line x1="21" y1="21" x2="16.65" y2="16.65"/></svg></div>
+    <div class="nav-dot"></div>
+   </div>
+   <div class="nav-item">
+    <div class="nav-icon"><svg viewBox="0 0 24 24"><path d="M20.84 4.61a5.5 5.5 0 00-7.78 0L12 5.67l-1.06-1.06a5.5 5.5 0 00-7.78 7.78l1.06 1.06L12 21.23l7.78-7.78 1.06-1.06a5.5 5.5 0 000-7.78z"/></svg></div>
+    <div class="nav-dot"></div>
+   </div>
+   <div class="nav-item">
+    <div class="nav-icon"><svg viewBox="0 0 24 24"><path d="M21 15a2 2 0 01-2 2H7l-4 4V5a2 2 0 012-2h14a2 2 0 012 2z"/></svg></div>
+    <div class="nav-dot"></div>
+   </div>
+   <div class="nav-item active">
+    <div class="nav-icon"><svg viewBox="0 0 24 24"><path d="M20 21v-2a4 4 0 00-4-4H8a4 4 0 00-4 4v2"/><circle cx="12" cy="7" r="4"/></svg></div>
+    <div class="nav-dot"></div>
+   </div>
+  </div>
+
+ </div>
+</div>
+</body>
+</html>

@@ -1,0 +1,287 @@
+<!DOCTYPE html>
+<html lang="en">
+<head>
+<meta charset="UTF-8"/><meta name="viewport" content="width=device-width,initial-scale=1"/>
+<title>Pearmo — Bento V3 · Editorial · Outfit</title>
+<link href="https://fonts.googleapis.com/css2?family=Outfit:wght@300;400;500;600;700;800;900&display=swap" rel="stylesheet"/>
+<style>
+*{box-sizing:border-box;margin:0;padding:0}
+:root{--bg:#FAF8FF;--p:#6C4CF1;--pk:#FF3D7F;--lm:#C6FF3D;--mg:#C4176A;--dk:#17101F;--s1:#EDE9FD;--s2:#FFF0F5;--s3:#F2FFD6;--t2:#6B6480;--bd:#E8E2F8}
+body{background:#dbd6f4;display:flex;justify-content:center;padding:40px 16px;font-family:'Outfit',sans-serif;min-height:100vh}
+.phone{width:390px;background:var(--bg);border-radius:48px;overflow:hidden;box-shadow:0 0 0 8px #fff,0 0 0 10px var(--bd),0 32px 80px rgba(108,76,241,.18)}
+.scroll{overflow-y:auto;max-height:820px;padding-bottom:80px}.scroll::-webkit-scrollbar{display:none}
+.sb{display:flex;justify-content:space-between;padding:14px 28px 0;font-size:11px;font-weight:700;color:var(--dk)}
+
+/* Editorial hero — diagonal split */
+.hero{position:relative;height:240px;overflow:hidden}
+.hero-bg{position:absolute;inset:0;background:linear-gradient(140deg,#7b5cf5 0%,var(--pk) 60%,#ffb347 100%)}
+.hero-wave{position:absolute;bottom:0;left:0;right:0}
+.hero-content{position:relative;z-index:2;padding:18px 20px 0;display:flex;align-items:flex-start;justify-content:space-between}
+.hero-av{width:80px;height:80px;border-radius:50%;background:rgba(255,255,255,.2);display:flex;align-items:center;justify-content:center;font-size:34px;border:2.5px solid rgba(255,255,255,.5)}
+.hero-text{flex:1;padding-left:14px}
+.hero-name{font-size:26px;font-weight:900;color:#fff;letter-spacing:-.5px;line-height:1.1}
+.hero-sub{color:rgba(255,255,255,.75);font-size:12px;margin-top:5px;font-weight:500}
+.hero-chips{display:flex;flex-wrap:wrap;gap:5px;margin-top:10px}
+.hero-chip{background:rgba(255,255,255,.2);color:#fff;font-size:10px;font-weight:700;padding:4px 10px;border-radius:999px;border:1px solid rgba(255,255,255,.3);backdrop-filter:blur(4px)}
+.hero-chip.accent{background:var(--lm);color:var(--dk);border-color:var(--lm)}
+
+/* Floating stat cards */
+.stats-strip{display:flex;gap:8px;padding:0 16px;margin-top:-28px;position:relative;z-index:3}
+.scard{flex:1;background:#fff;border-radius:16px;padding:12px;border:1px solid var(--bd);box-shadow:0 4px 16px rgba(108,76,241,.08);text-align:center}
+.scard-n{font-size:24px;font-weight:900;line-height:1}
+.scard-l{font-size:9px;font-weight:600;color:var(--t2);text-transform:uppercase;letter-spacing:.5px;margin-top:2px}
+
+/* Section header */
+.sec{padding:20px 20px 8px;display:flex;align-items:baseline;justify-content:space-between}
+.sec h2{font-size:18px;font-weight:900;color:var(--dk);letter-spacing:-.3px}
+.sec-count{font-size:12px;font-weight:600;color:var(--t2)}
+
+/* Quote block */
+.quote-block{margin:4px 16px 0;background:var(--s1);border-radius:20px;padding:16px;border-left:4px solid var(--p);border:1px solid var(--bd);border-left:4px solid var(--p)}
+.quote-block p{font-size:14px;line-height:1.65;color:var(--dk);font-style:italic;font-weight:500}
+.quote-author{font-size:11px;color:var(--t2);margin-top:8px;font-weight:600}
+
+/* Music — editorial tape style */
+.music-banner{margin:0 16px;background:var(--dk);border-radius:20px;padding:16px 18px;display:flex;align-items:center;justify-content:space-between;margin-bottom:10px}
+.mb-left .mb-label{font-size:9px;font-weight:700;letter-spacing:2px;color:rgba(255,255,255,.4);text-transform:uppercase}
+.mb-left .mb-title{font-size:16px;font-weight:900;color:#fff;margin-top:2px}
+.mb-left .mb-sub{font-size:11px;color:rgba(255,255,255,.5);margin-top:2px}
+.mb-icon{font-size:36px;opacity:.8}
+
+.genre-list{padding:0 16px;display:flex;flex-direction:column;gap:8px}
+.genre-row{display:flex;align-items:center;gap:12px;background:#fff;border-radius:16px;padding:12px 14px;border:1px solid var(--bd);transition:border-color .2s,box-shadow .2s;cursor:pointer}
+.genre-row:hover{border-color:var(--p);box-shadow:0 2px 12px rgba(108,76,241,.1)}
+.gr-icon{width:42px;height:42px;border-radius:13px;display:flex;align-items:center;justify-content:center;font-size:20px;flex-shrink:0}
+.gr-info{flex:1}
+.gr-name{font-size:14px;font-weight:700;color:var(--dk)}
+.gr-vibe{font-size:11px;color:var(--t2);margin-top:2px;font-weight:500}
+.gr-tag{font-size:10px;font-weight:700;padding:3px 9px;border-radius:999px}
+
+/* Personality — horizontal bars */
+.pers-intro{margin:0 16px 10px;background:linear-gradient(120deg,var(--s1),var(--s2));border-radius:20px;padding:14px 16px;border:1px solid var(--bd)}
+.pi-title{font-size:14px;font-weight:800;color:var(--dk);margin-bottom:2px}
+.pi-sub{font-size:11px;color:var(--t2);line-height:1.5}
+
+.trait-bars{padding:0 16px;display:flex;flex-direction:column;gap:8px}
+.tbar{background:#fff;border-radius:16px;padding:14px 16px;border:1px solid var(--bd)}
+.tbar-top{display:flex;align-items:center;justify-content:space-between;margin-bottom:8px}
+.tbar-left{display:flex;align-items:center;gap:8px}
+.tbar-ico{font-size:16px}
+.tbar-name{font-size:13px;font-weight:700;color:var(--dk)}
+.tbar-desc{font-size:10px;color:var(--t2);margin-top:1px}
+.tbar-pct{font-size:14px;font-weight:900}
+.bar-track{background:var(--s1);border-radius:999px;height:8px;overflow:hidden}
+.bar-fill{height:100%;border-radius:999px;transition:width .8s cubic-bezier(.4,0,.2,1)}
+
+/* Values */
+.vals-row{display:flex;gap:10px;padding:0 16px}
+.val-box{flex:1;background:#fff;border-radius:18px;padding:14px;border:1px solid var(--bd)}
+.val-lbl{font-size:9px;font-weight:700;letter-spacing:1.5px;color:var(--t2);text-transform:uppercase;margin-bottom:8px}
+.chip-wrap{display:flex;flex-wrap:wrap;gap:5px}
+.chip{padding:5px 10px;border-radius:999px;font-size:11px;font-weight:700}
+.chip-p{background:var(--s1);color:var(--p);border:1px solid var(--bd)}
+.chip-pk{background:var(--s2);color:var(--mg);border:1px solid #ffd0e3}
+.chip-lm{background:var(--s3);color:#5a7f00;border:1px solid #cef080}
+
+/* CTA */
+.cta{margin:16px;display:flex;gap:8px}
+.btn{flex:1;border:none;border-radius:16px;padding:15px 10px;font-size:14px;font-weight:800;font-family:'Outfit',sans-serif;cursor:pointer;transition:transform .15s}
+.btn:hover{transform:translateY(-2px)}
+.btn-pri{background:linear-gradient(90deg,var(--p),var(--pk));color:#fff;box-shadow:0 6px 20px rgba(255,61,127,.2)}
+.btn-sec{background:var(--s1);color:var(--p);border:1.5px solid var(--bd)}
+
+/* Bottom nav */
+.nav{background:rgba(250,248,255,.97);backdrop-filter:blur(12px);border-top:1px solid var(--bd);display:flex;justify-content:space-around;padding:10px 0 20px}
+.nav-item{display:flex;flex-direction:column;align-items:center;gap:4px;cursor:pointer}
+.nav-icon svg{width:22px;height:22px;stroke:var(--t2);fill:none;stroke-width:1.8}
+.nav-item.active .nav-icon svg{stroke:var(--pk)}
+.nav-dot{width:4px;height:4px;border-radius:50%;background:transparent}
+.nav-item.active .nav-dot{background:var(--pk)}
+</style>
+</head>
+<body>
+<div class="phone">
+ <div class="scroll">
+  <div class="sb"><span>9:41</span><span>●●●</span></div>
+
+  <!-- Editorial hero -->
+  <div class="hero">
+   <div class="hero-bg"></div>
+   <svg class="hero-wave" viewBox="0 0 390 60" preserveAspectRatio="none"><path d="M0 60 Q195 0 390 60V60H0Z" fill="#FAF8FF"/></svg>
+   <div class="hero-content">
+    <div>
+     <div class="hero-name">Anika<br/>Perera</div>
+     <div class="hero-sub">26 · Software Engineer · Colombo</div>
+     <div class="hero-chips">
+      <span class="hero-chip accent">✓ Verified</span>
+      <span class="hero-chip">Long-term</span>
+      <span class="hero-chip">3 km away</span>
+     </div>
+    </div>
+    <div class="hero-av">😊</div>
+   </div>
+  </div>
+
+  <!-- Floating stats -->
+  <div class="stats-strip">
+   <div class="scard"><div class="scard-n" style="color:var(--p)">94</div><div class="scard-l">Trust Score</div></div>
+   <div class="scard"><div class="scard-n" style="color:var(--pk)">48</div><div class="scard-l">Connections</div></div>
+   <div class="scard"><div class="scard-n" style="color:#5a7f00">4.9</div><div class="scard-l">Avg Rating</div></div>
+  </div>
+
+  <!-- Quote -->
+  <div class="sec"><h2>In Her Words</h2></div>
+  <div class="quote-block">
+   <p>"Morning person who can't function without coffee and good playlists. Looking for someone who matches my playlist energy."</p>
+   <div class="quote-author">— Anika, on what makes her tick</div>
+  </div>
+
+  <!-- Music -->
+  <div class="sec"><h2>Music Taste</h2><span class="sec-count">6 genres</span></div>
+  <div class="music-banner">
+   <div class="mb-left">
+    <div class="mb-label">Sound Identity</div>
+    <div class="mb-title">The Night Curator</div>
+    <div class="mb-sub">Jazz · Lo-fi · Hip-Hop · Indie</div>
+   </div>
+   <div class="mb-icon">🎧</div>
+  </div>
+
+  <div class="genre-list">
+   <div class="genre-row">
+    <div class="gr-icon" style="background:#FFF8E7">🎷</div>
+    <div class="gr-info"><div class="gr-name">Jazz</div><div class="gr-vibe">Late night, improvisational mood</div></div>
+    <span class="gr-tag" style="background:#FFF8E7;color:#b8860b">Night</span>
+   </div>
+   <div class="genre-row">
+    <div class="gr-icon" style="background:var(--s1)">🌙</div>
+    <div class="gr-info"><div class="gr-name">Lo-fi</div><div class="gr-vibe">Study sessions &amp; deep focus</div></div>
+    <span class="gr-tag" style="background:var(--s1);color:var(--p)">Focus</span>
+   </div>
+   <div class="genre-row">
+    <div class="gr-icon" style="background:var(--s2)">🎤</div>
+    <div class="gr-info"><div class="gr-name">Hip-Hop</div><div class="gr-vibe">Lyric-first, storytelling &amp; bars</div></div>
+    <span class="gr-tag" style="background:var(--s2);color:var(--mg)">Hype</span>
+   </div>
+   <div class="genre-row">
+    <div class="gr-icon" style="background:var(--s3)">🎸</div>
+    <div class="gr-info"><div class="gr-name">Indie</div><div class="gr-vibe">Hidden gems &amp; bedroom pop</div></div>
+    <span class="gr-tag" style="background:var(--s3);color:#5a7f00">Chill</span>
+   </div>
+   <div class="genre-row">
+    <div class="gr-icon" style="background:#FFF0FB">🎵</div>
+    <div class="gr-info"><div class="gr-name">R&amp;B</div><div class="gr-vibe">Soulful, smooth, after-hours</div></div>
+    <span class="gr-tag" style="background:#FFF0FB;color:var(--mg)">Soul</span>
+   </div>
+   <div class="genre-row">
+    <div class="gr-icon" style="background:#F0F8FF">⭐</div>
+    <div class="gr-info"><div class="gr-name">Pop</div><div class="gr-vibe">Guilty pleasures, no shame</div></div>
+    <span class="gr-tag" style="background:#F0F8FF;color:#4c6cf1">Fun</span>
+   </div>
+  </div>
+
+  <!-- Personality -->
+  <div class="sec"><h2>Personality</h2><span class="sec-count">Big Five</span></div>
+  <div class="pers-intro">
+   <div class="pi-title">Big Five Profile</div>
+   <div class="pi-sub">Each bar shows how strongly a trait describes Anika — based on her onboarding answers.</div>
+  </div>
+
+  <div class="trait-bars">
+
+   <div class="tbar">
+    <div class="tbar-top">
+     <div class="tbar-left">
+      <span class="tbar-ico">✨</span>
+      <div><div class="tbar-name">Openness</div><div class="tbar-desc">Curious &amp; creative thinker</div></div>
+     </div>
+     <div class="tbar-pct" style="color:#6C4CF1">78%</div>
+    </div>
+    <div class="bar-track"><div class="bar-fill" style="width:78%;background:linear-gradient(90deg,#7b5cf5,#9b7cf5)"></div></div>
+   </div>
+
+   <div class="tbar">
+    <div class="tbar-top">
+     <div class="tbar-left">
+      <span class="tbar-ico">🎯</span>
+      <div><div class="tbar-name">Conscientiousness</div><div class="tbar-desc">Organized &amp; goal-driven</div></div>
+     </div>
+     <div class="tbar-pct" style="color:#5a7f00">65%</div>
+    </div>
+    <div class="bar-track" style="background:var(--s3)"><div class="bar-fill" style="width:65%;background:linear-gradient(90deg,#7aab00,#a0d600)"></div></div>
+   </div>
+
+   <div class="tbar">
+    <div class="tbar-top">
+     <div class="tbar-left">
+      <span class="tbar-ico">⚡</span>
+      <div><div class="tbar-name">Extraversion</div><div class="tbar-desc">Selectively social, ambivert</div></div>
+     </div>
+     <div class="tbar-pct" style="color:#FF3D7F">55%</div>
+    </div>
+    <div class="bar-track" style="background:var(--s2)"><div class="bar-fill" style="width:55%;background:linear-gradient(90deg,#FF3D7F,#ff6fa0)"></div></div>
+   </div>
+
+   <div class="tbar">
+    <div class="tbar-top">
+     <div class="tbar-left">
+      <span class="tbar-ico">💫</span>
+      <div><div class="tbar-name">Agreeableness</div><div class="tbar-desc">Warm &amp; empathetic</div></div>
+     </div>
+     <div class="tbar-pct" style="color:#C4176A">82%</div>
+    </div>
+    <div class="bar-track" style="background:#FFF0FB"><div class="bar-fill" style="width:82%;background:linear-gradient(90deg,#C4176A,#e04090)"></div></div>
+   </div>
+
+   <div class="tbar">
+    <div class="tbar-top">
+     <div class="tbar-left">
+      <span class="tbar-ico">🌿</span>
+      <div><div class="tbar-name">Neuroticism</div><div class="tbar-desc">Emotionally stable &amp; grounded</div></div>
+     </div>
+     <div class="tbar-pct" style="color:#6C4CF1;opacity:.6">35%</div>
+    </div>
+    <div class="bar-track"><div class="bar-fill" style="width:35%;background:linear-gradient(90deg,#6C4CF1,#9b7cf5);opacity:.5"></div></div>
+   </div>
+
+  </div>
+
+  <!-- Values -->
+  <div class="sec"><h2>About</h2></div>
+  <div class="vals-row">
+   <div class="val-box">
+    <div class="val-lbl">Values</div>
+    <div class="chip-wrap">
+     <span class="chip chip-p">Honesty</span>
+     <span class="chip chip-lm">Growth</span>
+     <span class="chip chip-pk">Empathy</span>
+    </div>
+   </div>
+   <div class="val-box">
+    <div class="val-lbl">Looking for</div>
+    <div class="chip-wrap">
+     <span class="chip chip-pk">Long-term</span>
+     <span class="chip chip-p">Deep talks</span>
+    </div>
+   </div>
+  </div>
+
+  <!-- CTA -->
+  <div class="cta">
+   <button class="btn btn-pri">✨ Boost Profile</button>
+   <button class="btn btn-sec">Share</button>
+  </div>
+
+  <!-- Bottom nav -->
+  <div class="nav">
+   <div class="nav-item"><div class="nav-icon"><svg viewBox="0 0 24 24"><path d="M3 9l9-7 9 7v11a2 2 0 01-2 2H5a2 2 0 01-2-2z"/><polyline points="9 22 9 12 15 12 15 22"/></svg></div><div class="nav-dot"></div></div>
+   <div class="nav-item"><div class="nav-icon"><svg viewBox="0 0 24 24"><circle cx="11" cy="11" r="8"/><line x1="21" y1="21" x2="16.65" y2="16.65"/></svg></div><div class="nav-dot"></div></div>
+   <div class="nav-item"><div class="nav-icon"><svg viewBox="0 0 24 24"><path d="M20.84 4.61a5.5 5.5 0 00-7.78 0L12 5.67l-1.06-1.06a5.5 5.5 0 00-7.78 7.78l1.06 1.06L12 21.23l7.78-7.78 1.06-1.06a5.5 5.5 0 000-7.78z"/></svg></div><div class="nav-dot"></div></div>
+   <div class="nav-item"><div class="nav-icon"><svg viewBox="0 0 24 24"><path d="M21 15a2 2 0 01-2 2H7l-4 4V5a2 2 0 012-2h14a2 2 0 012 2z"/></svg></div><div class="nav-dot"></div></div>
+   <div class="nav-item active"><div class="nav-icon"><svg viewBox="0 0 24 24"><path d="M20 21v-2a4 4 0 00-4-4H8a4 4 0 00-4 4v2"/><circle cx="12" cy="7" r="4"/></svg></div><div class="nav-dot"></div></div>
+  </div>
+
+ </div>
+</div>
+</body>
+</html>

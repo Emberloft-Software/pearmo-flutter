@@ -1,0 +1,309 @@
+<!DOCTYPE html>
+<html lang="en">
+<head>
+<meta charset="UTF-8"/><meta name="viewport" content="width=device-width,initial-scale=1"/>
+<title>Pearmo — Bento V2 · Paginated · Figtree</title>
+<link href="https://fonts.googleapis.com/css2?family=Figtree:wght@400;500;600;700;800;900&display=swap" rel="stylesheet"/>
+<style>
+*{box-sizing:border-box;margin:0;padding:0}
+:root{--bg:#FAF8FF;--p:#6C4CF1;--pk:#FF3D7F;--lm:#C6FF3D;--mg:#C4176A;--dk:#17101F;--s1:#EDE9FD;--s2:#FFF0F5;--s3:#F2FFD6;--t2:#6B6480;--bd:#E8E2F8}
+body{background:#dbd6f4;display:flex;justify-content:center;padding:40px 16px;font-family:'Figtree',sans-serif;min-height:100vh}
+.phone{width:390px;background:var(--bg);border-radius:48px;overflow:hidden;display:flex;flex-direction:column;height:820px;box-shadow:0 0 0 8px #fff,0 0 0 10px var(--bd),0 32px 80px rgba(108,76,241,.18)}
+.sb{display:flex;justify-content:space-between;padding:14px 28px 0;font-size:11px;font-weight:700;color:var(--dk);flex-shrink:0}
+
+/* Compact header */
+.hdr{display:flex;align-items:center;gap:12px;padding:10px 18px;flex-shrink:0}
+.hdr-av{width:42px;height:42px;border-radius:50%;background:linear-gradient(135deg,#7b5cf5,var(--pk));display:flex;align-items:center;justify-content:center;font-size:18px;flex-shrink:0}
+.hdr-info{flex:1}
+.hdr-name{font-size:17px;font-weight:800;color:var(--dk);letter-spacing:-.3px}
+.hdr-sub{font-size:11px;color:var(--t2);font-weight:500}
+.hdr-badge{background:var(--lm);color:var(--dk);font-size:9px;font-weight:800;padding:3px 9px;border-radius:999px;letter-spacing:.5px}
+.icon-btn{width:36px;height:36px;border-radius:12px;background:var(--s1);border:1px solid var(--bd);display:flex;align-items:center;justify-content:center}
+.icon-btn svg{width:15px;height:15px;stroke:var(--p);fill:none;stroke-width:2}
+
+/* Tab bar */
+.tabs{display:flex;padding:0 16px;gap:6px;flex-shrink:0;border-bottom:1px solid var(--bd);padding-bottom:0}
+.tab{flex:1;padding:10px 4px;text-align:center;font-size:13px;font-weight:700;color:var(--t2);cursor:pointer;border-bottom:2.5px solid transparent;transition:all .2s;margin-bottom:-1px}
+.tab.active{color:var(--p);border-bottom-color:var(--p)}
+
+/* Content */
+.pages{flex:1;overflow:hidden;position:relative}
+.page{position:absolute;inset:0;overflow-y:auto;padding:14px 16px 80px;opacity:0;pointer-events:none;transform:translateX(20px);transition:all .3s}
+.page.active{opacity:1;pointer-events:all;transform:translateX(0)}
+.page::-webkit-scrollbar{display:none}
+
+/* About page */
+.about-hero{background:linear-gradient(145deg,#7b5cf5,var(--pk));border-radius:24px;padding:20px;margin-bottom:10px;display:flex;gap:14px;align-items:center}
+.ab-img{width:70px;height:70px;border-radius:50%;background:rgba(255,255,255,.2);display:flex;align-items:center;justify-content:center;font-size:28px;border:2px solid rgba(255,255,255,.4);flex-shrink:0}
+.ab-info .name{font-size:20px;font-weight:900;color:#fff}
+.ab-info .sub{color:rgba(255,255,255,.75);font-size:12px;margin-top:3px}
+.ab-info .loc{color:rgba(255,255,255,.6);font-size:11px;margin-top:2px}
+
+.grid2{display:grid;grid-template-columns:1fr 1fr;gap:10px;margin-bottom:10px}
+.card{background:#fff;border-radius:20px;padding:14px;border:1px solid var(--bd)}
+.card-lbl{font-size:9px;font-weight:700;letter-spacing:1.5px;color:var(--t2);text-transform:uppercase;margin-bottom:6px}
+.stat-n{font-size:30px;font-weight:900;color:var(--p);line-height:1}
+.stat-s{font-size:11px;color:var(--t2);margin-top:2px}
+.qt-card{background:var(--s1);border-radius:20px;padding:14px;border:1px solid var(--bd);margin-bottom:10px}
+.qt-card p{font-size:13px;color:var(--dk);font-style:italic;line-height:1.6;font-weight:500}
+.chip-wrap{display:flex;flex-wrap:wrap;gap:6px;margin-top:6px}
+.chip{padding:5px 11px;border-radius:999px;font-size:11px;font-weight:700}
+.chip-p{background:var(--s1);color:var(--p);border:1px solid var(--bd)}
+.chip-pk{background:var(--s2);color:var(--mg);border:1px solid #ffd0e3}
+.chip-lm{background:var(--s3);color:#5a7f00;border:1px solid #cef080}
+
+/* Music page */
+.music-header{background:linear-gradient(120deg,var(--dk),#2d1854);border-radius:24px;padding:18px;margin-bottom:10px;position:relative;overflow:hidden}
+.music-header::before{content:'♪';position:absolute;right:16px;top:10px;font-size:60px;opacity:.08;color:#fff}
+.music-header::after{content:'♫';position:absolute;right:48px;bottom:8px;font-size:40px;opacity:.06;color:#fff}
+.mh-lbl{font-size:10px;font-weight:700;letter-spacing:2px;color:rgba(255,255,255,.5);text-transform:uppercase;margin-bottom:6px}
+.mh-title{font-size:18px;font-weight:900;color:#fff}
+.mh-sub{font-size:12px;color:rgba(255,255,255,.55);margin-top:4px}
+
+.genre-grid{display:grid;grid-template-columns:1fr 1fr;gap:10px;margin-bottom:10px}
+.gtile{border-radius:20px;padding:16px 14px;display:flex;align-items:center;gap:12px;cursor:pointer;transition:transform .15s}
+.gtile:hover{transform:scale(1.02)}
+.g-ico{width:44px;height:44px;border-radius:14px;display:flex;align-items:center;justify-content:center;font-size:22px;flex-shrink:0}
+.g-n{font-size:13px;font-weight:800;color:var(--dk)}
+.g-d{font-size:10px;color:var(--t2);margin-top:2px;font-weight:500}
+
+.gj{background:#FFF8E7;border:1.5px solid #FFE0A0}.gj .g-ico{background:#FFE9A0}
+.gl{background:var(--s1);border:1.5px solid var(--bd)}.gl .g-ico{background:#d6ceff}
+.gh{background:var(--s2);border:1.5px solid #ffd0e3}.gh .g-ico{background:#ffb3cc}
+.gi{background:var(--s3);border:1.5px solid #cef080}.gi .g-ico{background:#d8ffa0}
+.gr{background:#FFF0FB;border:1.5px solid #f0c0e8}.gr .g-ico{background:#f0b8e8}
+.gp{background:#F0F8FF;border:1.5px solid #b0d4f8}.gp .g-ico{background:#b8d8ff}
+
+/* Personality page */
+.p-hdr{background:var(--s1);border-radius:20px;padding:14px;border:1px solid var(--bd);margin-bottom:10px;text-align:center}
+.p-hdr p{font-size:12px;color:var(--t2);margin-top:4px;line-height:1.5}
+.p-hdr h3{font-size:15px;font-weight:800;color:var(--dk)}
+
+/* Radar SVG wrapper */
+.radar-wrap{background:#fff;border-radius:24px;border:1px solid var(--bd);padding:16px;margin-bottom:10px;display:flex;justify-content:center}
+.radar-wrap svg{width:100%;max-width:300px;height:auto}
+
+/* Trait legend */
+.trait-legend{display:flex;flex-direction:column;gap:8px}
+.tl-row{background:#fff;border-radius:14px;padding:12px 14px;border:1px solid var(--bd);display:flex;align-items:center;gap:10px}
+.tl-icon{font-size:18px;flex-shrink:0;width:28px;text-align:center}
+.tl-dot{width:10px;height:10px;border-radius:50%;flex-shrink:0}
+.tl-info{flex:1}
+.tl-name{font-size:13px;font-weight:700;color:var(--dk)}
+.tl-desc{font-size:11px;color:var(--t2);margin-top:1px}
+.tl-score{font-size:14px;font-weight:800;margin-left:auto}
+
+/* Bottom nav */
+.nav{position:absolute;bottom:0;left:0;right:0;background:rgba(250,248,255,.97);backdrop-filter:blur(12px);border-top:1px solid var(--bd);display:flex;justify-content:space-around;padding:10px 0 18px}
+.nav-item{display:flex;flex-direction:column;align-items:center;gap:4px;cursor:pointer}
+.nav-icon svg{width:22px;height:22px;stroke:var(--t2);fill:none;stroke-width:1.8}
+.nav-item.active .nav-icon svg{stroke:var(--pk)}
+.nav-dot{width:4px;height:4px;border-radius:50%;background:transparent}
+.nav-item.active .nav-dot{background:var(--pk)}
+</style>
+</head>
+<body>
+<div class="phone">
+ <div class="sb"><span>9:41</span><span>●●●</span></div>
+
+ <!-- Compact header -->
+ <div class="hdr">
+  <div class="hdr-av">😊</div>
+  <div class="hdr-info">
+   <div class="hdr-name">Anika, 26</div>
+   <div class="hdr-sub">📍 Colombo · 3 km away</div>
+  </div>
+  <span class="hdr-badge">✓ ID</span>
+  <div class="icon-btn" style="margin-left:6px">
+   <svg viewBox="0 0 24 24"><path d="M11 4H4a2 2 0 00-2 2v14a2 2 0 002 2h14a2 2 0 002-2v-7"/><path d="M18.5 2.5a2.121 2.121 0 013 3L12 15l-4 1 1-4 9.5-9.5z"/></svg>
+  </div>
+ </div>
+
+ <!-- Tabs -->
+ <div class="tabs">
+  <div class="tab active" onclick="switchTab(0)">About</div>
+  <div class="tab" onclick="switchTab(1)">🎵 Music</div>
+  <div class="tab" onclick="switchTab(2)">🧠 Personality</div>
+ </div>
+
+ <!-- Pages -->
+ <div class="pages" style="position:relative">
+
+  <!-- About -->
+  <div class="page active">
+   <div style="height:14px"></div>
+   <div class="about-hero">
+    <div class="ab-img">😊</div>
+    <div class="ab-info">
+     <div class="name">Anika Perera</div>
+     <div class="sub">Software Engineer · 26</div>
+     <div class="loc">📍 Colombo, Sri Lanka</div>
+    </div>
+   </div>
+   <div class="grid2">
+    <div class="card">
+     <div class="card-lbl">Trust Score</div>
+     <div class="stat-n">94</div>
+     <div class="stat-s">Top 5% of profiles</div>
+    </div>
+    <div class="card">
+     <div class="card-lbl">Connections</div>
+     <div class="stat-n">48</div>
+     <div class="stat-s">This month</div>
+    </div>
+   </div>
+   <div class="qt-card">
+    <div class="card-lbl">In her own words</div>
+    <p>"Morning person who can't function without coffee and good playlists."</p>
+   </div>
+   <div class="card" style="margin-bottom:10px">
+    <div class="card-lbl">Values</div>
+    <div class="chip-wrap">
+     <span class="chip chip-p">Honesty</span>
+     <span class="chip chip-p">Growth</span>
+     <span class="chip chip-lm">Creativity</span>
+     <span class="chip chip-pk">Empathy</span>
+    </div>
+   </div>
+   <div class="card">
+    <div class="card-lbl">Looking for</div>
+    <div class="chip-wrap">
+     <span class="chip chip-pk">Long-term</span>
+     <span class="chip chip-p">Deep conversations</span>
+     <span class="chip chip-lm">Adventures</span>
+    </div>
+   </div>
+  </div>
+
+  <!-- Music -->
+  <div class="page">
+   <div style="height:14px"></div>
+   <div class="music-header">
+    <div class="mh-lbl">Music Taste</div>
+    <div class="mh-title">6 Genres Selected</div>
+    <div class="mh-sub">Jazz · Lo-fi · Hip-Hop · Indie · R&B · Pop</div>
+   </div>
+   <div class="genre-grid">
+    <div class="gtile gj"><div class="g-ico">🎷</div><div><div class="g-n">Jazz</div><div class="g-d">Late night mood</div></div></div>
+    <div class="gtile gl"><div class="g-ico">🌙</div><div><div class="g-n">Lo-fi</div><div class="g-d">Study &amp; chill</div></div></div>
+    <div class="gtile gh"><div class="g-ico">🎤</div><div><div class="g-n">Hip-Hop</div><div class="g-d">Lyricism first</div></div></div>
+    <div class="gtile gi"><div class="g-ico">🎸</div><div><div class="g-n">Indie</div><div class="g-d">Hidden gems</div></div></div>
+    <div class="gtile gr"><div class="g-ico">🎵</div><div><div class="g-n">R&amp;B</div><div class="g-d">Soulful &amp; smooth</div></div></div>
+    <div class="gtile gp"><div class="g-ico">⭐</div><div><div class="g-n">Pop</div><div class="g-d">Guilty pleasures</div></div></div>
+   </div>
+  </div>
+
+  <!-- Personality -->
+  <div class="page">
+   <div style="height:14px"></div>
+   <div class="p-hdr">
+    <h3>Big Five Personality Profile</h3>
+    <p>Based on Anika's onboarding answers. Each axis shows a different dimension of personality.</p>
+   </div>
+
+   <!-- Radar chart -->
+   <div class="radar-wrap">
+    <svg viewBox="0 0 300 280" xmlns="http://www.w3.org/2000/svg">
+     <!-- Grid rings -->
+     <polygon points="150,50 225.3,100.4 197.6,186.9 102.4,186.9 74.7,100.4" fill="none" stroke="#E8E2F8" stroke-width="1"/>
+     <polygon points="150,75 206.5,112.8 185.7,176.2 114.3,176.2 93.5,112.8" fill="none" stroke="#E8E2F8" stroke-width="1"/>
+     <polygon points="150,100 187.7,125.2 173.8,165.4 126.2,165.4 112.3,125.2" fill="none" stroke="#E8E2F8" stroke-width="1"/>
+     <polygon points="150,125 168.8,137.6 162,154.7 138,154.7 131.2,137.6" fill="none" stroke="#E8E2F8" stroke-width="1"/>
+     <!-- Axis lines -->
+     <line x1="150" y1="50" x2="150" y2="165" stroke="#E8E2F8" stroke-width="1"/>
+     <line x1="150" y1="50" x2="225.3" y2="100.4" stroke="#E8E2F8" stroke-width="1" transform="rotate(72 150 165)"/>
+     <line x1="150" y1="50" x2="225.3" y2="100.4" stroke="#E8E2F8" stroke-width="1" transform="rotate(144 150 165)"/>
+     <line x1="150" y1="50" x2="225.3" y2="100.4" stroke="#E8E2F8" stroke-width="1" transform="rotate(216 150 165)"/>
+     <line x1="150" y1="50" x2="225.3" y2="100.4" stroke="#E8E2F8" stroke-width="1" transform="rotate(288 150 165)"/>
+     <!-- Filled area (scores: O=78, C=65, E=55, A=82, N=35) -->
+     <!-- Vertices computed: cx=150,cy=165, r=115 -->
+     <!-- O(0°-90): 150, 165-89.7=75.3 → score 0.78 → 165-(115*0.78)=165-89.7=75.3 → (150, 75.3) -->
+     <!-- C(72°-90=-18°): 150+115*cos(-18°)=150+109.4=→wait let me recalculate -->
+     <!-- Using angles from top: O=270°, C=342°, E=54°, A=126°, N=198° in standard -->
+     <!-- O top: (150, 165-115*0.78)=(150, 75.3) -->
+     <!-- C upper-right (angle -18° from east = 72° from top): x=150+115*sin(72°)*0.65=150+71.3=221.3, y=165-115*cos(72°)*0.65=165-23.1=141.9 -->
+     <!-- E lower-right (angle 54° from east = 144° from top): x=150+115*sin(144°)*0.55=150+39.4=189.4, y=165-115*cos(144°)*0.55=165+51.3=216.3 ← below center -->
+     <!-- A lower-left (angle 126° = 216° from top): x=150+115*sin(216°)*0.82=150-55.5=94.5, y=165-115*cos(216°)*0.82=165+76.4=241.4 -->
+     <!-- N upper-left (angle 198° = 288° from top): x=150+115*sin(288°)*0.35=150-38.3=111.7, y=165-115*cos(288°)*0.35=165-12.4=152.6 -->
+     <polygon points="150,75.3 221.3,141.9 189.4,216.3 94.5,227 111.7,152.6"
+      fill="rgba(108,76,241,.15)" stroke="#6C4CF1" stroke-width="2.5" stroke-linejoin="round"/>
+     <!-- Score dots -->
+     <circle cx="150" cy="75.3" r="5" fill="#6C4CF1"/>
+     <circle cx="221.3" cy="141.9" r="5" fill="#7aab00"/>
+     <circle cx="189.4" cy="216.3" r="5" fill="#FF3D7F"/>
+     <circle cx="94.5" cy="227" r="5" fill="#C4176A"/>
+     <circle cx="111.7" cy="152.6" r="5" fill="#6C4CF1" opacity=".5"/>
+     <!-- Labels with clear positioning -->
+     <!-- Openness - top center -->
+     <text x="150" y="36" text-anchor="middle" font-size="11" font-weight="700" fill="#6C4CF1" font-family="Figtree,sans-serif">✨ Openness</text>
+     <text x="150" y="47" text-anchor="middle" font-size="9" fill="#6B6480" font-family="Figtree,sans-serif">78%</text>
+     <!-- Conscientiousness - upper right -->
+     <text x="242" y="130" text-anchor="start" font-size="11" font-weight="700" fill="#5a7f00" font-family="Figtree,sans-serif">🎯 Conscient.</text>
+     <text x="242" y="141" text-anchor="start" font-size="9" fill="#6B6480" font-family="Figtree,sans-serif">65%</text>
+     <!-- Extraversion - lower right -->
+     <text x="242" y="218" text-anchor="start" font-size="11" font-weight="700" fill="#FF3D7F" font-family="Figtree,sans-serif">⚡ Extravers.</text>
+     <text x="242" y="229" text-anchor="start" font-size="9" fill="#6B6480" font-family="Figtree,sans-serif">55%</text>
+     <!-- Agreeableness - lower left -->
+     <text x="60" y="242" text-anchor="end" font-size="11" font-weight="700" fill="#C4176A" font-family="Figtree,sans-serif">💫 Agree.</text>
+     <text x="60" y="253" text-anchor="end" font-size="9" fill="#6B6480" font-family="Figtree,sans-serif">82%</text>
+     <!-- Neuroticism - upper left -->
+     <text x="60" y="142" text-anchor="end" font-size="11" font-weight="700" fill="#6C4CF1" font-family="Figtree,sans-serif">🌿 Neurotic.</text>
+     <text x="60" y="153" text-anchor="end" font-size="9" fill="#6B6480" font-family="Figtree,sans-serif">35%</text>
+    </svg>
+   </div>
+
+   <!-- Full legend rows -->
+   <div class="trait-legend">
+    <div class="tl-row">
+     <div class="tl-icon">✨</div>
+     <div class="tl-dot" style="background:#6C4CF1"></div>
+     <div class="tl-info"><div class="tl-name">Openness</div><div class="tl-desc">Curious, creative, open to new ideas</div></div>
+     <div class="tl-score" style="color:#6C4CF1">78%</div>
+    </div>
+    <div class="tl-row">
+     <div class="tl-icon">🎯</div>
+     <div class="tl-dot" style="background:#7aab00"></div>
+     <div class="tl-info"><div class="tl-name">Conscientiousness</div><div class="tl-desc">Organized, reliable, goal-driven</div></div>
+     <div class="tl-score" style="color:#5a7f00">65%</div>
+    </div>
+    <div class="tl-row">
+     <div class="tl-icon">⚡</div>
+     <div class="tl-dot" style="background:#FF3D7F"></div>
+     <div class="tl-info"><div class="tl-name">Extraversion</div><div class="tl-desc">Selectively social, ambivert energy</div></div>
+     <div class="tl-score" style="color:#FF3D7F">55%</div>
+    </div>
+    <div class="tl-row">
+     <div class="tl-icon">💫</div>
+     <div class="tl-dot" style="background:#C4176A"></div>
+     <div class="tl-info"><div class="tl-name">Agreeableness</div><div class="tl-desc">Warm, empathetic, highly cooperative</div></div>
+     <div class="tl-score" style="color:#C4176A">82%</div>
+    </div>
+    <div class="tl-row">
+     <div class="tl-icon">🌿</div>
+     <div class="tl-dot" style="background:#6C4CF1;opacity:.5"></div>
+     <div class="tl-info"><div class="tl-name">Neuroticism</div><div class="tl-desc">Emotionally stable, low reactivity</div></div>
+     <div class="tl-score" style="color:#6C4CF1;opacity:.7">35%</div>
+    </div>
+   </div>
+  </div>
+
+  <!-- Bottom nav -->
+  <div class="nav">
+   <div class="nav-item"><div class="nav-icon"><svg viewBox="0 0 24 24"><path d="M3 9l9-7 9 7v11a2 2 0 01-2 2H5a2 2 0 01-2-2z"/><polyline points="9 22 9 12 15 12 15 22"/></svg></div><div class="nav-dot"></div></div>
+   <div class="nav-item"><div class="nav-icon"><svg viewBox="0 0 24 24"><circle cx="11" cy="11" r="8"/><line x1="21" y1="21" x2="16.65" y2="16.65"/></svg></div><div class="nav-dot"></div></div>
+   <div class="nav-item"><div class="nav-icon"><svg viewBox="0 0 24 24"><path d="M20.84 4.61a5.5 5.5 0 00-7.78 0L12 5.67l-1.06-1.06a5.5 5.5 0 00-7.78 7.78l1.06 1.06L12 21.23l7.78-7.78 1.06-1.06a5.5 5.5 0 000-7.78z"/></svg></div><div class="nav-dot"></div></div>
+   <div class="nav-item"><div class="nav-icon"><svg viewBox="0 0 24 24"><path d="M21 15a2 2 0 01-2 2H7l-4 4V5a2 2 0 012-2h14a2 2 0 012 2z"/></svg></div><div class="nav-dot"></div></div>
+   <div class="nav-item active"><div class="nav-icon"><svg viewBox="0 0 24 24"><path d="M20 21v-2a4 4 0 00-4-4H8a4 4 0 00-4 4v2"/><circle cx="12" cy="7" r="4"/></svg></div><div class="nav-dot"></div></div>
+  </div>
+
+ </div>
+</div>
+
+<script>
+function switchTab(idx){
+ document.querySelectorAll('.tab').forEach((t,i)=>t.classList.toggle('active',i===idx));
+ document.querySelectorAll('.page').forEach((p,i)=>p.classList.toggle('active',i===idx));
+}
+</script>
+</body>
+</html>

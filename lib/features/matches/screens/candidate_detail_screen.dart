@@ -2,8 +2,6 @@ import 'package:flutter/material.dart';
 import 'package:flutter_riverpod/flutter_riverpod.dart';
 import 'package:go_router/go_router.dart';
 
-import '../../../core/theme/app_colors.dart';
-import '../../../core/theme/app_text_styles.dart';
 import '../../../core/utils/error_mapper.dart';
 import '../../../data/models/public_profile.dart';
 import '../../../providers/auth_providers.dart';
@@ -119,64 +117,64 @@ class _CandidateDetailScreenState extends ConsumerState<CandidateDetailScreen> {
   }
 
   Widget _buildBody(BuildContext context, PublicProfile profile) {
+    // Today's match row for this candidate (already fetched for the list
+    // screen) — reused here for the score chip. Purely display data.
+    final matchCards = ref.watch(dailyMatchCardsProvider).valueOrNull;
+    final score = matchCards
+        ?.where((c) => c.match.candidateId == widget.candidateId)
+        .firstOrNull
+        ?.match
+        .score;
+
     return Column(
       children: [
         Expanded(
           child: ListView(
-            padding: const EdgeInsets.all(20),
+            padding: const EdgeInsets.all(16),
             children: [
-              Center(
-                child: SignedAvatarDisplay(
-                  avatarId: profile.avatarId,
-                  photoPath: profile.profilePhotoUrl,
-                  showPhoto: profile.hasPublicPhoto,
-                  size: 120,
-                ),
+              HeroProfileCard(
+                avatarId: profile.avatarId,
+                photoPath: profile.profilePhotoUrl,
+                showPhoto: profile.hasPublicPhoto,
+                title: '${profile.age} · ${profile.gender.label}',
+                subtitle: profile.regionName,
+                tierLabel: profile.verificationTier.label,
+                isVerified: profile.verificationTier.label != 'Unverified',
+                matchPercent: score == null ? null : (score * 100).round().clamp(0, 100),
               ),
-              const SizedBox(height: 16),
-              Center(
-                child: Row(
-                  mainAxisSize: MainAxisSize.min,
-                  children: [
-                    Text('${profile.age} · ${profile.gender.label}', style: AppTextStyles.headline),
-                    if (profile.verificationTier.label != 'Unverified') ...[
-                      const SizedBox(width: 8),
-                      const Icon(Icons.verified, color: AppColors.secondary),
-                    ],
-                  ],
-                ),
-              ),
-              if (profile.regionName != null) ...[
-                const SizedBox(height: 4),
-                Center(
-                  child: Text(profile.regionName!, style: AppTextStyles.caption),
-                ),
-              ],
-              const SizedBox(height: 24),
+              const SizedBox(height: 12),
               if (profile.audioIntroUrl != null && profile.audioIntroUrl!.isNotEmpty) ...[
                 AudioIntroPlayer(storagePath: profile.audioIntroUrl!),
-                const SizedBox(height: 24),
+                const SizedBox(height: 12),
               ],
-              const SectionHeader(title: 'About'),
-              Text(
-                profile.aboutText.isEmpty ? 'No bio yet.' : profile.aboutText,
-                style: AppTextStyles.bodyLarge,
+              QuoteCard(
+                label: 'In their own words',
+                text: profile.aboutText,
+                emptyPlaceholder: 'No bio yet.',
               ),
-              const SizedBox(height: 24),
-              const SectionHeader(title: 'Looking for'),
-              AttributeChipList(labels: [profile.relationshipIntent.label]),
+              const SizedBox(height: 12),
+              BentoCard(
+                label: 'Looking for',
+                child: AttributeChipList(labels: [profile.relationshipIntent.label]),
+              ),
               if (profile.partnerValues.isNotEmpty) ...[
-                const SizedBox(height: 24),
-                const SectionHeader(title: 'Values most in a partner'),
-                AttributeChipList(labels: profile.partnerValues.map((e) => e.label).toList()),
+                const SizedBox(height: 12),
+                BentoCard(
+                  label: 'Values most in a partner',
+                  child:
+                      AttributeChipList(labels: profile.partnerValues.map((e) => e.label).toList()),
+                ),
               ],
               if (profile.musicGenres.isNotEmpty) ...[
-                const SizedBox(height: 24),
-                const SectionHeader(title: 'Music taste'),
-                AttributeChipList(labels: profile.musicGenres.map((e) => e.label).toList()),
+                const SizedBox(height: 12),
+                BentoCard(
+                  label: 'Music taste',
+                  child:
+                      AttributeChipList(labels: profile.musicGenres.map((e) => e.label).toList()),
+                ),
               ],
               if (_error != null) ...[
-                const SizedBox(height: 24),
+                const SizedBox(height: 16),
                 ErrorBanner(message: _error!),
               ],
             ],

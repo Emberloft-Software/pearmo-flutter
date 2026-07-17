@@ -1,0 +1,272 @@
+<!DOCTYPE html>
+<html lang="en">
+<head>
+<meta charset="UTF-8"/><meta name="viewport" content="width=device-width,initial-scale=1"/>
+<title>Pearmo — Hinge-Inspired</title>
+<link href="https://fonts.googleapis.com/css2?family=DM+Serif+Display:ital@0;1&family=DM+Sans:wght@400;500;600;700&display=swap" rel="stylesheet"/>
+<style>
+*{box-sizing:border-box;margin:0;padding:0}
+:root{--bg:#FAF8FF;--p:#6C4CF1;--pk:#FF3D7F;--lm:#C6FF3D;--mg:#C4176A;--dk:#17101F;--s1:#EDE9FD;--s2:#FFF0F5;--s3:#F2FFD6;--t2:#6B6480;--bd:#E8E2F8}
+body{background:#d8d3f2;display:flex;justify-content:center;padding:40px 16px;font-family:'DM Sans',sans-serif;min-height:100vh}
+.phone{width:390px;background:var(--bg);border-radius:48px;overflow:hidden;box-shadow:0 0 0 8px #fff,0 0 0 10px var(--bd),0 40px 100px rgba(108,76,241,.2)}
+.scroll{overflow-y:auto;max-height:840px;padding-bottom:24px}.scroll::-webkit-scrollbar{display:none}
+.sb{display:flex;justify-content:space-between;padding:14px 28px 0;font-size:11px;font-weight:700;color:var(--dk)}
+
+/* Header */
+.hdr{display:flex;align-items:center;justify-content:space-between;padding:10px 20px 14px}
+.hdr-t{font-family:'DM Serif Display',serif;font-size:22px;color:var(--dk);font-style:italic}
+.ib{width:36px;height:36px;border-radius:12px;background:#fff;border:1px solid var(--bd);display:flex;align-items:center;justify-content:center}
+.ib svg{width:15px;height:15px;stroke:var(--p);fill:none;stroke-width:2}
+
+/* ─── Identity card ─── */
+.id-card{margin:0 16px;background:linear-gradient(155deg,var(--dk) 0%,#2a1060 100%);border-radius:28px;padding:24px 22px;position:relative;overflow:hidden}
+.id-card::before{content:'';position:absolute;top:-40px;right:-40px;width:180px;height:180px;border-radius:50%;background:rgba(108,76,241,.2)}
+.id-card::after{content:'';position:absolute;bottom:-30px;left:-20px;width:100px;height:100px;border-radius:50%;background:rgba(255,61,127,.1)}
+.id-top{display:flex;gap:16px;align-items:flex-end;position:relative;z-index:1}
+.av-wrap{position:relative;flex-shrink:0}
+.av{width:80px;height:80px;border-radius:22px;background:linear-gradient(135deg,#b8a9f3,#ff8c8c);display:flex;align-items:center;justify-content:center;font-family:'DM Serif Display',serif;font-size:30px;color:#fff;border:2px solid rgba(255,255,255,.2)}
+.mic-btn{position:absolute;bottom:-8px;right:-8px;width:28px;height:28px;border-radius:50%;background:var(--pk);border:2.5px solid var(--dk);display:flex;align-items:center;justify-content:center;cursor:pointer;box-shadow:0 0 12px rgba(255,61,127,.5)}
+.mic-btn svg{width:12px;height:12px;stroke:#fff;fill:none;stroke-width:2.5}
+.id-info{flex:1;padding-bottom:4px}
+.id-name{font-family:'DM Serif Display',serif;font-size:26px;color:#fff;line-height:1;letter-spacing:-.3px}
+.id-sub{font-size:12px;color:rgba(255,255,255,.55);margin-top:5px;font-weight:500}
+.id-badges{display:flex;flex-wrap:wrap;gap:5px;margin-top:12px;position:relative;z-index:1}
+.badge{padding:5px 11px;border-radius:999px;font-size:11px;font-weight:700}
+.b-lm{background:var(--lm);color:var(--dk)}
+.b-ghost{background:rgba(255,255,255,.1);color:rgba(255,255,255,.8);border:1px solid rgba(255,255,255,.15)}
+.react-row{display:flex;justify-content:flex-end;margin-top:12px;position:relative;z-index:1}
+.react-btn{background:rgba(255,255,255,.1);border:1px solid rgba(255,255,255,.15);border-radius:999px;padding:6px 14px;color:rgba(255,255,255,.7);font-size:12px;font-weight:600;cursor:pointer;display:flex;align-items:center;gap:5px;transition:all .2s}
+.react-btn:hover{background:rgba(255,61,127,.3);border-color:var(--pk);color:#fff}
+
+/* ─── Prompt cards ─── */
+.prompt{margin:10px 16px 0;background:#fff;border-radius:24px;overflow:hidden;border:1px solid var(--bd)}
+.prompt-q{background:var(--s1);padding:12px 16px;border-bottom:1px solid var(--bd)}
+.pq-label{font-size:9px;font-weight:700;text-transform:uppercase;letter-spacing:1.5px;color:var(--p);margin-bottom:3px}
+.pq-text{font-family:'DM Serif Display',serif;font-size:15px;color:var(--dk);font-style:italic}
+.prompt-a{padding:14px 16px}
+.prompt-a p{font-size:14px;color:var(--dk);line-height:1.7;font-weight:500}
+.prompt-footer{padding:10px 16px;border-top:1px solid var(--bd);display:flex;justify-content:flex-end;gap:8px}
+.pf-btn{padding:6px 14px;border-radius:999px;font-size:12px;font-weight:700;cursor:pointer;border:1.5px solid;transition:all .2s;font-family:'DM Sans',sans-serif}
+.pf-like{background:var(--s2);color:var(--pk);border-color:#ffd0e3}.pf-like:hover{background:var(--pk);color:#fff}
+.pf-comment{background:var(--s1);color:var(--p);border-color:var(--bd)}.pf-comment:hover{background:var(--p);color:#fff}
+
+/* ─── Music card (dark) ─── */
+.music-card{margin:10px 16px 0;background:var(--dk);border-radius:24px;overflow:hidden}
+.mc-header{padding:16px 18px 12px;border-bottom:1px solid rgba(255,255,255,.08);display:flex;align-items:center;justify-content:space-between}
+.mc-label{font-size:9px;font-weight:700;text-transform:uppercase;letter-spacing:1.5px;color:rgba(255,255,255,.4)}
+.mc-title{font-family:'DM Serif Display',serif;font-size:17px;color:#fff;font-style:italic;margin-top:2px}
+.mc-body{padding:14px 18px;display:flex;flex-wrap:wrap;gap:7px}
+.gen{padding:7px 13px;border-radius:999px;font-size:12px;font-weight:700;display:flex;align-items:center;gap:5px}
+.gj{background:rgba(255,232,150,.12);color:#ffe896;border:1px solid rgba(255,232,150,.2)}
+.gl{background:rgba(173,156,255,.15);color:#b8a9f3;border:1px solid rgba(173,156,255,.2)}
+.gh{background:rgba(255,61,127,.12);color:#ff80a8;border:1px solid rgba(255,61,127,.2)}
+.gi{background:rgba(198,255,61,.12);color:#b8f040;border:1px solid rgba(198,255,61,.2)}
+.ge{background:rgba(108,76,241,.2);color:#a090ff;border:1px solid rgba(108,76,241,.25)}
+.gr{background:rgba(196,23,106,.15);color:#ff70c0;border:1px solid rgba(196,23,106,.2)}
+.mc-footer{padding:10px 18px;border-top:1px solid rgba(255,255,255,.06);display:flex;justify-content:flex-end}
+.mc-react{padding:6px 14px;border-radius:999px;font-size:12px;font-weight:700;background:rgba(255,255,255,.08);color:rgba(255,255,255,.6);border:1px solid rgba(255,255,255,.12);cursor:pointer}
+
+/* ─── Personality bubbles ─── */
+.pers-card{margin:10px 16px 0;background:#fff;border-radius:24px;border:1px solid var(--bd);overflow:hidden}
+.pc-header{padding:14px 16px 10px;border-bottom:1px solid var(--bd)}
+.pc-q-label{font-size:9px;font-weight:700;text-transform:uppercase;letter-spacing:1.5px;color:var(--p);margin-bottom:3px}
+.pc-q{font-family:'DM Serif Display',serif;font-size:15px;color:var(--dk);font-style:italic}
+.pc-body{padding:14px 16px;display:grid;grid-template-columns:1fr 1fr 1fr;gap:8px}
+.tb{border-radius:16px;padding:12px 8px;display:flex;flex-direction:column;align-items:center;gap:5px;border:1.5px solid}
+.tb-ico{font-size:20px}
+.tb-name{font-size:10px;font-weight:700;color:var(--dk);text-align:center;line-height:1.3}
+.tb-pct{font-size:12px;font-weight:800}
+.tb1{background:var(--s1);border-color:var(--bd)}
+.tb2{background:var(--s2);border-color:#ffd0e3}
+.tb3{background:var(--s3);border-color:#cef080}
+.tb4{background:#FFF0FB;border-color:#f0b8e8}
+.tb5{background:#FFF8E7;border-color:#FFE0A0}
+.tb6{background:#EEF4FF;border-color:#c0d4f8}
+.pc-footer{padding:10px 16px;border-top:1px solid var(--bd);display:flex;justify-content:flex-end}
+
+/* ─── Values prompt ─── */
+/* reuses .prompt styles */
+
+/* ─── Account ─── */
+.acc-label{padding:18px 20px 8px;font-size:9px;font-weight:700;text-transform:uppercase;letter-spacing:1.5px;color:var(--t2)}
+.acc{margin:0 16px;background:#fff;border-radius:20px;overflow:hidden;border:1px solid var(--bd)}
+.ar{display:flex;align-items:center;gap:12px;padding:14px 16px;border-bottom:1px solid var(--bd);cursor:pointer;transition:background .15s}
+.ar:last-child{border-bottom:none}
+.ar:hover{background:var(--bg)}
+.ar-icon{width:32px;height:32px;border-radius:9px;display:flex;align-items:center;justify-content:center;flex-shrink:0}
+.ar-icon svg{width:14px;height:14px;fill:none;stroke-width:2}
+.ar-info{flex:1}
+.ar-t{font-size:13px;font-weight:700;color:var(--dk)}
+.ar-s{font-size:11px;color:var(--t2);margin-top:1px}
+.chev svg{width:12px;height:12px;stroke:var(--t2);fill:none;stroke-width:2.5;opacity:.4}
+</style>
+</head>
+<body>
+<div class="phone"><div class="scroll">
+ <div class="sb"><span>9:41</span><span>●●●</span></div>
+
+ <div class="hdr">
+  <span class="hdr-t">My Profile</span>
+  <div class="ib"><svg viewBox="0 0 24 24"><path d="M11 4H4a2 2 0 00-2 2v14a2 2 0 002 2h14a2 2 0 002-2v-7"/><path d="M18.5 2.5a2.121 2.121 0 013 3L12 15l-4 1 1-4 9.5-9.5z"/></svg></div>
+ </div>
+
+ <!-- Identity card -->
+ <div class="id-card">
+  <div class="id-top">
+   <div class="av-wrap">
+    <div class="av">A</div>
+    <div class="mic-btn"><svg viewBox="0 0 24 24"><path d="M12 1a3 3 0 00-3 3v8a3 3 0 006 0V4a3 3 0 00-3-3z"/><path d="M19 10v2a7 7 0 01-14 0v-2"/></svg></div>
+   </div>
+   <div class="id-info">
+    <div class="id-name">Anika, 26</div>
+    <div class="id-sub">Woman · Colombo, Sri Lanka · 3 km</div>
+   </div>
+  </div>
+  <div class="id-badges">
+   <span class="badge b-lm">✓ Age Verified</span>
+   <span class="badge b-ghost">Something serious</span>
+   <span class="badge b-ghost">She / her</span>
+  </div>
+  <div class="react-row">
+   <button class="react-btn">👋 Say hi</button>
+  </div>
+ </div>
+
+ <!-- Prompt 1 — About -->
+ <div class="prompt">
+  <div class="prompt-q">
+   <div class="pq-label">Prompt</div>
+   <div class="pq-text">A typical Saturday morning for me looks like…</div>
+  </div>
+  <div class="prompt-a">
+   <p>Coffee before anything else — I'm genuinely dangerous without it. Then either a long walk with Jazz on, or reading in bed until noon with zero guilt.</p>
+  </div>
+  <div class="prompt-footer">
+   <button class="pf-btn pf-like">♥ Like this</button>
+   <button class="pf-btn pf-comment">💬 Comment</button>
+  </div>
+ </div>
+
+ <!-- Music card (dark) -->
+ <div class="music-card">
+  <div class="mc-header">
+   <div>
+    <div class="mc-label">What I'm always listening to</div>
+    <div class="mc-title">Jazz & Late Nights</div>
+   </div>
+   <span style="font-size:30px;opacity:.6">🎧</span>
+  </div>
+  <div class="mc-body">
+   <span class="gen gj">🎷 Jazz</span>
+   <span class="gen gl">🌙 Lo-fi</span>
+   <span class="gen gh">🎤 Hip-Hop</span>
+   <span class="gen gi">🎸 Indie</span>
+   <span class="gen ge">⚡ Electronic</span>
+   <span class="gen gr">🎵 R&amp;B</span>
+  </div>
+  <div class="mc-footer">
+   <button class="mc-react">🎵 Same taste</button>
+  </div>
+ </div>
+
+ <!-- Prompt 2 — Values -->
+ <div class="prompt">
+  <div class="prompt-q">
+   <div class="pq-label">Prompt</div>
+   <div class="pq-text">The way to my heart is through someone who has…</div>
+  </div>
+  <div class="prompt-a">
+   <p>Emotional depth — the kind of person who actually listens, not just waits to talk. And a sense of humour that makes the hard days easier.</p>
+  </div>
+  <div class="prompt-footer">
+   <button class="pf-btn pf-like">♥ Like this</button>
+   <button class="pf-btn pf-comment">💬 Comment</button>
+  </div>
+ </div>
+
+ <!-- Personality bubbles -->
+ <div class="pers-card">
+  <div class="pc-header">
+   <div class="pc-q-label">PEARMO Profile</div>
+   <div class="pc-q">How I'm actually wired…</div>
+  </div>
+  <div class="pc-body">
+   <div class="tb tb1">
+    <span class="tb-ico">✨</span>
+    <span class="tb-name">Openness</span>
+    <span class="tb-pct" style="color:var(--p)">78%</span>
+   </div>
+   <div class="tb tb2">
+    <span class="tb-ico">⚡</span>
+    <span class="tb-name">Extraversion</span>
+    <span class="tb-pct" style="color:var(--pk)">55%</span>
+   </div>
+   <div class="tb tb3">
+    <span class="tb-ico">🎯</span>
+    <span class="tb-name">Conscienti-ousness</span>
+    <span class="tb-pct" style="color:#5a7f00">65%</span>
+   </div>
+   <div class="tb tb4">
+    <span class="tb-ico">💫</span>
+    <span class="tb-name">Agreeableness</span>
+    <span class="tb-pct" style="color:var(--mg)">82%</span>
+   </div>
+   <div class="tb tb5">
+    <span class="tb-ico">🌿</span>
+    <span class="tb-name">Emotional Stability</span>
+    <span class="tb-pct" style="color:#886600">72%</span>
+   </div>
+   <div class="tb tb6">
+    <span class="tb-ico">🔗</span>
+    <span class="tb-name">Attachment Security</span>
+    <span class="tb-pct" style="color:#3050c0">88%</span>
+   </div>
+  </div>
+  <div class="pc-footer">
+   <button class="pf-btn pf-comment" style="font-size:11px">What does this mean? →</button>
+  </div>
+ </div>
+
+ <!-- Prompt 3 — Seeking -->
+ <div class="prompt">
+  <div class="prompt-q">
+   <div class="pq-label">Looking for</div>
+   <div class="pq-text">I'll know we're compatible if you…</div>
+  </div>
+  <div class="prompt-a">
+   <p>Can hold a real conversation past small talk. Appreciate slow Sundays as much as adventures. Ideally somewhere between 24 and 32, and open to something serious.</p>
+  </div>
+  <div class="prompt-footer">
+   <button class="pf-btn pf-like">♥ Like this</button>
+   <button class="pf-btn pf-comment">💬 Comment</button>
+  </div>
+ </div>
+
+ <!-- Account -->
+ <div class="acc-label">Account</div>
+ <div class="acc" style="margin-bottom:32px">
+  <div class="ar">
+   <div class="ar-icon" style="background:var(--s1)"><svg viewBox="0 0 24 24" style="stroke:var(--p)"><circle cx="12" cy="12" r="3"/><path d="M19.4 15a1.65 1.65 0 00.33 1.82l.06.06a2 2 0 010 2.83 2 2 0 01-2.83 0l-.06-.06a1.65 1.65 0 00-1.82-.33 1.65 1.65 0 00-1 1.51V21a2 2 0 01-4 0v-.09A1.65 1.65 0 009 19.4a1.65 1.65 0 00-1.82.33l-.06.06a2 2 0 01-2.83-2.83l.06-.06A1.65 1.65 0 004.68 15a1.65 1.65 0 00-1.51-1H3a2 2 0 010-4h.09A1.65 1.65 0 004.6 9a1.65 1.65 0 00-.33-1.82l-.06-.06a2 2 0 012.83-2.83l.06.06A1.65 1.65 0 009 4.68a1.65 1.65 0 001-1.51V3a2 2 0 014 0v.09a1.65 1.65 0 001 1.51 1.65 1.65 0 001.82-.33l.06-.06a2 2 0 012.83 2.83l-.06.06A1.65 1.65 0 0019.4 9a1.65 1.65 0 001.51 1H21a2 2 0 010 4h-.09a1.65 1.65 0 00-1.51 1z"/></svg></div>
+   <div class="ar-info"><div class="ar-t">Settings</div><div class="ar-s">Privacy, notifications, active hours</div></div>
+   <div class="chev"><svg viewBox="0 0 24 24"><polyline points="9 18 15 12 9 6"/></svg></div>
+  </div>
+  <div class="ar">
+   <div class="ar-icon" style="background:var(--s3)"><svg viewBox="0 0 24 24" style="stroke:#5a7f00"><path d="M12 22s8-4 8-10V5l-8-3-8 3v7c0 6 8 10 8 10z"/></svg></div>
+   <div class="ar-info"><div class="ar-t">Verification</div><div class="ar-s">Age verified · Upgrade available</div></div>
+   <div class="chev"><svg viewBox="0 0 24 24"><polyline points="9 18 15 12 9 6"/></svg></div>
+  </div>
+  <div class="ar">
+   <div class="ar-icon" style="background:#FFF8E7"><svg viewBox="0 0 24 24" style="stroke:#b8860b"><path d="M12 2l3.09 6.26L22 9.27l-5 4.87 1.18 6.88L12 17.77l-6.18 3.25L7 14.14 2 9.27l6.91-1.01L12 2z"/></svg></div>
+   <div class="ar-info"><div class="ar-t">Membership</div><div class="ar-s">Free plan · See Pearmo Plus</div></div>
+   <div class="chev"><svg viewBox="0 0 24 24"><polyline points="9 18 15 12 9 6"/></svg></div>
+  </div>
+  <div class="ar">
+   <div class="ar-icon" style="background:var(--s2)"><svg viewBox="0 0 24 24" style="stroke:var(--pk)"><path d="M9 21H5a2 2 0 01-2-2V5a2 2 0 012-2h4M16 17l5-5-5-5M21 12H9"/></svg></div>
+   <div class="ar-info"><div class="ar-t" style="color:var(--pk)">Sign out</div></div>
+   <div class="chev"><svg viewBox="0 0 24 24"><polyline points="9 18 15 12 9 6"/></svg></div>
+  </div>
+ </div>
+
+</div></div>
+</body>
+</html>

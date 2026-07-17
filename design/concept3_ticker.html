@@ -1,0 +1,200 @@
+<!DOCTYPE html>
+<html lang="en">
+<head>
+<meta charset="UTF-8"/><meta name="viewport" content="width=device-width,initial-scale=1"/>
+<title>Pearmo C3: Ticker Tape</title>
+<link href="https://fonts.googleapis.com/css2?family=Space+Grotesk:wght@400;500;600;700&display=swap" rel="stylesheet"/>
+<style>
+*{box-sizing:border-box;margin:0;padding:0}
+:root{--bg:#FAF8FF;--p:#6C4CF1;--pk:#FF3D7F;--lm:#C6FF3D;--mg:#C4176A;--dk:#17101F;--t2:#6B6480;--bd:#E8E2F8;--s1:#EDE9FD;--s2:#FFF0F5;--s3:#F2FFD6}
+body{background:#f0ebff;display:flex;justify-content:center;padding:40px 16px;font-family:'Space Grotesk',sans-serif}
+.phone{width:390px;background:var(--bg);border-radius:44px;overflow:hidden;box-shadow:0 0 0 8px #fff,0 0 0 10px var(--bd),0 24px 60px rgba(108,76,241,.2)}
+.sb{display:flex;justify-content:space-between;padding:14px 28px 0;font-size:12px;font-weight:700;color:var(--dk)}
+
+/* Header */
+.header{padding:12px 20px 0;display:flex;align-items:center;justify-content:space-between}
+.header-left{display:flex;align-items:center;gap:14px}
+.av{width:52px;height:52px;border-radius:18px;background:linear-gradient(135deg,var(--p),var(--pk));display:flex;align-items:center;justify-content:center;font-size:24px;flex-shrink:0;position:relative}
+.av-dot{position:absolute;bottom:-2px;right:-2px;width:16px;height:16px;border-radius:50%;background:var(--lm);border:2px solid var(--bg);display:flex;align-items:center;justify-content:center}
+.av-dot svg{width:9px;height:9px;stroke:#3d6600;stroke-width:2.5;fill:none}
+.header-txt h1{font-size:20px;font-weight:700;color:var(--dk);letter-spacing:-0.5px}
+.header-txt p{font-size:12px;color:var(--t2);margin-top:1px}
+.header-right{display:flex;gap:8px}
+.ibt{width:36px;height:36px;border-radius:12px;background:var(--s1);border:1px solid var(--bd);display:flex;align-items:center;justify-content:center;cursor:pointer}
+.ibt svg{width:15px;height:15px;stroke:var(--dk);fill:none;stroke-width:2}
+
+/* Badges strip */
+.badges{display:flex;gap:7px;padding:12px 20px 0;flex-wrap:wrap}
+.badge{padding:5px 13px;border-radius:999px;font-size:12px;font-weight:700;border:1.5px solid}
+.b-lm{background:var(--s3);color:#6a9900;border-color:#cef080}
+.b-p{background:var(--s1);color:var(--p);border-color:#c9beff}
+
+/* Stats strip */
+.stats{display:flex;gap:10px;padding:14px 20px 0}
+.stat{flex:1;background:var(--s1);border-radius:16px;padding:12px;text-align:center}
+.stat-n{font-size:22px;font-weight:700;color:var(--p)}
+.stat-n.pk{color:var(--pk)}
+.stat-l{font-size:11px;color:var(--t2);margin-top:2px;font-weight:500}
+
+/* Section label */
+.sec-lbl{font-size:11px;font-weight:700;letter-spacing:2px;color:var(--t2);padding:0 20px;margin-top:18px;margin-bottom:10px}
+
+/* Horizontal scroll lane */
+.lane{display:flex;gap:12px;padding:0 20px;overflow-x:auto;scrollbar-width:none;padding-bottom:4px}
+.lane::-webkit-scrollbar{display:none}
+
+/* About card */
+.about-card{min-width:260px;background:#fff;border:1px solid var(--bd);border-radius:20px;padding:16px;flex-shrink:0}
+.about-card p{font-size:14px;line-height:1.65;color:var(--dk)}
+
+/* Audio card */
+.audio-card{min-width:280px;background:var(--s2);border:1px solid #ffd0e3;border-radius:20px;padding:14px 16px;flex-shrink:0}
+.arow{display:flex;align-items:center;gap:10px}
+.play{width:40px;height:40px;min-width:40px;border-radius:50%;background:linear-gradient(135deg,var(--pk),var(--mg));display:flex;align-items:center;justify-content:center;box-shadow:0 4px 12px rgba(255,61,127,.3);cursor:pointer}
+.play svg{width:13px;height:13px;fill:#fff;margin-left:2px}
+.wv{flex:1;height:28px;display:flex;align-items:center;gap:2.5px}
+.atm{font-size:12px;color:var(--mg);font-weight:600}
+
+/* Intent cards */
+.intent-card{min-width:130px;border-radius:20px;padding:14px;flex-shrink:0;display:flex;flex-direction:column;gap:6px}
+.ic-p{background:var(--s1);border:1.5px solid #c9beff}
+.ic-pk{background:var(--s2);border:1.5px solid #ffd0e3}
+.ic-lm{background:var(--s3);border:1.5px solid #cef080}
+.ic-label{font-size:10px;font-weight:700;letter-spacing:1.5px;color:var(--t2)}
+.ic-value{font-size:14px;font-weight:700;color:var(--dk)}
+
+/* Value chips horizontal */
+.vchip{flex-shrink:0;padding:8px 16px;border-radius:999px;font-size:13px;font-weight:700;white-space:nowrap}
+.vc-p{background:var(--s1);color:var(--p);border:1.5px solid #c9beff}
+.vc-pk{background:var(--s2);color:var(--mg);border:1.5px solid #ffd0e3}
+.vc-lm{background:var(--s3);color:#6a9900;border:1.5px solid #cef080}
+
+/* Music cards */
+.music-card{min-width:100px;border-radius:18px;padding:14px 12px;flex-shrink:0;text-align:center;background:#fff;border:1px solid var(--bd)}
+.mc-emoji{font-size:24px;margin-bottom:6px}
+.mc-name{font-size:12px;font-weight:700;color:var(--dk)}
+
+/* Trait cards */
+.trait-card{min-width:140px;background:#fff;border:1px solid var(--bd);border-radius:20px;padding:14px;flex-shrink:0}
+.tc-name{font-size:11px;font-weight:700;color:var(--t2);margin-bottom:8px;letter-spacing:.5px}
+.tc-score{font-size:28px;font-weight:700;color:var(--p);line-height:1}
+.tc-bar{height:5px;background:var(--bd);border-radius:99px;margin-top:8px}
+.tc-fill{height:100%;border-radius:99px;background:linear-gradient(90deg,var(--p),var(--pk))}
+
+/* Actions */
+.actions{display:flex;flex-direction:column;gap:8px;padding:0 20px;margin-top:4px}
+.act{display:flex;align-items:center;gap:12px;background:#fff;border:1px solid var(--bd);border-radius:16px;padding:12px 14px;cursor:pointer}
+.aico{width:36px;height:36px;min-width:36px;border-radius:11px;display:flex;align-items:center;justify-content:center}
+.aico svg{width:16px;height:16px;stroke-width:2;fill:none}
+.atxt strong{display:block;font-size:14px;font-weight:700;color:var(--dk)}
+.atxt small{font-size:11px;color:var(--t2)}
+.ach{color:var(--t2);margin-left:auto;font-size:20px}
+
+/* Nav */
+.bnav{display:flex;justify-content:space-around;padding:10px 0 22px;background:#fff;border-top:1px solid var(--bd);margin-top:18px}
+.ni{display:flex;flex-direction:column;align-items:center;gap:3px;font-size:10px;font-weight:700;color:var(--t2);cursor:pointer}
+.ni.a{color:var(--pk)}
+.ni svg{width:22px;height:22px;stroke-width:1.8;fill:none}
+.ni.a svg{stroke:var(--pk)}
+.pip{width:4px;height:4px;border-radius:50%;background:var(--pk)}
+</style>
+</head>
+<body>
+<div class="phone">
+  <div class="sb"><span>9:41</span><span>●●●</span></div>
+
+  <!-- Header -->
+  <div class="header">
+    <div class="header-left">
+      <div class="av">🌸<div class="av-dot"><svg viewBox="0 0 24 24"><polyline points="20 6 9 17 4 12"/></svg></div></div>
+      <div class="header-txt"><h1>Amara, 26</h1><p>Woman · Colombo</p></div>
+    </div>
+    <div class="header-right">
+      <div class="ibt"><svg viewBox="0 0 24 24"><circle cx="12" cy="5" r="1" fill="currentColor" stroke="none"/><circle cx="12" cy="12" r="1" fill="currentColor" stroke="none"/><circle cx="12" cy="19" r="1" fill="currentColor" stroke="none"/></svg></div>
+    </div>
+  </div>
+
+  <!-- Badges -->
+  <div class="badges">
+    <span class="badge b-lm">✓ ID Verified</span>
+    <span class="badge b-p">✨ Serious relationship</span>
+  </div>
+
+  <!-- Stats -->
+  <div class="stats">
+    <div class="stat"><div class="stat-n pk">4.8</div><div class="stat-l">Trust score</div></div>
+    <div class="stat"><div class="stat-n">12</div><div class="stat-l">Connections</div></div>
+    <div class="stat"><div class="stat-n" style="font-size:16px">4.5⭐</div><div class="stat-l">Avg rating</div></div>
+  </div>
+
+  <!-- About lane -->
+  <div class="sec-lbl">ABOUT</div>
+  <div class="lane">
+    <div class="about-card"><p>"Coffee addict who hikes on weekends and binge-reads philosophy on rainy days. Looking for someone who slow-dances in the kitchen."</p></div>
+    <div class="audio-card">
+      <div class="sec-lbl" style="padding:0;margin:0 0 8px">AUDIO INTRO</div>
+      <div class="arow"><div class="play"><svg viewBox="0 0 24 24"><polygon points="5,3 19,12 5,21"/></svg></div><div class="wv" id="wv3"></div><span class="atm">0:42</span></div>
+    </div>
+  </div>
+
+  <!-- Looking for lane -->
+  <div class="sec-lbl">LOOKING FOR</div>
+  <div class="lane">
+    <div class="intent-card ic-pk"><div class="ic-label">INTENT</div><div class="ic-value">Serious relationship</div></div>
+    <div class="intent-card ic-p"><div class="ic-label">AGE RANGE</div><div class="ic-value">24 – 34 yrs</div></div>
+    <div class="intent-card ic-lm"><div class="ic-label">OPEN TO</div><div class="ic-value">Men &amp; Women</div></div>
+  </div>
+
+  <!-- Values lane -->
+  <div class="sec-lbl">VALUES</div>
+  <div class="lane">
+    <span class="vchip vc-lm">Honesty</span>
+    <span class="vchip vc-lm">Ambition</span>
+    <span class="vchip vc-lm">Kindness</span>
+    <span class="vchip vc-p">Humor</span>
+    <span class="vchip vc-pk">Loyalty</span>
+  </div>
+
+  <!-- Music lane -->
+  <div class="sec-lbl">MUSIC TASTE</div>
+  <div class="lane">
+    <div class="music-card"><div class="mc-emoji">🎸</div><div class="mc-name">Indie pop</div></div>
+    <div class="music-card"><div class="mc-emoji">☕</div><div class="mc-name">Lo-fi</div></div>
+    <div class="music-card"><div class="mc-emoji">🎷</div><div class="mc-name">Jazz</div></div>
+    <div class="music-card"><div class="mc-emoji">🎤</div><div class="mc-name">R&amp;B</div></div>
+  </div>
+
+  <!-- Personality lane -->
+  <div class="sec-lbl">PERSONALITY</div>
+  <div class="lane">
+    <div class="trait-card"><div class="tc-name">OPENNESS</div><div class="tc-score">4.1</div><div class="tc-bar"><div class="tc-fill" style="width:82%"></div></div></div>
+    <div class="trait-card"><div class="tc-name">AGREEABLENESS</div><div class="tc-score">3.8</div><div class="tc-bar"><div class="tc-fill" style="width:76%"></div></div></div>
+    <div class="trait-card"><div class="tc-name">CONSCIENTIOUSNESS</div><div class="tc-score">4.5</div><div class="tc-bar"><div class="tc-fill" style="width:90%"></div></div></div>
+    <div class="trait-card"><div class="tc-name">STABILITY</div><div class="tc-score">3.5</div><div class="tc-bar"><div class="tc-fill" style="width:70%"></div></div></div>
+  </div>
+
+  <!-- Actions -->
+  <div class="sec-lbl">ACCOUNT</div>
+  <div class="actions">
+    <div class="act"><div class="aico" style="background:#EDE9FD"><svg viewBox="0 0 24 24" stroke="#6C4CF1"><circle cx="12" cy="12" r="3"/><path d="M19.4 15a1.65 1.65 0 00.33 1.82l.06.06a2 2 0 010 2.83 2 2 0 01-2.83 0l-.06-.06a1.65 1.65 0 00-1.82-.33 1.65 1.65 0 00-1 1.51V21a2 2 0 01-4 0v-.09A1.65 1.65 0 009 19.4a1.65 1.65 0 00-1.82.33l-.06.06a2 2 0 01-2.83-2.83l.06-.06A1.65 1.65 0 004.68 15a1.65 1.65 0 00-1.51-1H3a2 2 0 010-4h.09A1.65 1.65 0 004.6 9a1.65 1.65 0 00-.33-1.82l-.06-.06a2 2 0 012.83-2.83l.06.06A1.65 1.65 0 009 4.68a1.65 1.65 0 001-1.51V3a2 2 0 014 0v.09a1.65 1.65 0 001 1.51 1.65 1.65 0 001.82-.33l.06-.06a2 2 0 012.83 2.83l-.06.06A1.65 1.65 0 0019.4 9a1.65 1.65 0 001.51 1H21a2 2 0 010 4h-.09a1.65 1.65 0 00-1.51 1z"/></svg></div><div class="atxt"><strong>Settings</strong><small>Edit profile & privacy</small></div><span class="ach">›</span></div>
+    <div class="act"><div class="aico" style="background:#F2FFD6"><svg viewBox="0 0 24 24" stroke="#7aab00"><path d="M9 12l2 2 4-4m5.618-4.016A11.955 11.955 0 0112 2.944a11.955 11.955 0 01-8.618 3.04A12.02 12.02 0 003 9c0 5.591 3.824 10.29 9 11.622 5.176-1.332 9-6.03 9-11.622 0-1.042-.133-2.052-.382-3.016z"/></svg></div><div class="atxt"><strong>Verification</strong><small>ID Verified</small></div><span class="ach">›</span></div>
+    <div class="act"><div class="aico" style="background:#FFF0F5"><svg viewBox="0 0 24 24" stroke="#C4176A"><path d="M12 2l3.09 6.26L22 9.27l-5 4.87 1.18 6.88L12 17.77l-6.18 3.25L7 14.14 2 9.27l6.91-1.01L12 2z"/></svg></div><div class="atxt"><strong>Membership</strong><small>Upgrade to Premium</small></div><span class="ach">›</span></div>
+  </div>
+
+  <div class="bnav">
+    <div class="ni"><svg viewBox="0 0 24 24" stroke="currentColor"><path d="M3 9l9-7 9 7v11a2 2 0 01-2 2H5a2 2 0 01-2-2z"/></svg>Home</div>
+    <div class="ni"><svg viewBox="0 0 24 24" stroke="currentColor"><path d="M20.84 4.61a5.5 5.5 0 00-7.78 0L12 5.67l-1.06-1.06a5.5 5.5 0 00-7.78 7.78l1.06 1.06L12 21.23l7.78-7.78 1.06-1.06a5.5 5.5 0 000-7.78z"/></svg>Matches</div>
+    <div class="ni"><svg viewBox="0 0 24 24" stroke="currentColor"><path d="M21 15a2 2 0 01-2 2H7l-4 4V5a2 2 0 012-2h14a2 2 0 012 2z"/></svg>Chat</div>
+    <div class="ni a"><svg viewBox="0 0 24 24" stroke="currentColor"><path d="M20 21v-2a4 4 0 00-4-4H8a4 4 0 00-4 4v2"/><circle cx="12" cy="7" r="4"/></svg>Profile<div class="pip"></div></div>
+  </div>
+</div>
+<script>
+const w3=document.getElementById('wv3');
+[12,18,26,16,30,20,10,24,34,22,16].forEach((h,i)=>{
+  const b=document.createElement('div');
+  b.style.cssText=`width:3.5px;height:${h}px;border-radius:3px;flex-shrink:0;background:${i<7?'linear-gradient(to top,#6C4CF1,#FF3D7F)':'#EDE9FB'}`;
+  w3.appendChild(b);
+});
+</script>
+</body>
+</html>

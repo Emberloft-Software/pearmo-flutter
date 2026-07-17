@@ -1,0 +1,202 @@
+<!DOCTYPE html>
+<html lang="en">
+<head>
+<meta charset="UTF-8"/><meta name="viewport" content="width=device-width,initial-scale=1"/>
+<title>Pearmo — Profile</title>
+<link href="https://fonts.googleapis.com/css2?family=Syne:wght@700;800&family=Caveat:wght@600&family=Inter:wght@400;500;600&display=swap" rel="stylesheet"/>
+<style>
+*{box-sizing:border-box;margin:0;padding:0}
+body{background:#e2ddf5;display:flex;justify-content:center;padding:40px 16px;font-family:'Inter',sans-serif;min-height:100vh}
+.phone{width:390px;background:#faf8ff;border-radius:48px;overflow:hidden;box-shadow:0 0 0 8px #fff,0 0 0 11px #ddd6f8,0 40px 100px rgba(108,76,241,.16)}
+.scroll{overflow-y:auto;max-height:840px}.scroll::-webkit-scrollbar{display:none}
+
+/* Status */
+.sb{display:flex;justify-content:space-between;padding:16px 26px 0;font-size:11px;font-weight:600;color:#17101F}
+
+/* Top bar */
+.topbar{display:flex;align-items:center;justify-content:space-between;padding:10px 22px 18px}
+.topbar-t{font-size:13px;font-weight:600;color:#aaa;letter-spacing:.2px}
+.topbar-r{display:flex;gap:8px}
+.tib{width:34px;height:34px;border-radius:50%;background:#fff;border:1px solid #ede8ff;display:flex;align-items:center;justify-content:center;cursor:pointer;box-shadow:0 1px 4px rgba(108,76,241,.08)}
+.tib svg{width:14px;height:14px;stroke:#6C4CF1;fill:none;stroke-width:2}
+
+/* Identity block — editorial layout */
+.identity{padding:0 22px 0;display:flex;gap:16px;align-items:flex-start}
+.av-col{display:flex;flex-direction:column;align-items:center;gap:8px;flex-shrink:0}
+.av{width:86px;height:86px;border-radius:50%;background:linear-gradient(135deg,#b8a9f3,#ffb4c8);display:flex;align-items:center;justify-content:center;overflow:hidden;border:3px solid #fff;box-shadow:0 4px 16px rgba(108,76,241,.15)}
+.av img{width:100%;height:100%;object-fit:cover}
+.mic-tap{display:flex;align-items:center;gap:5px;background:#FF3D7F;color:#fff;font-size:10px;font-weight:700;padding:5px 10px;border-radius:999px;cursor:pointer;box-shadow:0 3px 12px rgba(255,61,127,.3);white-space:nowrap}
+.mic-tap svg{width:11px;height:11px;stroke:#fff;fill:none;stroke-width:2.5;flex-shrink:0}
+
+.id-right{flex:1;padding-top:4px}
+.id-name{font-family:'Syne',sans-serif;font-size:34px;font-weight:800;color:#17101F;letter-spacing:-.8px;line-height:1}
+.id-age{font-family:'Syne',sans-serif;font-size:26px;font-weight:700;color:#6C4CF1;letter-spacing:-.4px}
+.id-sub{font-size:12px;color:#aaa;margin-top:6px;font-weight:500;line-height:1.5}
+.id-ver{display:inline-block;background:#C6FF3D;color:#17101F;font-size:9px;font-weight:800;padding:3px 9px;border-radius:999px;letter-spacing:.6px;margin-top:8px}
+
+/* Intent tag */
+.intent{margin:16px 22px 0;display:inline-flex;align-items:center;gap:6px;background:#fff;border:1.5px solid #ede8ff;border-radius:12px;padding:9px 14px;box-shadow:0 1px 4px rgba(108,76,241,.06)}
+.intent-dot{width:7px;height:7px;border-radius:50%;background:#6C4CF1;flex-shrink:0}
+.intent-t{font-size:12px;font-weight:600;color:#17101F}
+
+/* Divider */
+.div{height:1px;background:#ede8ff;margin:20px 22px}
+
+/* About — Caveat handwriting feel */
+.about{padding:0 22px}
+.about-q{font-size:10px;font-weight:700;letter-spacing:1.5px;text-transform:uppercase;color:#C6FF3D;background:#17101F;display:inline-block;padding:3px 9px;border-radius:6px;margin-bottom:10px}
+.about-t{font-family:'Caveat',cursive;font-size:20px;font-weight:600;color:#17101F;line-height:1.55}
+
+/* Music — single dark strip, no grid */
+.music{margin:20px 22px 0}
+.music-head{display:flex;align-items:center;justify-content:space-between;margin-bottom:10px}
+.music-label{font-size:11px;font-weight:600;color:#aaa}
+.music-strip{background:#17101F;border-radius:18px;padding:16px 18px;display:flex;flex-wrap:wrap;gap:8px}
+.gp{display:inline-flex;align-items:center;gap:5px;padding:6px 12px;border-radius:999px;font-size:12px;font-weight:600;background:rgba(255,255,255,.08);color:rgba(255,255,255,.8);border:1px solid rgba(255,255,255,.1);cursor:pointer;transition:background .15s}
+.gp:hover{background:rgba(255,255,255,.14)}
+
+/* Personality — just words in a flowing wrap */
+.pers{padding:0 22px}
+.pers-label{font-size:11px;font-weight:600;color:#aaa;margin-bottom:10px}
+.pers-words{display:flex;flex-wrap:wrap;gap:6px}
+.pw{padding:7px 14px;border-radius:999px;font-size:13px;font-weight:600;background:#fff;border:1.5px solid #ede8ff;color:#17101F;letter-spacing:-.1px}
+/* Two accent words only */
+.pw-p{background:#f0ecff;border-color:#ddd4ff;color:#6C4CF1}
+.pw-pk{background:#fff0f5;border-color:#ffd0e8;color:#C4176A}
+
+/* Looking for */
+.lf{margin:0 22px}
+.lf-label{font-size:11px;font-weight:600;color:#aaa;margin-bottom:8px}
+.lf-text{font-size:13.5px;color:#17101F;line-height:1.7;font-weight:400}
+.lf-tags{display:flex;flex-wrap:wrap;gap:6px;margin-top:10px}
+.lft{padding:6px 12px;border-radius:8px;font-size:12px;font-weight:600;background:#fff;border:1.5px solid #ede8ff;color:#6C4CF1}
+
+/* Account — totally flat, no icons with colored backgrounds */
+.acc{padding:4px 22px 32px}
+.acc-label{font-size:11px;font-weight:600;color:#aaa;letter-spacing:.2px;margin-bottom:4px}
+.ar{display:flex;align-items:center;gap:12px;padding:13px 0;border-bottom:1px solid #f4f0ff;cursor:pointer;transition:opacity .15s}
+.ar:last-child{border-bottom:none}
+.ar:hover{opacity:.65}
+.ar-ico{width:32px;height:32px;border-radius:9px;background:#fff;border:1px solid #ede8ff;display:flex;align-items:center;justify-content:center;flex-shrink:0;box-shadow:0 1px 3px rgba(0,0,0,.04)}
+.ar-ico svg{width:14px;height:14px;stroke:#6C4CF1;fill:none;stroke-width:1.8}
+.ar-t{font-size:14px;font-weight:600;color:#17101F;flex:1}
+.ar-s{font-size:11px;color:#bbb;margin-top:1px}
+.ar-ch{opacity:.25}
+.ar-ch svg{width:12px;height:12px;stroke:#17101F;fill:none;stroke-width:2.5}
+</style>
+</head>
+<body>
+<div class="phone"><div class="scroll">
+ <div class="sb"><span>9:41</span><span>●●●</span></div>
+
+ <div class="topbar">
+  <span class="topbar-t">my profile</span>
+  <div class="topbar-r">
+   <div class="tib"><svg viewBox="0 0 24 24"><path d="M11 4H4a2 2 0 00-2 2v14a2 2 0 002 2h14a2 2 0 002-2v-7"/><path d="M18.5 2.5a2.121 2.121 0 013 3L12 15l-4 1 1-4 9.5-9.5z"/></svg></div>
+   <div class="tib"><svg viewBox="0 0 24 24"><circle cx="12" cy="12" r="3"/><path d="M19.4 15a1.65 1.65 0 00.33 1.82l.06.06a2 2 0 010 2.83 2 2 0 01-2.83 0l-.06-.06a1.65 1.65 0 00-1.82-.33 1.65 1.65 0 00-1 1.51V21a2 2 0 01-4 0v-.09A1.65 1.65 0 009 19.4a1.65 1.65 0 00-1.82.33l-.06.06a2 2 0 01-2.83-2.83l.06-.06A1.65 1.65 0 004.68 15a1.65 1.65 0 00-1.51-1H3a2 2 0 010-4h.09A1.65 1.65 0 004.6 9a1.65 1.65 0 00-.33-1.82l-.06-.06a2 2 0 012.83-2.83l.06.06A1.65 1.65 0 009 4.68a1.65 1.65 0 001-1.51V3a2 2 0 014 0v.09a1.65 1.65 0 001 1.51 1.65 1.65 0 001.82-.33l.06-.06a2 2 0 012.83 2.83l-.06.06A1.65 1.65 0 0019.4 9a1.65 1.65 0 001.51 1H21a2 2 0 010 4h-.09a1.65 1.65 0 00-1.51 1z"/></svg></div>
+  </div>
+ </div>
+
+ <!-- Identity — editorial two-column -->
+ <div class="identity">
+  <div class="av-col">
+   <div class="av"><img src="avatar.png" alt="Anika"/></div>
+   <div class="mic-tap">
+    <svg viewBox="0 0 24 24"><path d="M12 1a3 3 0 00-3 3v8a3 3 0 006 0V4a3 3 0 00-3-3z"/><path d="M19 10v2a7 7 0 01-14 0v-2"/></svg>
+    Hear intro
+   </div>
+  </div>
+  <div class="id-right">
+   <div class="id-name">Anika</div>
+   <div class="id-age">26</div>
+   <div class="id-sub">Woman · she/her<br/>Colombo · 3 km</div>
+   <div class="id-ver">✓ Age Verified</div>
+  </div>
+ </div>
+
+ <!-- Intent -->
+ <div class="intent">
+  <div class="intent-dot"></div>
+  <div class="intent-t">Looking for something serious</div>
+ </div>
+
+ <div class="div"></div>
+
+ <!-- About in Caveat -->
+ <div class="about">
+  <div class="about-q">in her words</div>
+  <div class="about-t">"Morning person who cannot function before coffee. Will judge you if you skip breakfast. 3,000 songs on my playlist and no regrets."</div>
+ </div>
+
+ <!-- Music -->
+ <div class="music">
+  <div class="music-head">
+   <span class="music-label">Listens to</span>
+  </div>
+  <div class="music-strip">
+   <span class="gp">🎷 Jazz</span>
+   <span class="gp">🌙 Lo-fi</span>
+   <span class="gp">🎤 Hip-Hop</span>
+   <span class="gp">🎸 Indie</span>
+   <span class="gp">⚡ Electronic</span>
+   <span class="gp">🎵 R&amp;B</span>
+  </div>
+ </div>
+
+ <div class="div"></div>
+
+ <!-- Personality as flowing words -->
+ <div class="pers">
+  <div class="pers-label">Personality</div>
+  <div class="pers-words">
+   <span class="pw pw-p">Curious</span>
+   <span class="pw">Grounded</span>
+   <span class="pw pw-pk">Warm</span>
+   <span class="pw">Reliable</span>
+   <span class="pw pw-p">Open-minded</span>
+   <span class="pw">Secure</span>
+  </div>
+ </div>
+
+ <div class="div"></div>
+
+ <!-- Looking for -->
+ <div class="lf">
+  <div class="lf-label">Open to meeting</div>
+  <div class="lf-text">Women and men, ideally between 24 and 32, who know what they want.</div>
+  <div class="lf-tags">
+   <span class="lft">Emotional depth</span>
+   <span class="lft">Humour</span>
+  </div>
+ </div>
+
+ <div class="div"></div>
+
+ <!-- Account — flat, clean -->
+ <div class="acc">
+  <div class="acc-label">account</div>
+  <div class="ar">
+   <div class="ar-ico"><svg viewBox="0 0 24 24"><circle cx="12" cy="12" r="3"/><path d="M19.4 15a1.65 1.65 0 00.33 1.82l.06.06a2 2 0 010 2.83 2 2 0 01-2.83 0l-.06-.06a1.65 1.65 0 00-1.82-.33 1.65 1.65 0 00-1 1.51V21a2 2 0 01-4 0v-.09A1.65 1.65 0 009 19.4a1.65 1.65 0 00-1.82.33l-.06.06a2 2 0 01-2.83-2.83l.06-.06A1.65 1.65 0 004.68 15a1.65 1.65 0 00-1.51-1H3a2 2 0 010-4h.09A1.65 1.65 0 004.6 9a1.65 1.65 0 00-.33-1.82l-.06-.06a2 2 0 012.83-2.83l.06.06A1.65 1.65 0 009 4.68a1.65 1.65 0 001-1.51V3a2 2 0 014 0v.09a1.65 1.65 0 001 1.51 1.65 1.65 0 001.82-.33l.06-.06a2 2 0 012.83 2.83l-.06.06A1.65 1.65 0 0019.4 9a1.65 1.65 0 001.51 1H21a2 2 0 010 4h-.09a1.65 1.65 0 00-1.51 1z"/></svg></div>
+   <div><div class="ar-t">Settings</div><div class="ar-s">Privacy, notifications, active hours</div></div>
+   <div class="ar-ch"><svg viewBox="0 0 24 24"><polyline points="9 18 15 12 9 6"/></svg></div>
+  </div>
+  <div class="ar">
+   <div class="ar-ico"><svg viewBox="0 0 24 24"><path d="M12 22s8-4 8-10V5l-8-3-8 3v7c0 6 8 10 8 10z"/></svg></div>
+   <div><div class="ar-t">Verification</div><div class="ar-s">Age verified · Upgrade available</div></div>
+   <div class="ar-ch"><svg viewBox="0 0 24 24"><polyline points="9 18 15 12 9 6"/></svg></div>
+  </div>
+  <div class="ar">
+   <div class="ar-ico"><svg viewBox="0 0 24 24"><path d="M12 2l3.09 6.26L22 9.27l-5 4.87 1.18 6.88L12 17.77l-6.18 3.25L7 14.14 2 9.27l6.91-1.01L12 2z"/></svg></div>
+   <div><div class="ar-t">Membership</div><div class="ar-s">Free plan · See Pearmo Plus</div></div>
+   <div class="ar-ch"><svg viewBox="0 0 24 24"><polyline points="9 18 15 12 9 6"/></svg></div>
+  </div>
+  <div class="ar" style="border-bottom:none">
+   <div class="ar-ico" style="border-color:#ffd0e8"><svg viewBox="0 0 24 24" style="stroke:#FF3D7F"><path d="M9 21H5a2 2 0 01-2-2V5a2 2 0 012-2h4M16 17l5-5-5-5M21 12H9"/></svg></div>
+   <div class="ar-t" style="color:#FF3D7F">Sign out</div>
+   <div class="ar-ch"><svg viewBox="0 0 24 24"><polyline points="9 18 15 12 9 6"/></svg></div>
+  </div>
+ </div>
+
+</div></div>
+</body>
+</html>

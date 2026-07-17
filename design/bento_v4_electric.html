@@ -1,0 +1,472 @@
+<!DOCTYPE html>
+<html lang="en">
+<head>
+<meta charset="UTF-8"/><meta name="viewport" content="width=device-width,initial-scale=1"/>
+<title>Pearmo — Electric Boom · 3 Screen Samples</title>
+<link rel="preconnect" href="https://fonts.googleapis.com"/>
+<link href="https://fonts.googleapis.com/css2?family=Bricolage+Grotesque:opsz,wght@12..96,500;12..96,700;12..96,800&family=Schibsted+Grotesk:wght@400;500;600;700&family=Instrument+Serif:ital@0;1&display=swap" rel="stylesheet"/>
+<style>
+*{box-sizing:border-box;margin:0;padding:0}
+:root{
+ --pk:#FF3D7F;   /* electric pink */
+ --lm:#C6FF3D;   /* boom lime */
+ --mg:#C4176A;   /* deep magenta — fills & gradients only */
+ --pp:#6C4CF1;   /* violet */
+ --ink:#17101F;  /* base dark */
+ --paper:#FAF8FF;/* light text */
+ --surf:#211730; /* card surface (ink lifted) */
+ --surf2:#2A1D3C;
+ --line:rgba(250,248,255,.09);
+ --mut:#A79FBB;  /* muted text */
+ --disp:'Bricolage Grotesque',sans-serif;
+ --body:'Schibsted Grotesk',sans-serif;
+ --quote:'Instrument Serif',serif;
+}
+body{
+ background:#0C0812;
+ background-image:radial-gradient(rgba(250,248,255,.045) 1px,transparent 1px);
+ background-size:26px 26px;
+ font-family:var(--body);color:var(--paper);
+ min-height:100vh;padding:48px 24px 72px;
+}
+.stage{max-width:1360px;margin:0 auto}
+.stage-hd{margin-bottom:36px}
+.stage-kicker{font-size:12px;font-weight:700;letter-spacing:3px;text-transform:uppercase;color:var(--lm)}
+.stage-title{font-family:var(--disp);font-size:clamp(28px,4vw,44px);font-weight:800;letter-spacing:-1px;margin-top:8px}
+.stage-title em{font-family:var(--quote);font-style:italic;font-weight:400;color:var(--pk);letter-spacing:0}
+.stage-sub{color:var(--mut);font-size:14px;margin-top:8px;max-width:62ch;line-height:1.6}
+.row{display:flex;gap:40px;flex-wrap:wrap;justify-content:center;align-items:flex-start}
+.col{display:flex;flex-direction:column;gap:14px}
+.screen-tag{display:flex;align-items:baseline;gap:10px}
+.screen-num{font-family:var(--disp);font-weight:800;font-size:13px;color:var(--lm)}
+.screen-name{font-size:13px;font-weight:600;color:var(--paper)}
+.screen-note{font-size:12px;color:var(--mut)}
+
+/* ============ PHONE FRAME ============ */
+.phone{
+ width:390px;height:824px;flex-shrink:0;
+ background:var(--ink);border-radius:52px;overflow:hidden;
+ display:flex;flex-direction:column;position:relative;
+ border:1px solid rgba(250,248,255,.12);
+ box-shadow:0 0 0 9px #0F0A17,0 0 0 10px rgba(250,248,255,.08),0 44px 90px rgba(0,0,0,.6);
+}
+.sb{display:flex;justify-content:space-between;align-items:center;padding:16px 30px 0;font-size:12px;font-weight:700;color:var(--paper);flex-shrink:0;font-family:var(--disp)}
+.sb .pips{display:flex;gap:3px}
+.sb .pips i{width:4px;border-radius:2px;background:var(--paper);display:block}
+.sb .pips i:nth-child(1){height:5px}.sb .pips i:nth-child(2){height:8px}.sb .pips i:nth-child(3){height:11px;background:var(--lm)}
+
+/* header */
+.hdr{display:flex;align-items:center;gap:12px;padding:14px 20px 10px;flex-shrink:0}
+.hdr-av{width:44px;height:44px;border-radius:16px;flex-shrink:0;overflow:hidden;position:relative;border:1px solid var(--line)}
+.hdr-av img{width:150%;position:absolute;left:50%;top:6%;transform:translateX(-50%)}
+.hdr-name{font-family:var(--disp);font-size:18px;font-weight:800;letter-spacing:-.3px}
+.hdr-sub{font-size:12px;color:var(--mut);display:flex;align-items:center;gap:4px;margin-top:2px}
+.hdr-sub svg{width:11px;height:11px;stroke:var(--pk);fill:none;stroke-width:2.2;stroke-linecap:round;stroke-linejoin:round}
+.badge-id{margin-left:auto;display:flex;align-items:center;gap:5px;background:rgba(198,255,61,.12);border:1px solid rgba(198,255,61,.35);color:var(--lm);font-size:10px;font-weight:700;letter-spacing:1px;padding:6px 10px;border-radius:999px}
+.badge-id svg{width:12px;height:12px;stroke:var(--lm);fill:none;stroke-width:2.2;stroke-linecap:round;stroke-linejoin:round}
+
+/* tabs */
+.tabs{display:flex;gap:4px;padding:4px 20px 0;flex-shrink:0;border-bottom:1px solid var(--line)}
+.tab{padding:11px 14px;font-size:13px;font-weight:600;color:var(--mut);border-bottom:2px solid transparent;margin-bottom:-1px;cursor:pointer;display:flex;align-items:center;gap:6px}
+.tab svg{width:13px;height:13px;stroke:currentColor;fill:none;stroke-width:2;stroke-linecap:round;stroke-linejoin:round}
+.tab.on{color:var(--lm);border-bottom-color:var(--lm)}
+
+/* scroll body */
+.body{flex:1;overflow-y:auto;padding:16px 18px 110px;scrollbar-width:none}
+.body::-webkit-scrollbar{display:none}
+
+/* bento primitives */
+.b-grid{display:grid;grid-template-columns:1fr 1fr;gap:12px}
+.card{background:var(--surf);border:1px solid var(--line);border-radius:24px;padding:16px}
+.lbl{font-size:10px;font-weight:700;letter-spacing:2px;text-transform:uppercase;color:var(--mut);display:flex;align-items:center;gap:6px}
+.lbl svg{width:12px;height:12px;stroke:var(--lm);fill:none;stroke-width:2.2;stroke-linecap:round;stroke-linejoin:round}
+
+/* hero */
+.hero{
+ grid-column:1/-1;position:relative;overflow:hidden;border-radius:28px;
+ background:radial-gradient(120% 130% at 82% 8%,var(--mg) 0%,var(--pp) 46%,#3A2A85 100%);
+ border:1px solid rgba(250,248,255,.14);
+ min-height:236px;display:flex;
+}
+.hero::after{content:'';position:absolute;inset:0;background:radial-gradient(60% 45% at 78% 88%,rgba(198,255,61,.28),transparent 70%)}
+.hero-txt{position:relative;z-index:2;padding:20px;display:flex;flex-direction:column;justify-content:flex-end}
+.hero-kick{font-size:10px;font-weight:700;letter-spacing:2.5px;color:var(--lm);text-transform:uppercase}
+.hero-name{font-family:var(--disp);font-size:34px;font-weight:800;line-height:.98;letter-spacing:-1px;margin-top:6px}
+.hero-role{font-size:13px;color:rgba(250,248,255,.82);margin-top:8px;font-weight:500}
+.hero-loc{display:flex;align-items:center;gap:5px;font-size:12px;color:rgba(250,248,255,.62);margin-top:4px}
+.hero-loc svg{width:12px;height:12px;stroke:var(--lm);fill:none;stroke-width:2.2;stroke-linecap:round;stroke-linejoin:round}
+.hero-img{position:absolute;right:-26px;bottom:-8px;width:218px;z-index:1;filter:drop-shadow(0 18px 30px rgba(12,8,18,.45))}
+
+/* stats */
+.stat-n{font-family:var(--disp);font-size:40px;font-weight:800;line-height:1;margin-top:10px;letter-spacing:-1px}
+.stat-s{font-size:11px;color:var(--mut);margin-top:4px}
+.spark{display:flex;align-items:flex-end;gap:3px;height:26px;margin-top:12px}
+.spark i{flex:1;border-radius:3px 3px 0 0;background:rgba(198,255,61,.25);display:block}
+.spark i.hot{background:var(--lm)}
+
+/* quote */
+.quote{grid-column:1/-1;background:var(--surf);border:1px solid var(--line);border-radius:24px;padding:18px 20px 20px;position:relative}
+.quote-mark{font-family:var(--quote);font-size:56px;line-height:.6;color:var(--pk);display:block;margin:10px 0 2px}
+.quote p{font-family:var(--quote);font-style:italic;font-size:19.5px;line-height:1.45;color:var(--paper);letter-spacing:.1px}
+.quote .attr{font-family:var(--body);font-style:normal;font-size:11px;color:var(--mut);margin-top:12px;display:flex;align-items:center;gap:6px}
+.quote .attr i{width:16px;height:1px;background:var(--pk);display:block}
+
+/* chips */
+.chips{display:flex;flex-wrap:wrap;gap:7px;margin-top:12px}
+.chip{padding:7px 13px;border-radius:999px;font-size:12px;font-weight:600;border:1px solid}
+.chip.v{background:rgba(108,76,241,.16);border-color:rgba(108,76,241,.5);color:#B7A6FF}
+.chip.k{background:rgba(255,61,127,.12);border-color:rgba(255,61,127,.45);color:#FF8AB4}
+.chip.l{background:rgba(198,255,61,.10);border-color:rgba(198,255,61,.4);color:var(--lm)}
+
+/* radar */
+.radar-card{background:var(--surf);border:1px solid var(--line);border-radius:26px;padding:14px 10px 6px;margin-bottom:12px}
+.radar-card svg{width:100%;height:auto;display:block}
+.axis-note{display:flex;align-items:center;justify-content:center;gap:6px;font-size:10.5px;color:var(--mut);padding:2px 0 10px}
+.axis-note i{width:14px;height:2px;border-radius:2px;background:var(--lm);display:block}
+
+/* trait rows */
+.traits{display:flex;flex-direction:column;gap:9px}
+.trow{background:var(--surf);border:1px solid var(--line);border-radius:18px;padding:13px 15px;display:flex;align-items:center;gap:12px}
+.t-ico{width:34px;height:34px;border-radius:11px;display:flex;align-items:center;justify-content:center;flex-shrink:0}
+.t-ico svg{width:16px;height:16px;fill:none;stroke-width:2;stroke-linecap:round;stroke-linejoin:round}
+.t-name{font-size:13.5px;font-weight:700}
+.t-desc{font-size:11px;color:var(--mut);margin-top:2px}
+.t-right{margin-left:auto;text-align:right;flex-shrink:0}
+.t-score{font-family:var(--disp);font-size:16px;font-weight:800}
+.t-bar{width:56px;height:4px;border-radius:2px;background:rgba(250,248,255,.1);margin-top:6px;overflow:hidden}
+.t-bar i{display:block;height:100%;border-radius:2px}
+
+/* music */
+.sound-hero{grid-column:1/-1;background:radial-gradient(130% 150% at 15% 0%,#2E1E55 0%,var(--ink) 70%);border:1px solid var(--line);border-radius:26px;padding:18px 18px 16px;position:relative;overflow:hidden}
+.sound-hero .lbl svg{stroke:var(--pk)}
+.sound-title{font-family:var(--disp);font-size:22px;font-weight:800;margin-top:8px;letter-spacing:-.4px}
+.sound-sub{font-size:12px;color:var(--mut);margin-top:4px}
+.wave{display:flex;align-items:center;gap:3px;height:34px;margin-top:14px}
+.wave i{flex:1;border-radius:99px;display:block;background:rgba(108,76,241,.55)}
+.wave i.p{background:var(--pk)}.wave i.g{background:var(--lm)}
+.genres{display:grid;grid-template-columns:1fr 1fr;gap:12px;margin-top:12px}
+.g-tile{background:var(--surf);border:1px solid var(--line);border-radius:22px;padding:15px;display:flex;align-items:center;gap:12px;cursor:pointer;transition:border-color .2s,background .2s}
+.g-tile:hover{border-color:rgba(198,255,61,.45);background:var(--surf2)}
+.g-ic{width:40px;height:40px;border-radius:13px;display:flex;align-items:center;justify-content:center;flex-shrink:0}
+.g-ic svg{width:18px;height:18px;fill:none;stroke-width:2;stroke-linecap:round;stroke-linejoin:round}
+.g-n{font-size:13.5px;font-weight:700}
+.g-d{font-size:10.5px;color:var(--mut);margin-top:2px}
+
+/* taste match */
+.match{margin-top:12px;background:linear-gradient(120deg,rgba(255,61,127,.14),rgba(108,76,241,.16));border:1px solid rgba(255,61,127,.35);border-radius:24px;padding:16px;display:flex;align-items:center;gap:14px}
+.faces{display:flex;flex-shrink:0}
+.face{width:48px;height:48px;border-radius:50%;overflow:hidden;position:relative;border:2px solid var(--ink)}
+.face img{width:150%;position:absolute;left:50%;top:6%;transform:translateX(-50%)}
+.face+.face{margin-left:-14px}
+.match-t{font-size:13.5px;font-weight:700;line-height:1.35}
+.match-t em{font-family:var(--quote);font-style:italic;color:var(--pk);font-weight:400;font-size:15px}
+.match-d{font-size:11px;color:var(--mut);margin-top:3px}
+.match-pct{margin-left:auto;text-align:center;flex-shrink:0}
+.match-pct b{font-family:var(--disp);font-size:24px;font-weight:800;color:var(--lm);display:block;line-height:1}
+.match-pct span{font-size:9px;letter-spacing:1.5px;color:var(--mut);text-transform:uppercase}
+
+/* bottom nav */
+.nav{position:absolute;bottom:0;left:0;right:0;background:rgba(23,16,31,.92);backdrop-filter:blur(14px);border-top:1px solid var(--line);display:flex;justify-content:space-around;align-items:center;padding:14px 10px 26px;z-index:5}
+.ni{width:46px;height:40px;display:flex;flex-direction:column;align-items:center;gap:5px;cursor:pointer}
+.ni svg{width:22px;height:22px;stroke:var(--mut);fill:none;stroke-width:1.9;stroke-linecap:round;stroke-linejoin:round}
+.ni b{width:4px;height:4px;border-radius:50%;background:transparent}
+.ni.on svg{stroke:var(--lm)}
+.ni.on b{background:var(--lm)}
+
+@media (prefers-reduced-motion:reduce){*{transition:none!important}}
+</style>
+</head>
+<body>
+<div class="stage">
+ <div class="stage-hd">
+  <div class="stage-kicker">Pearmo · Sample Set 04</div>
+  <div class="stage-title">Electric Boom <em>bento</em></div>
+  <p class="stage-sub">Dark base (#17101F) so the pink and lime hit at full voltage. Bento composition from v1, paginated tabs from v2, radar rebuilt with true axis markers. No emojis — stroke icons only. Quotes set in italic serif.</p>
+ </div>
+
+ <div class="row">
+
+ <!-- ============ SCREEN 1 · ABOUT ============ -->
+ <div class="col">
+  <div class="screen-tag"><span class="screen-num">01</span><span class="screen-name">About</span><span class="screen-note">— bento hero + pull-quote</span></div>
+  <div class="phone">
+   <div class="sb"><span>9:41</span><span class="pips"><i></i><i></i><i></i></span></div>
+
+   <div class="hdr">
+    <div class="hdr-av" style="background:linear-gradient(160deg,var(--mg),var(--pp))"><img src="../../3d-individual/fox-f.png" alt="Maya's avatar"/></div>
+    <div>
+     <div class="hdr-name">Maya, 26</div>
+     <div class="hdr-sub"><svg viewBox="0 0 24 24"><path d="M20 10c0 4.99-5.54 10.19-7.4 11.8a1 1 0 0 1-1.2 0C9.54 20.19 4 14.99 4 10a8 8 0 0 1 16 0"/><circle cx="12" cy="10" r="3"/></svg>Colombo · 3 km away</div>
+    </div>
+    <div class="badge-id"><svg viewBox="0 0 24 24"><path d="M20 13c0 5-3.5 7.5-7.66 8.95a1 1 0 0 1-.67-.01C7.5 20.5 4 18 4 13V6a1 1 0 0 1 1-1c2 0 4.5-1.2 6.24-2.72a1.17 1.17 0 0 1 1.52 0C14.51 3.81 17 5 19 5a1 1 0 0 1 1 1z"/><path d="m9 12 2 2 4-4"/></svg>ID</div>
+   </div>
+
+   <div class="tabs">
+    <div class="tab on"><svg viewBox="0 0 24 24"><circle cx="12" cy="8" r="5"/><path d="M20 21a8 8 0 0 0-16 0"/></svg>About</div>
+    <div class="tab"><svg viewBox="0 0 24 24"><path d="M9 18V5l12-2v13"/><circle cx="6" cy="18" r="3"/><circle cx="18" cy="16" r="3"/></svg>Music</div>
+    <div class="tab"><svg viewBox="0 0 24 24"><path d="M12 3v18M3 12h18"/><circle cx="12" cy="12" r="8"/></svg>Personality</div>
+   </div>
+
+   <div class="body">
+    <div class="b-grid">
+
+     <div class="hero">
+      <div class="hero-txt">
+       <div class="hero-kick">Profile · She/Her</div>
+       <div class="hero-name">Maya<br/>Perera</div>
+       <div class="hero-role">Software Engineer</div>
+       <div class="hero-loc"><svg viewBox="0 0 24 24"><path d="M20 10c0 4.99-5.54 10.19-7.4 11.8a1 1 0 0 1-1.2 0C9.54 20.19 4 14.99 4 10a8 8 0 0 1 16 0"/><circle cx="12" cy="10" r="3"/></svg>Colombo, Sri Lanka</div>
+      </div>
+      <img class="hero-img" src="../../3d-individual/fox-f.png" alt="Maya's 3D fox character"/>
+     </div>
+
+     <div class="card">
+      <div class="lbl"><svg viewBox="0 0 24 24"><path d="M20 13c0 5-3.5 7.5-7.66 8.95a1 1 0 0 1-.67-.01C7.5 20.5 4 18 4 13V6a1 1 0 0 1 1-1c2 0 4.5-1.2 6.24-2.72a1.17 1.17 0 0 1 1.52 0C14.51 3.81 17 5 19 5a1 1 0 0 1 1 1z"/></svg>Trust score</div>
+      <div class="stat-n" style="color:var(--lm)">94</div>
+      <div class="stat-s">Top 5% of profiles</div>
+      <div class="spark"><i style="height:35%"></i><i style="height:48%"></i><i style="height:42%"></i><i style="height:60%"></i><i style="height:72%"></i><i style="height:66%"></i><i class="hot" style="height:92%"></i></div>
+     </div>
+
+     <div class="card">
+      <div class="lbl"><svg viewBox="0 0 24 24"><path d="M13 2 3 14h9l-1 8 10-12h-9l1-8z"/></svg>Connections</div>
+      <div class="stat-n" style="color:var(--pk)">48</div>
+      <div class="stat-s">This month · +12 new</div>
+      <div class="spark"><i style="height:30%;background:rgba(255,61,127,.25)"></i><i style="height:44%;background:rgba(255,61,127,.25)"></i><i style="height:38%;background:rgba(255,61,127,.25)"></i><i style="height:58%;background:rgba(255,61,127,.25)"></i><i style="height:50%;background:rgba(255,61,127,.25)"></i><i style="height:70%;background:rgba(255,61,127,.25)"></i><i style="height:88%;background:var(--pk)"></i></div>
+     </div>
+
+     <div class="quote">
+      <div class="lbl"><svg viewBox="0 0 24 24"><path d="M17 6.1H3M21 12.1H3M15.1 18H3"/></svg>In her own words</div>
+      <span class="quote-mark">&ldquo;</span>
+      <p>Morning person who can&rsquo;t function without coffee and good playlists. Ask me about the best sunrise spot in Colombo.</p>
+      <div class="attr"><i></i>Maya, from her onboarding notes</div>
+     </div>
+
+     <div class="card">
+      <div class="lbl"><svg viewBox="0 0 24 24"><path d="M12 3a6 6 0 0 0 9 9 9 9 0 1 1-9-9Z"/></svg>Values</div>
+      <div class="chips">
+       <span class="chip v">Honesty</span>
+       <span class="chip l">Growth</span>
+       <span class="chip k">Empathy</span>
+       <span class="chip v">Creativity</span>
+      </div>
+     </div>
+
+     <div class="card">
+      <div class="lbl"><svg viewBox="0 0 24 24"><path d="M20.84 4.61a5.5 5.5 0 0 0-7.78 0L12 5.67l-1.06-1.06a5.5 5.5 0 0 0-7.78 7.78l1.06 1.06L12 21.23l7.78-7.78 1.06-1.06a5.5 5.5 0 0 0 0-7.78z"/></svg>Looking for</div>
+      <div class="chips">
+       <span class="chip k">Long-term</span>
+       <span class="chip v">Deep talks</span>
+       <span class="chip l">Adventures</span>
+      </div>
+     </div>
+
+    </div>
+   </div>
+
+   <div class="nav">
+    <div class="ni"><svg viewBox="0 0 24 24"><path d="M3 9l9-7 9 7v11a2 2 0 0 1-2 2H5a2 2 0 0 1-2-2z"/><path d="M9 22V12h6v10"/></svg><b></b></div>
+    <div class="ni"><svg viewBox="0 0 24 24"><circle cx="11" cy="11" r="8"/><path d="m21 21-4.35-4.35"/></svg><b></b></div>
+    <div class="ni"><svg viewBox="0 0 24 24"><path d="M20.84 4.61a5.5 5.5 0 0 0-7.78 0L12 5.67l-1.06-1.06a5.5 5.5 0 0 0-7.78 7.78l1.06 1.06L12 21.23l7.78-7.78 1.06-1.06a5.5 5.5 0 0 0 0-7.78z"/></svg><b></b></div>
+    <div class="ni"><svg viewBox="0 0 24 24"><path d="M21 15a2 2 0 0 1-2 2H7l-4 4V5a2 2 0 0 1 2-2h14a2 2 0 0 1 2 2z"/></svg><b></b></div>
+    <div class="ni on"><svg viewBox="0 0 24 24"><path d="M20 21v-2a4 4 0 0 0-4-4H8a4 4 0 0 0-4 4v2"/><circle cx="12" cy="7" r="4"/></svg><b></b></div>
+   </div>
+  </div>
+ </div>
+
+ <!-- ============ SCREEN 2 · PERSONALITY ============ -->
+ <div class="col">
+  <div class="screen-tag"><span class="screen-num">02</span><span class="screen-name">Personality</span><span class="screen-note">— radar with labeled axes</span></div>
+  <div class="phone">
+   <div class="sb"><span>9:41</span><span class="pips"><i></i><i></i><i></i></span></div>
+
+   <div class="hdr">
+    <div class="hdr-av" style="background:linear-gradient(160deg,var(--mg),var(--pp))"><img src="../../3d-individual/fox-f.png" alt="Maya's avatar"/></div>
+    <div>
+     <div class="hdr-name">Maya, 26</div>
+     <div class="hdr-sub"><svg viewBox="0 0 24 24"><path d="M20 10c0 4.99-5.54 10.19-7.4 11.8a1 1 0 0 1-1.2 0C9.54 20.19 4 14.99 4 10a8 8 0 0 1 16 0"/><circle cx="12" cy="10" r="3"/></svg>Colombo · 3 km away</div>
+    </div>
+    <div class="badge-id"><svg viewBox="0 0 24 24"><path d="M20 13c0 5-3.5 7.5-7.66 8.95a1 1 0 0 1-.67-.01C7.5 20.5 4 18 4 13V6a1 1 0 0 1 1-1c2 0 4.5-1.2 6.24-2.72a1.17 1.17 0 0 1 1.52 0C14.51 3.81 17 5 19 5a1 1 0 0 1 1 1z"/><path d="m9 12 2 2 4-4"/></svg>ID</div>
+   </div>
+
+   <div class="tabs">
+    <div class="tab"><svg viewBox="0 0 24 24"><circle cx="12" cy="8" r="5"/><path d="M20 21a8 8 0 0 0-16 0"/></svg>About</div>
+    <div class="tab"><svg viewBox="0 0 24 24"><path d="M9 18V5l12-2v13"/><circle cx="6" cy="18" r="3"/><circle cx="18" cy="16" r="3"/></svg>Music</div>
+    <div class="tab on"><svg viewBox="0 0 24 24"><path d="M12 3v18M3 12h18"/><circle cx="12" cy="12" r="8"/></svg>Personality</div>
+   </div>
+
+   <div class="body">
+
+    <div class="radar-card">
+     <svg viewBox="0 0 320 320" role="img" aria-label="Big Five personality radar chart. Openness 78, Conscientiousness 64, Extraversion 52, Agreeableness 86, Neuroticism 30.">
+      <!-- grid rings 25/50/75/100 -->
+      <polygon points="160,56 258.9,127.9 221.2,244.1 98.8,244.1 61.1,127.9" fill="none" stroke="rgba(250,248,255,.13)" stroke-width="1"/>
+      <polygon points="160,82 234.2,135.9 205.9,223.1 114.1,223.1 85.8,135.9" fill="none" stroke="rgba(250,248,255,.09)" stroke-width="1"/>
+      <polygon points="160,108 209.5,143.9 190.6,202.1 129.4,202.1 110.5,143.9" fill="none" stroke="rgba(250,248,255,.09)" stroke-width="1"/>
+      <polygon points="160,134 184.7,152 175.3,181 144.7,181 135.3,152" fill="none" stroke="rgba(250,248,255,.09)" stroke-width="1"/>
+      <!-- axis lines -->
+      <line x1="160" y1="160" x2="160" y2="56" stroke="rgba(250,248,255,.15)" stroke-width="1"/>
+      <line x1="160" y1="160" x2="258.9" y2="127.9" stroke="rgba(250,248,255,.15)" stroke-width="1"/>
+      <line x1="160" y1="160" x2="221.2" y2="244.1" stroke="rgba(250,248,255,.15)" stroke-width="1"/>
+      <line x1="160" y1="160" x2="98.8" y2="244.1" stroke="rgba(250,248,255,.15)" stroke-width="1"/>
+      <line x1="160" y1="160" x2="61.1" y2="127.9" stroke="rgba(250,248,255,.15)" stroke-width="1"/>
+      <!-- axis scale ticks on vertical axis -->
+      <text x="152" y="137" text-anchor="end" font-size="8" fill="rgba(250,248,255,.4)" font-family="Schibsted Grotesk,sans-serif">25</text>
+      <text x="152" y="111" text-anchor="end" font-size="8" fill="rgba(250,248,255,.4)" font-family="Schibsted Grotesk,sans-serif">50</text>
+      <text x="152" y="85" text-anchor="end" font-size="8" fill="rgba(250,248,255,.4)" font-family="Schibsted Grotesk,sans-serif">75</text>
+      <text x="152" y="60" text-anchor="end" font-size="8" fill="rgba(250,248,255,.55)" font-family="Schibsted Grotesk,sans-serif">100</text>
+      <line x1="156" y1="134" x2="164" y2="134" stroke="rgba(250,248,255,.3)" stroke-width="1"/>
+      <line x1="156" y1="108" x2="164" y2="108" stroke="rgba(250,248,255,.3)" stroke-width="1"/>
+      <line x1="156" y1="82" x2="164" y2="82" stroke="rgba(250,248,255,.3)" stroke-width="1"/>
+      <!-- score shape: O78 C64 E52 A86 N30 -->
+      <polygon points="160,78.9 223.3,139.4 191.8,203.8 107.4,232.3 130.3,150.4"
+       fill="rgba(198,255,61,.14)" stroke="#C6FF3D" stroke-width="2.5" stroke-linejoin="round"/>
+      <!-- score dots -->
+      <circle cx="160" cy="78.9" r="5" fill="#6C4CF1" stroke="#17101F" stroke-width="2"/>
+      <circle cx="223.3" cy="139.4" r="5" fill="#C6FF3D" stroke="#17101F" stroke-width="2"/>
+      <circle cx="191.8" cy="203.8" r="5" fill="#FF3D7F" stroke="#17101F" stroke-width="2"/>
+      <circle cx="107.4" cy="232.3" r="5" fill="#C4176A" stroke="#17101F" stroke-width="2"/>
+      <circle cx="130.3" cy="150.4" r="5" fill="#FAF8FF" stroke="#17101F" stroke-width="2"/>
+      <!-- axis labels -->
+      <text x="160" y="34" text-anchor="middle" font-size="12" font-weight="700" fill="#B7A6FF" font-family="Bricolage Grotesque,sans-serif">Openness</text>
+      <text x="160" y="47" text-anchor="middle" font-size="10" fill="rgba(250,248,255,.5)" font-family="Schibsted Grotesk,sans-serif">78</text>
+      <text x="266" y="118" text-anchor="start" font-size="12" font-weight="700" fill="#C6FF3D" font-family="Bricolage Grotesque,sans-serif">Conscient.</text>
+      <text x="266" y="131" text-anchor="start" font-size="10" fill="rgba(250,248,255,.5)" font-family="Schibsted Grotesk,sans-serif">64</text>
+      <text x="228" y="264" text-anchor="middle" font-size="12" font-weight="700" fill="#FF3D7F" font-family="Bricolage Grotesque,sans-serif">Extraversion</text>
+      <text x="228" y="277" text-anchor="middle" font-size="10" fill="rgba(250,248,255,.5)" font-family="Schibsted Grotesk,sans-serif">52</text>
+      <text x="92" y="264" text-anchor="middle" font-size="12" font-weight="700" fill="#FF8AB4" font-family="Bricolage Grotesque,sans-serif">Agreeable.</text>
+      <text x="92" y="277" text-anchor="middle" font-size="10" fill="rgba(250,248,255,.5)" font-family="Schibsted Grotesk,sans-serif">86</text>
+      <text x="54" y="118" text-anchor="end" font-size="12" font-weight="700" fill="#FAF8FF" font-family="Bricolage Grotesque,sans-serif">Neuroticism</text>
+      <text x="54" y="131" text-anchor="end" font-size="10" fill="rgba(250,248,255,.5)" font-family="Schibsted Grotesk,sans-serif">30</text>
+     </svg>
+     <div class="axis-note"><i></i>Rings mark 25 · 50 · 75 · 100 on every axis</div>
+    </div>
+
+    <div class="traits">
+     <div class="trow">
+      <div class="t-ico" style="background:rgba(108,76,241,.18)"><svg viewBox="0 0 24 24" stroke="#B7A6FF"><path d="M9.94 15.5a2 2 0 0 0-1.44-1.44l-6.13-1.58a.5.5 0 0 1 0-.96L8.5 9.94a2 2 0 0 0 1.44-1.44l1.58-6.14a.5.5 0 0 1 .96 0l1.58 6.14a2 2 0 0 0 1.44 1.44l6.13 1.58a.5.5 0 0 1 0 .96l-6.13 1.58a2 2 0 0 0-1.44 1.44l-1.58 6.13a.5.5 0 0 1-.96 0z"/></svg></div>
+      <div><div class="t-name">Openness</div><div class="t-desc">Curious, creative, loves new ideas</div></div>
+      <div class="t-right"><div class="t-score" style="color:#B7A6FF">78</div><div class="t-bar"><i style="width:78%;background:#6C4CF1"></i></div></div>
+     </div>
+     <div class="trow">
+      <div class="t-ico" style="background:rgba(198,255,61,.12)"><svg viewBox="0 0 24 24" stroke="#C6FF3D"><circle cx="12" cy="12" r="10"/><circle cx="12" cy="12" r="6"/><circle cx="12" cy="12" r="2"/></svg></div>
+      <div><div class="t-name">Conscientiousness</div><div class="t-desc">Organized, reliable, goal-driven</div></div>
+      <div class="t-right"><div class="t-score" style="color:var(--lm)">64</div><div class="t-bar"><i style="width:64%;background:var(--lm)"></i></div></div>
+     </div>
+     <div class="trow">
+      <div class="t-ico" style="background:rgba(255,61,127,.14)"><svg viewBox="0 0 24 24" stroke="#FF3D7F"><path d="M13 2 3 14h9l-1 8 10-12h-9l1-8z"/></svg></div>
+      <div><div class="t-name">Extraversion</div><div class="t-desc">Selectively social, ambivert energy</div></div>
+      <div class="t-right"><div class="t-score" style="color:var(--pk)">52</div><div class="t-bar"><i style="width:52%;background:var(--pk)"></i></div></div>
+     </div>
+     <div class="trow">
+      <div class="t-ico" style="background:rgba(196,23,106,.2)"><svg viewBox="0 0 24 24" stroke="#FF8AB4"><path d="M20.84 4.61a5.5 5.5 0 0 0-7.78 0L12 5.67l-1.06-1.06a5.5 5.5 0 0 0-7.78 7.78l1.06 1.06L12 21.23l7.78-7.78 1.06-1.06a5.5 5.5 0 0 0 0-7.78z"/></svg></div>
+      <div><div class="t-name">Agreeableness</div><div class="t-desc">Warm, empathetic, highly cooperative</div></div>
+      <div class="t-right"><div class="t-score" style="color:#FF8AB4">86</div><div class="t-bar"><i style="width:86%;background:#C4176A"></i></div></div>
+     </div>
+     <div class="trow">
+      <div class="t-ico" style="background:rgba(250,248,255,.08)"><svg viewBox="0 0 24 24" stroke="#FAF8FF"><path d="M11 20A7 7 0 0 1 9.8 6.1C15.5 5 17 4.48 19 2c1 2 2 4.18 2 8 0 5.5-4.78 10-10 10Z"/><path d="M2 21c0-3 1.85-5.36 5.08-6C9.5 14.52 12 13 13 12"/></svg></div>
+      <div><div class="t-name">Neuroticism</div><div class="t-desc">Emotionally stable, low reactivity</div></div>
+      <div class="t-right"><div class="t-score" style="color:var(--paper)">30</div><div class="t-bar"><i style="width:30%;background:#FAF8FF"></i></div></div>
+     </div>
+    </div>
+
+   </div>
+
+   <div class="nav">
+    <div class="ni"><svg viewBox="0 0 24 24"><path d="M3 9l9-7 9 7v11a2 2 0 0 1-2 2H5a2 2 0 0 1-2-2z"/><path d="M9 22V12h6v10"/></svg><b></b></div>
+    <div class="ni"><svg viewBox="0 0 24 24"><circle cx="11" cy="11" r="8"/><path d="m21 21-4.35-4.35"/></svg><b></b></div>
+    <div class="ni"><svg viewBox="0 0 24 24"><path d="M20.84 4.61a5.5 5.5 0 0 0-7.78 0L12 5.67l-1.06-1.06a5.5 5.5 0 0 0-7.78 7.78l1.06 1.06L12 21.23l7.78-7.78 1.06-1.06a5.5 5.5 0 0 0 0-7.78z"/></svg><b></b></div>
+    <div class="ni"><svg viewBox="0 0 24 24"><path d="M21 15a2 2 0 0 1-2 2H7l-4 4V5a2 2 0 0 1 2-2h14a2 2 0 0 1 2 2z"/></svg><b></b></div>
+    <div class="ni on"><svg viewBox="0 0 24 24"><path d="M20 21v-2a4 4 0 0 0-4-4H8a4 4 0 0 0-4 4v2"/><circle cx="12" cy="7" r="4"/></svg><b></b></div>
+   </div>
+  </div>
+ </div>
+
+ <!-- ============ SCREEN 3 · MUSIC ============ -->
+ <div class="col">
+  <div class="screen-tag"><span class="screen-num">03</span><span class="screen-name">Music</span><span class="screen-note">— genre bento + taste match</span></div>
+  <div class="phone">
+   <div class="sb"><span>9:41</span><span class="pips"><i></i><i></i><i></i></span></div>
+
+   <div class="hdr">
+    <div class="hdr-av" style="background:linear-gradient(160deg,var(--mg),var(--pp))"><img src="../../3d-individual/fox-f.png" alt="Maya's avatar"/></div>
+    <div>
+     <div class="hdr-name">Maya, 26</div>
+     <div class="hdr-sub"><svg viewBox="0 0 24 24"><path d="M20 10c0 4.99-5.54 10.19-7.4 11.8a1 1 0 0 1-1.2 0C9.54 20.19 4 14.99 4 10a8 8 0 0 1 16 0"/><circle cx="12" cy="10" r="3"/></svg>Colombo · 3 km away</div>
+    </div>
+    <div class="badge-id"><svg viewBox="0 0 24 24"><path d="M20 13c0 5-3.5 7.5-7.66 8.95a1 1 0 0 1-.67-.01C7.5 20.5 4 18 4 13V6a1 1 0 0 1 1-1c2 0 4.5-1.2 6.24-2.72a1.17 1.17 0 0 1 1.52 0C14.51 3.81 17 5 19 5a1 1 0 0 1 1 1z"/><path d="m9 12 2 2 4-4"/></svg>ID</div>
+   </div>
+
+   <div class="tabs">
+    <div class="tab"><svg viewBox="0 0 24 24"><circle cx="12" cy="8" r="5"/><path d="M20 21a8 8 0 0 0-16 0"/></svg>About</div>
+    <div class="tab on"><svg viewBox="0 0 24 24"><path d="M9 18V5l12-2v13"/><circle cx="6" cy="18" r="3"/><circle cx="18" cy="16" r="3"/></svg>Music</div>
+    <div class="tab"><svg viewBox="0 0 24 24"><path d="M12 3v18M3 12h18"/><circle cx="12" cy="12" r="8"/></svg>Personality</div>
+   </div>
+
+   <div class="body">
+    <div class="b-grid">
+
+     <div class="sound-hero">
+      <div class="lbl"><svg viewBox="0 0 24 24"><path d="M2 13a2 2 0 0 0 2-2V7a2 2 0 0 1 4 0v13a2 2 0 0 0 4 0V4a2 2 0 0 1 4 0v13a2 2 0 0 0 4 0v-4a2 2 0 0 1 2-2"/></svg>Sound identity</div>
+      <div class="sound-title">6 genres, one mood</div>
+      <div class="sound-sub">Jazz · Lo-fi · Hip-Hop · Indie · R&amp;B · Pop</div>
+      <div class="wave">
+       <i style="height:30%"></i><i class="p" style="height:55%"></i><i style="height:40%"></i><i class="g" style="height:85%"></i><i style="height:60%"></i><i class="p" style="height:95%"></i><i style="height:45%"></i><i class="g" style="height:70%"></i><i style="height:35%"></i><i class="p" style="height:80%"></i><i style="height:50%"></i><i class="g" style="height:62%"></i><i style="height:28%"></i><i class="p" style="height:48%"></i><i style="height:38%"></i>
+      </div>
+     </div>
+    </div>
+
+    <div class="genres">
+     <div class="g-tile">
+      <div class="g-ic" style="background:rgba(108,76,241,.18)"><svg viewBox="0 0 24 24" stroke="#B7A6FF"><path d="M9 18V5l12-2v13"/><circle cx="6" cy="18" r="3"/><circle cx="18" cy="16" r="3"/></svg></div>
+      <div><div class="g-n">Jazz</div><div class="g-d">Late-night mood</div></div>
+     </div>
+     <div class="g-tile">
+      <div class="g-ic" style="background:rgba(250,248,255,.08)"><svg viewBox="0 0 24 24" stroke="#FAF8FF"><path d="M12 3a6 6 0 0 0 9 9 9 9 0 1 1-9-9Z"/></svg></div>
+      <div><div class="g-n">Lo-fi</div><div class="g-d">Study &amp; chill</div></div>
+     </div>
+     <div class="g-tile">
+      <div class="g-ic" style="background:rgba(255,61,127,.14)"><svg viewBox="0 0 24 24" stroke="#FF3D7F"><path d="M12 2a3 3 0 0 0-3 3v7a3 3 0 0 0 6 0V5a3 3 0 0 0-3-3Z"/><path d="M19 10v2a7 7 0 0 1-14 0v-2"/><path d="M12 19v3"/></svg></div>
+      <div><div class="g-n">Hip-Hop</div><div class="g-d">Lyricism first</div></div>
+     </div>
+     <div class="g-tile">
+      <div class="g-ic" style="background:rgba(198,255,61,.12)"><svg viewBox="0 0 24 24" stroke="#C6FF3D"><circle cx="12" cy="12" r="10"/><circle cx="12" cy="12" r="2"/></svg></div>
+      <div><div class="g-n">Indie</div><div class="g-d">Hidden gems</div></div>
+     </div>
+     <div class="g-tile">
+      <div class="g-ic" style="background:rgba(196,23,106,.2)"><svg viewBox="0 0 24 24" stroke="#FF8AB4"><path d="M20.84 4.61a5.5 5.5 0 0 0-7.78 0L12 5.67l-1.06-1.06a5.5 5.5 0 0 0-7.78 7.78l1.06 1.06L12 21.23l7.78-7.78 1.06-1.06a5.5 5.5 0 0 0 0-7.78z"/></svg></div>
+      <div><div class="g-n">R&amp;B</div><div class="g-d">Soulful &amp; smooth</div></div>
+     </div>
+     <div class="g-tile">
+      <div class="g-ic" style="background:rgba(108,76,241,.18)"><svg viewBox="0 0 24 24" stroke="#B7A6FF"><path d="M12 2 15.09 8.26 22 9.27 17 14.14 18.18 21.02 12 17.77 5.82 21.02 7 14.14 2 9.27 8.91 8.26z"/></svg></div>
+      <div><div class="g-n">Pop</div><div class="g-d">Guilty pleasures</div></div>
+     </div>
+    </div>
+
+    <div class="match">
+     <div class="faces">
+      <div class="face" style="background:linear-gradient(160deg,var(--mg),var(--pp))"><img src="../../3d-individual/fox-f.png" alt="Maya"/></div>
+      <div class="face" style="background:linear-gradient(160deg,var(--pp),#2E1E55)"><img src="../../3d-individual/wolf-m.png" alt="Dev"/></div>
+     </div>
+     <div>
+      <div class="match-t">You &amp; Dev both play <em>Indie on repeat</em></div>
+      <div class="match-d">4 shared genres · 12 shared artists</div>
+     </div>
+     <div class="match-pct"><b>87</b><span>Match</span></div>
+    </div>
+
+   </div>
+
+   <div class="nav">
+    <div class="ni"><svg viewBox="0 0 24 24"><path d="M3 9l9-7 9 7v11a2 2 0 0 1-2 2H5a2 2 0 0 1-2-2z"/><path d="M9 22V12h6v10"/></svg><b></b></div>
+    <div class="ni"><svg viewBox="0 0 24 24"><circle cx="11" cy="11" r="8"/><path d="m21 21-4.35-4.35"/></svg><b></b></div>
+    <div class="ni"><svg viewBox="0 0 24 24"><path d="M20.84 4.61a5.5 5.5 0 0 0-7.78 0L12 5.67l-1.06-1.06a5.5 5.5 0 0 0-7.78 7.78l1.06 1.06L12 21.23l7.78-7.78 1.06-1.06a5.5 5.5 0 0 0 0-7.78z"/></svg><b></b></div>
+    <div class="ni"><svg viewBox="0 0 24 24"><path d="M21 15a2 2 0 0 1-2 2H7l-4 4V5a2 2 0 0 1 2-2h14a2 2 0 0 1 2 2z"/></svg><b></b></div>
+    <div class="ni on"><svg viewBox="0 0 24 24"><path d="M20 21v-2a4 4 0 0 0-4-4H8a4 4 0 0 0-4 4v2"/><circle cx="12" cy="7" r="4"/></svg><b></b></div>
+   </div>
+  </div>
+ </div>
+
+ </div>
+</div>
+</body>
+</html>

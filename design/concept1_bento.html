@@ -1,0 +1,136 @@
+<!DOCTYPE html>
+<html lang="en">
+<head>
+<meta charset="UTF-8"/><meta name="viewport" content="width=device-width,initial-scale=1"/>
+<title>Pearmo C1: Bento</title>
+<link href="https://fonts.googleapis.com/css2?family=Syne:wght@400;600;700;800&family=Syne+Mono&display=swap" rel="stylesheet"/>
+<style>
+*{box-sizing:border-box;margin:0;padding:0}
+:root{--bg:#FAF8FF;--p:#6C4CF1;--pk:#FF3D7F;--lm:#C6FF3D;--mg:#C4176A;--dk:#17101F;--s1:#EDE9FD;--s2:#FFF0F5;--s3:#F2FFD6;--t2:#6B6480;--bd:#E8E2F8}
+body{background:#ddd8f5;display:flex;justify-content:center;padding:40px 16px;font-family:'Syne',sans-serif}
+.phone{width:390px;background:var(--bg);border-radius:44px;overflow:hidden;box-shadow:0 0 0 8px #fff,0 0 0 10px var(--bd),0 24px 60px rgba(108,76,241,.2)}
+.sb{display:flex;justify-content:space-between;padding:14px 28px 0;font-size:12px;font-weight:700;color:var(--dk)}
+.toprow{display:flex;align-items:center;justify-content:space-between;padding:10px 18px 0}
+.toprow span{font-size:18px;font-weight:800;color:var(--dk)}
+.ibt{width:34px;height:34px;border-radius:10px;background:var(--s1);border:1px solid var(--bd);display:flex;align-items:center;justify-content:center;cursor:pointer}
+.ibt svg{width:14px;height:14px;stroke:var(--dk);fill:none;stroke-width:2}
+
+.bento{display:grid;grid-template-columns:1fr 1fr;gap:10px;padding:14px 18px 20px}
+
+/* Avatar tile */
+.av-tile{background:linear-gradient(150deg,var(--p),var(--pk));border-radius:28px;padding:16px;display:flex;flex-direction:column;align-items:center;justify-content:flex-end;min-height:220px;position:relative;overflow:hidden;grid-row:span 2}
+.av-tile::before{content:'';position:absolute;top:-40px;right:-40px;width:130px;height:130px;border-radius:50%;background:rgba(255,255,255,.1)}
+.avbadge{position:absolute;top:12px;right:12px;background:var(--lm);color:var(--dk);font-size:10px;font-weight:800;padding:3px 9px;border-radius:999px;font-family:'Syne Mono'}
+.avimg{width:82px;height:82px;border-radius:50%;background:rgba(255,255,255,.2);display:flex;align-items:center;justify-content:center;font-size:34px;border:2.5px solid rgba(255,255,255,.5);margin-bottom:10px}
+.avname{color:#fff;font-size:18px;font-weight:800;text-align:center}
+.avsub{color:rgba(255,255,255,.7);font-size:11px;margin-top:3px;text-align:center;font-family:'Syne Mono'}
+
+/* Quote */
+.qt{background:var(--s3);border-radius:22px;padding:14px;border:1px solid #cef080}
+.qlbl{font-family:'Syne Mono';font-size:9px;font-weight:700;letter-spacing:2px;color:#7aab00;margin-bottom:6px}
+.qt p{font-size:12.5px;line-height:1.55;color:var(--dk);font-style:italic}
+
+/* Trust */
+.tr{background:var(--s2);border-radius:22px;padding:14px;border:1px solid #ffd0e3;display:flex;flex-direction:column;justify-content:space-between}
+.trlbl{font-family:'Syne Mono';font-size:9px;letter-spacing:2px;color:var(--mg);font-weight:700}
+.trnum{font-size:38px;font-weight:800;color:var(--pk);line-height:1}
+.trsub{font-size:11px;color:var(--t2)}
+
+/* Audio */
+.au{grid-column:1/3;background:var(--s2);border-radius:20px;padding:14px 18px;border:1px solid #ffd0e3}
+.albl{font-family:'Syne Mono';font-size:9px;letter-spacing:2px;color:var(--mg);font-weight:700;margin-bottom:10px}
+.arow{display:flex;align-items:center;gap:12px}
+.play{width:40px;height:40px;min-width:40px;border-radius:50%;background:linear-gradient(135deg,var(--pk),var(--mg));display:flex;align-items:center;justify-content:center;box-shadow:0 4px 12px rgba(255,61,127,.3);cursor:pointer}
+.play svg{width:13px;height:13px;fill:#fff;margin-left:2px}
+.wv{flex:1;height:28px;display:flex;align-items:center;gap:2.5px}
+.atm{font-family:'Syne Mono';font-size:12px;color:var(--mg);font-weight:700}
+
+/* Music */
+.mu{grid-column:1/3;background:var(--dk);border-radius:20px;padding:14px 18px;position:relative;overflow:hidden}
+.mu::after{content:'♫';position:absolute;right:16px;top:50%;transform:translateY(-50%);font-size:52px;opacity:.07;color:#fff}
+.mulbl{font-family:'Syne Mono';font-size:9px;letter-spacing:2px;color:rgba(255,255,255,.5);font-weight:700;margin-bottom:8px}
+.mchips{display:flex;gap:7px;flex-wrap:wrap}
+.mc{padding:4px 12px;border-radius:999px;font-size:12px;font-weight:700;background:rgba(198,255,61,.12);color:var(--lm);border:1px solid rgba(198,255,61,.3)}
+
+/* Values */
+.va{grid-column:1/3;background:var(--s1);border-radius:20px;padding:14px 18px;border:1px solid var(--bd)}
+.valbl{font-family:'Syne Mono';font-size:9px;letter-spacing:2px;color:var(--p);font-weight:700;margin-bottom:10px}
+.vchips{display:flex;gap:8px;flex-wrap:wrap}
+.vc{padding:5px 14px;border-radius:999px;font-size:13px;font-weight:700;border:1.5px solid var(--p);color:var(--p)}
+.vcp{border-color:var(--pk);color:var(--pk)}
+
+/* Traits */
+.tt{grid-column:1/3;background:#fff;border:1px solid var(--bd);border-radius:20px;padding:14px 18px}
+.ttlbl{font-family:'Syne Mono';font-size:9px;letter-spacing:2px;color:var(--t2);font-weight:700;margin-bottom:12px}
+.tr2{display:flex;align-items:center;gap:10px;margin-bottom:8px}
+.tn{font-size:12px;color:var(--t2);width:100px;font-weight:600}
+.tb{flex:1;height:6px;background:#EDE9FB;border-radius:99px}
+.tf{height:100%;border-radius:99px;background:linear-gradient(90deg,var(--p),var(--pk))}
+.tv{font-size:12px;font-weight:800;color:var(--p);width:22px;text-align:right}
+
+/* Actions */
+.acts{grid-column:1/3;display:flex;flex-direction:column;gap:8px}
+.act{display:flex;align-items:center;gap:12px;background:#fff;border:1px solid var(--bd);border-radius:16px;padding:12px 14px;cursor:pointer}
+.aico{width:36px;height:36px;min-width:36px;border-radius:11px;display:flex;align-items:center;justify-content:center}
+.aico svg{width:16px;height:16px;stroke-width:2;fill:none}
+.atxt strong{display:block;font-size:14px;font-weight:700;color:var(--dk)}
+.atxt small{font-size:11px;color:var(--t2)}
+.ach{color:var(--t2);margin-left:auto;font-size:20px}
+
+/* Nav */
+.bnav{display:flex;justify-content:space-around;padding:10px 0 22px;border-top:1px solid var(--bd);background:#fff;margin-top:4px}
+.ni{display:flex;flex-direction:column;align-items:center;gap:3px;font-size:10px;font-weight:700;color:var(--t2);cursor:pointer}
+.ni.a{color:var(--pk)}
+.ni svg{width:22px;height:22px;stroke-width:1.8;fill:none}
+.ni.a svg{stroke:var(--pk)}
+.pip{width:4px;height:4px;border-radius:50%;background:var(--pk)}
+</style>
+</head>
+<body>
+<div class="phone">
+  <div class="sb"><span>9:41</span><span>●●●</span></div>
+  <div class="toprow">
+    <span>My Profile</span>
+    <div class="ibt"><svg viewBox="0 0 24 24"><circle cx="12" cy="5" r="1" fill="currentColor" stroke="none"/><circle cx="12" cy="12" r="1" fill="currentColor" stroke="none"/><circle cx="12" cy="19" r="1" fill="currentColor" stroke="none"/></svg></div>
+  </div>
+  <div class="bento">
+    <div class="av-tile">
+      <div class="avbadge">ID ✓</div>
+      <div class="avimg">🌸</div>
+      <div class="avname">Amara, 26</div>
+      <div class="avsub">Colombo · Woman</div>
+    </div>
+    <div class="qt"><div class="qlbl">ABOUT</div><p>"Coffee addict, weekend hiker, philosophy reader. Slow-dancing in the kitchen is non-negotiable."</p></div>
+    <div class="tr"><div class="trlbl">TRUST SCORE</div><div class="trnum">4.8</div><div class="trsub">12 connections</div></div>
+    <div class="au"><div class="albl">AUDIO INTRO</div><div class="arow"><div class="play"><svg viewBox="0 0 24 24"><polygon points="5,3 19,12 5,21"/></svg></div><div class="wv" id="wv1"></div><span class="atm">0:42</span></div></div>
+    <div class="mu"><div class="mulbl">MUSIC TASTE</div><div class="mchips"><span class="mc">Indie pop</span><span class="mc">Lo-fi</span><span class="mc">Jazz</span><span class="mc">R&amp;B</span></div></div>
+    <div class="va"><div class="valbl">LOOKING FOR</div><div class="vchips"><span class="vc">Serious</span><span class="vc vcp">Ages 24–34</span><span class="vc">Honesty</span><span class="vc">Kindness</span></div></div>
+    <div class="tt"><div class="ttlbl">PERSONALITY</div>
+      <div class="tr2"><span class="tn">Openness</span><div class="tb"><div class="tf" style="width:82%"></div></div><span class="tv">4.1</span></div>
+      <div class="tr2"><span class="tn">Agreeableness</span><div class="tb"><div class="tf" style="width:76%"></div></div><span class="tv">3.8</span></div>
+      <div class="tr2"><span class="tn">Conscientiousness</span><div class="tb"><div class="tf" style="width:90%"></div></div><span class="tv">4.5</span></div>
+      <div class="tr2"><span class="tn">Stability</span><div class="tb"><div class="tf" style="width:70%"></div></div><span class="tv">3.5</span></div>
+    </div>
+    <div class="acts">
+      <div class="act"><div class="aico" style="background:#EDE9FD"><svg viewBox="0 0 24 24" stroke="#6C4CF1"><circle cx="12" cy="12" r="3"/><path d="M19.4 15a1.65 1.65 0 00.33 1.82l.06.06a2 2 0 010 2.83 2 2 0 01-2.83 0l-.06-.06a1.65 1.65 0 00-1.82-.33 1.65 1.65 0 00-1 1.51V21a2 2 0 01-4 0v-.09A1.65 1.65 0 009 19.4a1.65 1.65 0 00-1.82.33l-.06.06a2 2 0 01-2.83-2.83l.06-.06A1.65 1.65 0 004.68 15a1.65 1.65 0 00-1.51-1H3a2 2 0 010-4h.09A1.65 1.65 0 004.6 9a1.65 1.65 0 00-.33-1.82l-.06-.06a2 2 0 012.83-2.83l.06.06A1.65 1.65 0 009 4.68a1.65 1.65 0 001-1.51V3a2 2 0 014 0v.09a1.65 1.65 0 001 1.51 1.65 1.65 0 001.82-.33l.06-.06a2 2 0 012.83 2.83l-.06.06A1.65 1.65 0 0019.4 9a1.65 1.65 0 001.51 1H21a2 2 0 010 4h-.09a1.65 1.65 0 00-1.51 1z"/></svg></div><div class="atxt"><strong>Settings</strong><small>Edit profile & privacy</small></div><span class="ach">›</span></div>
+      <div class="act"><div class="aico" style="background:#F2FFD6"><svg viewBox="0 0 24 24" stroke="#7aab00"><path d="M9 12l2 2 4-4m5.618-4.016A11.955 11.955 0 0112 2.944a11.955 11.955 0 01-8.618 3.04A12.02 12.02 0 003 9c0 5.591 3.824 10.29 9 11.622 5.176-1.332 9-6.03 9-11.622 0-1.042-.133-2.052-.382-3.016z"/></svg></div><div class="atxt"><strong>Verification</strong><small>ID Verified</small></div><span class="ach">›</span></div>
+      <div class="act"><div class="aico" style="background:#FFF0F5"><svg viewBox="0 0 24 24" stroke="#C4176A"><path d="M12 2l3.09 6.26L22 9.27l-5 4.87 1.18 6.88L12 17.77l-6.18 3.25L7 14.14 2 9.27l6.91-1.01L12 2z"/></svg></div><div class="atxt"><strong>Membership</strong><small>Upgrade to Premium</small></div><span class="ach">›</span></div>
+    </div>
+  </div>
+  <div class="bnav">
+    <div class="ni"><svg viewBox="0 0 24 24" stroke="currentColor"><path d="M3 9l9-7 9 7v11a2 2 0 01-2 2H5a2 2 0 01-2-2z"/></svg>Home</div>
+    <div class="ni"><svg viewBox="0 0 24 24" stroke="currentColor"><path d="M20.84 4.61a5.5 5.5 0 00-7.78 0L12 5.67l-1.06-1.06a5.5 5.5 0 00-7.78 7.78l1.06 1.06L12 21.23l7.78-7.78 1.06-1.06a5.5 5.5 0 000-7.78z"/></svg>Matches</div>
+    <div class="ni"><svg viewBox="0 0 24 24" stroke="currentColor"><path d="M21 15a2 2 0 01-2 2H7l-4 4V5a2 2 0 012-2h14a2 2 0 012 2z"/></svg>Chat</div>
+    <div class="ni a"><svg viewBox="0 0 24 24" stroke="currentColor"><path d="M20 21v-2a4 4 0 00-4-4H8a4 4 0 00-4 4v2"/><circle cx="12" cy="7" r="4"/></svg>Profile<div class="pip"></div></div>
+  </div>
+</div>
+<script>
+const w=document.getElementById('wv1');
+[14,20,28,18,32,22,12,26,36,24,18,30,16,28,22].forEach((h,i)=>{
+  const b=document.createElement('div');
+  b.style.cssText=`width:3.5px;height:${h}px;border-radius:3px;flex-shrink:0;background:${i<8?'linear-gradient(to top,#6C4CF1,#FF3D7F)':'#EDE9FB'}`;
+  w.appendChild(b);
+});
+</script>
+</body>
+</html>

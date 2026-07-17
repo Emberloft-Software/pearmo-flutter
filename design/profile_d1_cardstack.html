@@ -1,0 +1,231 @@
+<!DOCTYPE html>
+<html lang="en">
+<head>
+<meta charset="UTF-8"/><meta name="viewport" content="width=device-width,initial-scale=1"/>
+<title>Pearmo D1 — Card Stack</title>
+<link href="https://fonts.googleapis.com/css2?family=Plus+Jakarta+Sans:wght@400;500;600;700;800;900&display=swap" rel="stylesheet"/>
+<style>
+*{box-sizing:border-box;margin:0;padding:0}
+:root{--bg:#FAF8FF;--p:#6C4CF1;--pk:#FF3D7F;--lm:#C6FF3D;--mg:#C4176A;--dk:#17101F;--s1:#EDE9FD;--s2:#FFF0F5;--s3:#F2FFD6;--t2:#6B6480;--bd:#E8E2F8}
+body{background:#d8d3f2;display:flex;justify-content:center;padding:40px 16px;font-family:'Plus Jakarta Sans',sans-serif;min-height:100vh}
+.phone{width:390px;background:var(--bg);border-radius:48px;overflow:hidden;box-shadow:0 0 0 8px #fff,0 0 0 10px var(--bd),0 40px 100px rgba(108,76,241,.2)}
+.scroll{overflow-y:auto;max-height:840px;padding-bottom:20px}.scroll::-webkit-scrollbar{display:none}
+.sb{display:flex;justify-content:space-between;padding:14px 28px 0;font-size:11px;font-weight:700;color:var(--dk)}
+.hdr{display:flex;align-items:center;justify-content:space-between;padding:10px 20px}
+.hdr-t{font-size:20px;font-weight:900;color:var(--dk);letter-spacing:-.4px}
+.hdr-r{display:flex;gap:8px}
+.ib{width:36px;height:36px;border-radius:12px;background:var(--s1);border:1px solid var(--bd);display:flex;align-items:center;justify-content:center;cursor:pointer}
+.ib svg{width:15px;height:15px;stroke:var(--p);fill:none;stroke-width:2}
+
+/* Hero card */
+.hero{margin:0 16px;background:linear-gradient(160deg,#3d1f80,var(--p),var(--mg));border-radius:28px;padding:28px 20px 22px;display:flex;flex-direction:column;align-items:center;position:relative;overflow:hidden}
+.hero::before{content:'';position:absolute;top:-40px;right:-40px;width:160px;height:160px;border-radius:50%;background:rgba(255,255,255,.06)}
+.hero::after{content:'';position:absolute;bottom:-30px;left:-20px;width:100px;height:100px;border-radius:50%;background:rgba(255,255,255,.04)}
+.av-wrap{position:relative;margin-bottom:14px}
+.av{width:90px;height:90px;border-radius:50%;background:linear-gradient(135deg,#ffb4a2,#b8a9f3);display:flex;align-items:center;justify-content:center;font-size:36px;font-weight:900;color:var(--dk);border:3px solid rgba(255,255,255,.35);box-shadow:0 8px 32px rgba(0,0,0,.2);font-family:'Plus Jakarta Sans',sans-serif}
+.mic-btn{position:absolute;bottom:0;right:0;width:28px;height:28px;border-radius:50%;background:var(--pk);display:flex;align-items:center;justify-content:center;border:2.5px solid #fff;cursor:pointer;box-shadow:0 2px 8px rgba(255,61,127,.4)}
+.mic-btn svg{width:13px;height:13px;stroke:#fff;fill:none;stroke-width:2.5}
+.verified-pill{background:var(--lm);color:var(--dk);font-size:9px;font-weight:800;padding:4px 10px;border-radius:999px;letter-spacing:.6px;margin-bottom:8px}
+.hero-name{font-size:24px;font-weight:900;color:#fff;letter-spacing:-.5px}
+.hero-meta{color:rgba(255,255,255,.65);font-size:12px;margin-top:4px;font-weight:500}
+.hero-intent{margin-top:10px;background:rgba(255,255,255,.15);color:#fff;font-size:11px;font-weight:700;padding:5px 14px;border-radius:999px;border:1px solid rgba(255,255,255,.2);backdrop-filter:blur(4px)}
+
+/* Stats */
+.stats{display:flex;gap:8px;padding:12px 16px 0}
+.sc{flex:1;background:#fff;border-radius:16px;padding:12px;border:1px solid var(--bd);text-align:center}
+.sc-n{font-size:20px;font-weight:900;line-height:1}
+.sc-l{font-size:9px;font-weight:700;color:var(--t2);text-transform:uppercase;letter-spacing:.8px;margin-top:3px}
+
+/* Section */
+.sec{padding:18px 20px 8px;display:flex;align-items:center;gap:8px}
+.sec h2{font-size:13px;font-weight:800;color:var(--t2);text-transform:uppercase;letter-spacing:1px}
+.sl{flex:1;height:1px;background:var(--bd)}
+
+/* About */
+.about-card{margin:0 16px;background:#fff;border-radius:20px;padding:16px;border:1px solid var(--bd)}
+.about-card p{font-size:13.5px;color:var(--dk);line-height:1.7;font-weight:500}
+
+/* Music bento */
+.music-grid{display:grid;grid-template-columns:1fr 1fr;gap:8px;padding:0 16px}
+.gt{border-radius:18px;padding:13px;display:flex;align-items:center;gap:10px;cursor:pointer;border:1.5px solid;transition:transform .15s}
+.gt:hover{transform:scale(1.02)}
+.gi{width:38px;height:38px;border-radius:11px;display:flex;align-items:center;justify-content:center;font-size:18px;flex-shrink:0}
+.gn{font-size:13px;font-weight:700;color:var(--dk)}
+.gd{font-size:10px;color:var(--t2);margin-top:1px}
+.gj{background:#FFF8E7;border-color:#FFE0A0}.gj .gi{background:#FFE9A0}
+.gl{background:var(--s1);border-color:var(--bd)}.gl .gi{background:#d6ceff}
+.gh{background:var(--s2);border-color:#ffd0e3}.gh .gi{background:#ffb3cc}
+.gi2{background:var(--s3);border-color:#cef080}.gi2 .gi{background:#d8ffa0}
+.ge{background:#EEF4FF;border-color:#c0d4f8}.ge .gi{background:#c8d8ff}
+.gk{background:#FFF0FB;border-color:#f0b8e8}.gk .gi{background:#f0c0f0}
+
+/* Personality */
+.pers-grid{display:grid;grid-template-columns:1fr 1fr 1fr;gap:8px;padding:0 16px}
+.tr{background:#fff;border-radius:18px;padding:12px 8px;border:1px solid var(--bd);display:flex;flex-direction:column;align-items:center;gap:4px}
+.arc-w{position:relative;width:60px;height:60px}
+.arc-w svg{width:60px;height:60px}
+.arc-s{position:absolute;inset:0;display:flex;align-items:center;justify-content:center;font-size:11px;font-weight:800;color:var(--dk)}
+.tr-n{font-size:9px;font-weight:800;color:var(--dk);text-align:center;letter-spacing:-.1px;line-height:1.3}
+.tr-d{font-size:8.5px;color:var(--t2);text-align:center;line-height:1.3}
+
+/* Partner values */
+.vals{margin:0 16px;background:#fff;border-radius:20px;padding:14px 16px;border:1px solid var(--bd)}
+.vals-l{font-size:10px;font-weight:800;text-transform:uppercase;letter-spacing:1px;color:var(--t2);margin-bottom:8px}
+.chips{display:flex;flex-wrap:wrap;gap:6px}
+.chip{padding:6px 12px;border-radius:999px;font-size:12px;font-weight:700;border:1.5px solid}
+.cp{background:var(--s1);color:var(--p);border-color:var(--bd)}
+.cpk{background:var(--s2);color:var(--mg);border-color:#ffd0e3}
+.clm{background:var(--s3);color:#4a7a00;border-color:#cef080}
+
+/* Account rows */
+.acc{margin:0 16px;background:#fff;border-radius:20px;overflow:hidden;border:1px solid var(--bd)}
+.ar{display:flex;align-items:center;gap:12px;padding:14px 16px;border-bottom:1px solid var(--bd);cursor:pointer;transition:background .15s}
+.ar:last-child{border-bottom:none}
+.ar:hover{background:var(--bg)}
+.ar-icon{width:34px;height:34px;border-radius:10px;display:flex;align-items:center;justify-content:center;flex-shrink:0}
+.ar-icon svg{width:16px;height:16px;fill:none;stroke-width:2}
+.ar-t{font-size:14px;font-weight:700;color:var(--dk)}
+.ar-s{font-size:11px;color:var(--t2);margin-top:1px}
+.ar-ch{margin-left:auto;opacity:.3}
+.ar-ch svg{width:14px;height:14px;stroke:var(--dk);fill:none;stroke-width:2.5}
+.signout{color:var(--pk)!important}
+.signout .ar-t{color:var(--pk)}
+</style>
+</head>
+<body>
+<div class="phone"><div class="scroll">
+ <div class="sb"><span>9:41</span><span>●●●</span></div>
+ <div class="hdr">
+  <span class="hdr-t">My Profile</span>
+  <div class="hdr-r">
+   <div class="ib"><svg viewBox="0 0 24 24"><path d="M11 4H4a2 2 0 00-2 2v14a2 2 0 002 2h14a2 2 0 002-2v-7"/><path d="M18.5 2.5a2.121 2.121 0 013 3L12 15l-4 1 1-4 9.5-9.5z"/></svg></div>
+  </div>
+ </div>
+
+ <!-- Hero -->
+ <div class="hero">
+  <div class="av-wrap">
+   <div class="av">A</div>
+   <div class="mic-btn"><svg viewBox="0 0 24 24"><path d="M12 1a3 3 0 00-3 3v8a3 3 0 006 0V4a3 3 0 00-3-3z"/><path d="M19 10v2a7 7 0 01-14 0v-2M12 19v4M8 23h8"/></svg></div>
+  </div>
+  <div class="verified-pill">✓ AGE VERIFIED</div>
+  <div class="hero-name">Anika, 26</div>
+  <div class="hero-meta">Woman · Colombo, Sri Lanka</div>
+  <div class="hero-intent">Looking for something serious</div>
+ </div>
+
+ <!-- Stats -->
+ <div class="stats">
+  <div class="sc"><div class="sc-n" style="color:var(--p)">48</div><div class="sc-l">Connections</div></div>
+  <div class="sc"><div class="sc-n" style="color:var(--pk)">98%</div><div class="sc-l">Replies</div></div>
+  <div class="sc"><div class="sc-n" style="color:#5a7f00">Mar '24</div><div class="sc-l">Member since</div></div>
+ </div>
+
+ <!-- About -->
+ <div class="sec"><h2>About</h2><div class="sl"></div></div>
+ <div class="about-card"><p>Morning person who cannot function before coffee. Will absolutely judge you if you skip breakfast. My playlist has 3,000 songs and I'm not sorry about any of them.</p></div>
+
+ <!-- Music -->
+ <div class="sec"><h2>Music Taste</h2><div class="sl"></div></div>
+ <div class="music-grid">
+  <div class="gt gj"><div class="gi">🎷</div><div><div class="gn">Jazz</div><div class="gd">Late night mood</div></div></div>
+  <div class="gt gl"><div class="gi">🌙</div><div><div class="gn">Lo-fi</div><div class="gd">Deep focus</div></div></div>
+  <div class="gt gh"><div class="gi">🎤</div><div><div class="gn">Hip-Hop</div><div class="gd">Lyric-first</div></div></div>
+  <div class="gt gi2"><div class="gi">🎸</div><div><div class="gn">Indie</div><div class="gd">Hidden gems</div></div></div>
+  <div class="gt ge"><div class="gi">⚡</div><div><div class="gn">Electronic</div><div class="gd">Late nights</div></div></div>
+  <div class="gt gk"><div class="gi">🎵</div><div><div class="gn">R&amp;B</div><div class="gd">Soulful</div></div></div>
+ </div>
+
+ <!-- Personality (6 traits) -->
+ <div class="sec"><h2>Personality · PEARMO</h2><div class="sl"></div></div>
+ <div class="pers-grid">
+  <div class="tr">
+   <div class="arc-w">
+    <svg viewBox="0 0 60 60"><circle cx="30" cy="30" r="24" fill="none" stroke="#EDE9FD" stroke-width="6"/><circle cx="30" cy="30" r="24" fill="none" stroke="#6C4CF1" stroke-width="6" stroke-dasharray="117.9 150.8" stroke-dashoffset="37.7" stroke-linecap="round" transform="rotate(-90 30 30)"/></svg>
+    <div class="arc-s">78%</div>
+   </div>
+   <div class="tr-n">Openness</div><div class="tr-d">Curious & creative</div>
+  </div>
+  <div class="tr">
+   <div class="arc-w">
+    <svg viewBox="0 0 60 60"><circle cx="30" cy="30" r="24" fill="none" stroke="#FFF0F5" stroke-width="6"/><circle cx="30" cy="30" r="24" fill="none" stroke="#FF3D7F" stroke-width="6" stroke-dasharray="82.9 150.8" stroke-dashoffset="37.7" stroke-linecap="round" transform="rotate(-90 30 30)"/></svg>
+    <div class="arc-s" style="color:#FF3D7F">55%</div>
+   </div>
+   <div class="tr-n">Extraversion</div><div class="tr-d">Selectively social</div>
+  </div>
+  <div class="tr">
+   <div class="arc-w">
+    <svg viewBox="0 0 60 60"><circle cx="30" cy="30" r="24" fill="none" stroke="#F2FFD6" stroke-width="6"/><circle cx="30" cy="30" r="24" fill="none" stroke="#7aab00" stroke-width="6" stroke-dasharray="98 150.8" stroke-dashoffset="37.7" stroke-linecap="round" transform="rotate(-90 30 30)"/></svg>
+    <div class="arc-s" style="color:#5a7f00">65%</div>
+   </div>
+   <div class="tr-n">Conscienti.</div><div class="tr-d">Goal-driven</div>
+  </div>
+  <div class="tr">
+   <div class="arc-w">
+    <svg viewBox="0 0 60 60"><circle cx="30" cy="30" r="24" fill="none" stroke="#FFF0FB" stroke-width="6"/><circle cx="30" cy="30" r="24" fill="none" stroke="#C4176A" stroke-width="6" stroke-dasharray="123.7 150.8" stroke-dashoffset="37.7" stroke-linecap="round" transform="rotate(-90 30 30)"/></svg>
+    <div class="arc-s" style="color:#C4176A">82%</div>
+   </div>
+   <div class="tr-n">Agreeableness</div><div class="tr-d">Warm & kind</div>
+  </div>
+  <div class="tr">
+   <div class="arc-w">
+    <svg viewBox="0 0 60 60"><circle cx="30" cy="30" r="24" fill="none" stroke="#EDE9FD" stroke-width="6"/><circle cx="30" cy="30" r="24" fill="none" stroke="#6C4CF1" stroke-width="6" stroke-dasharray="108.6 150.8" stroke-dashoffset="37.7" stroke-linecap="round" transform="rotate(-90 30 30)" opacity=".7"/></svg>
+    <div class="arc-s" style="color:#6C4CF1;font-size:10px">72%</div>
+   </div>
+   <div class="tr-n">Emotional Stability</div><div class="tr-d">Grounded</div>
+  </div>
+  <div class="tr">
+   <div class="arc-w">
+    <svg viewBox="0 0 60 60"><circle cx="30" cy="30" r="24" fill="none" stroke="#FFF0F5" stroke-width="6"/><circle cx="30" cy="30" r="24" fill="none" stroke="#C4176A" stroke-width="6" stroke-dasharray="132.7 150.8" stroke-dashoffset="37.7" stroke-linecap="round" transform="rotate(-90 30 30)"/></svg>
+    <div class="arc-s" style="color:#C4176A;font-size:10px">88%</div>
+   </div>
+   <div class="tr-n">Attachment Security</div><div class="tr-d">Secure bond</div>
+  </div>
+ </div>
+
+ <!-- Partner values -->
+ <div class="sec"><h2>Values in a partner</h2><div class="sl"></div></div>
+ <div class="vals">
+  <div class="chips">
+   <span class="chip cp">Emotional depth</span>
+   <span class="chip cpk">Humour</span>
+  </div>
+ </div>
+
+ <!-- Looking for -->
+ <div class="sec"><h2>Looking for</h2><div class="sl"></div></div>
+ <div class="vals">
+  <div class="chips">
+   <span class="chip cp">Something serious</span>
+   <span class="chip clm">Ages 24–32</span>
+   <span class="chip cpk">Women &amp; men</span>
+  </div>
+ </div>
+
+ <!-- Account -->
+ <div class="sec"><h2>Account</h2><div class="sl"></div></div>
+ <div class="acc" style="margin-bottom:32px">
+  <div class="ar">
+   <div class="ar-icon" style="background:var(--s1)"><svg viewBox="0 0 24 24" style="stroke:var(--p)"><circle cx="12" cy="12" r="3"/><path d="M19.4 15a1.65 1.65 0 00.33 1.82l.06.06a2 2 0 010 2.83 2 2 0 01-2.83 0l-.06-.06a1.65 1.65 0 00-1.82-.33 1.65 1.65 0 00-1 1.51V21a2 2 0 01-4 0v-.09A1.65 1.65 0 009 19.4a1.65 1.65 0 00-1.82.33l-.06.06a2 2 0 01-2.83-2.83l.06-.06A1.65 1.65 0 004.68 15a1.65 1.65 0 00-1.51-1H3a2 2 0 010-4h.09A1.65 1.65 0 004.6 9a1.65 1.65 0 00-.33-1.82l-.06-.06a2 2 0 012.83-2.83l.06.06A1.65 1.65 0 009 4.68a1.65 1.65 0 001-1.51V3a2 2 0 014 0v.09a1.65 1.65 0 001 1.51 1.65 1.65 0 001.82-.33l.06-.06a2 2 0 012.83 2.83l-.06.06A1.65 1.65 0 0019.4 9a1.65 1.65 0 001.51 1H21a2 2 0 010 4h-.09a1.65 1.65 0 00-1.51 1z"/></svg></div>
+   <div><div class="ar-t">Settings</div><div class="ar-s">Privacy, notifications, active hours</div></div>
+   <div class="ar-ch"><svg viewBox="0 0 24 24"><polyline points="9 18 15 12 9 6"/></svg></div>
+  </div>
+  <div class="ar">
+   <div class="ar-icon" style="background:var(--s3)"><svg viewBox="0 0 24 24" style="stroke:#5a7f00"><path d="M12 22s8-4 8-10V5l-8-3-8 3v7c0 6 8 10 8 10z"/></svg></div>
+   <div><div class="ar-t">Verification</div><div class="ar-s">Age verified · Upgrade available</div></div>
+   <div class="ar-ch"><svg viewBox="0 0 24 24"><polyline points="9 18 15 12 9 6"/></svg></div>
+  </div>
+  <div class="ar">
+   <div class="ar-icon" style="background:#FFF8E7"><svg viewBox="0 0 24 24" style="stroke:#b8860b"><path d="M12 2l3.09 6.26L22 9.27l-5 4.87 1.18 6.88L12 17.77l-6.18 3.25L7 14.14 2 9.27l6.91-1.01L12 2z"/></svg></div>
+   <div><div class="ar-t">Membership</div><div class="ar-s">Free plan · See Pearmo Plus</div></div>
+   <div class="ar-ch"><svg viewBox="0 0 24 24"><polyline points="9 18 15 12 9 6"/></svg></div>
+  </div>
+  <div class="ar signout">
+   <div class="ar-icon" style="background:var(--s2)"><svg viewBox="0 0 24 24" style="stroke:var(--pk)"><path d="M9 21H5a2 2 0 01-2-2V5a2 2 0 012-2h4M16 17l5-5-5-5M21 12H9"/></svg></div>
+   <div><div class="ar-t">Sign out</div></div>
+   <div class="ar-ch"><svg viewBox="0 0 24 24"><polyline points="9 18 15 12 9 6"/></svg></div>
+  </div>
+ </div>
+</div></div>
+</body>
+</html>

@@ -1,0 +1,212 @@
+<!DOCTYPE html>
+<html lang="en">
+<head>
+<meta charset="UTF-8"/><meta name="viewport" content="width=device-width,initial-scale=1"/>
+<title>Pearmo C2: Spotlight</title>
+<link href="https://fonts.googleapis.com/css2?family=DM+Serif+Display:ital@0;1&family=DM+Sans:wght@400;500;600;700&display=swap" rel="stylesheet"/>
+<style>
+*{box-sizing:border-box;margin:0;padding:0}
+:root{--bg:#FAF8FF;--p:#6C4CF1;--pk:#FF3D7F;--lm:#C6FF3D;--mg:#C4176A;--dk:#17101F;--t2:#6B6480;--bd:#E8E2F8}
+body{background:#17101F;display:flex;justify-content:center;padding:40px 16px;font-family:'DM Sans',sans-serif}
+.phone{width:390px;height:880px;background:var(--dk);border-radius:44px;overflow:hidden;position:relative;box-shadow:0 0 0 8px #2a1f3d,0 24px 80px rgba(0,0,0,.7)}
+
+/* PHOTO HERO — top 58% */
+.hero{position:absolute;top:0;left:0;right:0;height:58%;background:linear-gradient(160deg,#3a1060 0%,var(--mg) 40%,var(--pk) 100%);overflow:hidden}
+.hero-blob1{position:absolute;width:200px;height:200px;border-radius:50%;background:rgba(108,76,241,.4);top:-60px;right:-60px;filter:blur(40px)}
+.hero-blob2{position:absolute;width:150px;height:150px;border-radius:50%;background:rgba(255,61,127,.3);bottom:40px;left:-40px;filter:blur(30px)}
+.hero-emoji{position:absolute;top:50%;left:50%;transform:translate(-50%,-60%);font-size:120px;opacity:.9}
+.hero-overlay{position:absolute;bottom:0;left:0;right:0;height:120px;background:linear-gradient(to top,var(--dk),transparent)}
+
+/* Status bar over photo */
+.sb{position:absolute;top:14px;left:28px;right:28px;display:flex;justify-content:space-between;font-size:12px;font-weight:700;color:#fff;z-index:10}
+.back{position:absolute;top:56px;left:20px;width:36px;height:36px;border-radius:12px;background:rgba(255,255,255,.15);backdrop-filter:blur(8px);border:1px solid rgba(255,255,255,.2);display:flex;align-items:center;justify-content:center;z-index:10;cursor:pointer}
+.back svg{width:15px;height:15px;stroke:#fff;fill:none;stroke-width:2.5}
+.menu{position:absolute;top:56px;right:20px;width:36px;height:36px;border-radius:12px;background:rgba(255,255,255,.15);backdrop-filter:blur(8px);border:1px solid rgba(255,255,255,.2);display:flex;align-items:center;justify-content:center;z-index:10;cursor:pointer}
+.menu svg{width:14px;height:14px;stroke:#fff;fill:none;stroke-width:2}
+
+/* SHEET */
+.sheet{position:absolute;bottom:0;left:0;right:0;height:52%;background:var(--bg);border-radius:32px 32px 0 0;padding:0 22px 22px;overflow-y:auto}
+.sheet::-webkit-scrollbar{display:none}
+
+/* Drag handle */
+.handle{width:36px;height:4px;border-radius:99px;background:#D0C8F0;margin:12px auto 16px}
+
+/* Name row */
+.name-row{display:flex;align-items:flex-start;justify-content:space-between;margin-bottom:8px}
+.name-row h1{font-family:'DM Serif Display',serif;font-size:30px;color:var(--dk);line-height:1.1}
+.name-row h1 em{font-style:italic;color:var(--pk)}
+.badge-col{display:flex;flex-direction:column;gap:6px;align-items:flex-end}
+.badge{padding:4px 12px;border-radius:999px;font-size:11px;font-weight:700}
+.b-lime{background:#F2FFD6;color:#6a9900;border:1.5px solid #cef080}
+.b-p{background:#EDE9FD;color:var(--p);border:1.5px solid #c9beff}
+.loc{font-size:13px;color:var(--t2);margin-bottom:14px;font-weight:500}
+
+/* Tabs */
+.tabs{display:flex;gap:0;background:#F3F0FB;border-radius:12px;padding:4px;margin-bottom:16px}
+.tab{flex:1;text-align:center;padding:7px 0;border-radius:9px;font-size:13px;font-weight:700;color:var(--t2);cursor:pointer;transition:.2s}
+.tab.a{background:#fff;color:var(--p);box-shadow:0 1px 6px rgba(108,76,241,.15)}
+
+/* Content sections */
+.sec{margin-bottom:16px}
+.sec-lbl{font-size:10px;font-weight:700;letter-spacing:2px;color:var(--t2);font-family:'DM Sans',sans-serif;margin-bottom:8px}
+
+/* Quote */
+.quote-block{background:linear-gradient(135deg,#EDE9FD,#FFF0F5);border-radius:18px;padding:16px;border-left:3px solid var(--pk)}
+.quote-block p{font-family:'DM Serif Display',serif;font-size:15px;line-height:1.6;color:var(--dk);font-style:italic}
+
+/* Audio */
+.audio-card{background:#fff;border:1px solid var(--bd);border-radius:16px;padding:14px;display:flex;align-items:center;gap:12px}
+.play{width:42px;height:42px;min-width:42px;border-radius:50%;background:linear-gradient(135deg,var(--pk),var(--mg));display:flex;align-items:center;justify-content:center;box-shadow:0 4px 14px rgba(255,61,127,.3);cursor:pointer}
+.play svg{width:14px;height:14px;fill:#fff;margin-left:2px}
+.wv{flex:1;height:30px;display:flex;align-items:center;gap:2.5px}
+.atm{font-size:12px;color:var(--t2);font-weight:600}
+
+/* Chips */
+.chips{display:flex;flex-wrap:wrap;gap:8px}
+.chip{padding:6px 14px;border-radius:999px;font-size:13px;font-weight:600;border:1.5px solid}
+.chip-p{background:#EDE9FD;color:var(--p);border-color:#c9beff}
+.chip-pk{background:#FFF0F5;color:var(--mg);border-color:#ffd0e3}
+.chip-lm{background:#F2FFD6;color:#6a9900;border-color:#cef080}
+
+/* Trait bars */
+.trait-row{display:flex;align-items:center;gap:10px;margin-bottom:9px}
+.tn{font-size:12px;color:var(--t2);width:110px;font-weight:600}
+.tb{flex:1;height:7px;background:#EDE9FB;border-radius:99px}
+.tf{height:100%;border-radius:99px;background:linear-gradient(90deg,var(--p),var(--pk))}
+.tv{font-size:12px;font-weight:800;color:var(--p);width:22px;text-align:right}
+
+/* Stats row */
+.stats{display:flex;gap:10px;margin-bottom:16px}
+.stat{flex:1;background:#F3F0FB;border-radius:14px;padding:12px;text-align:center}
+.stat-n{font-family:'DM Serif Display',serif;font-size:24px;color:var(--p)}
+.stat-l{font-size:11px;color:var(--t2);margin-top:2px;font-weight:600}
+
+/* Actions */
+.actions{display:flex;flex-direction:column;gap:8px;margin-top:4px}
+.act{display:flex;align-items:center;gap:12px;background:#fff;border:1px solid var(--bd);border-radius:14px;padding:12px 14px;cursor:pointer}
+.aico{width:36px;height:36px;min-width:36px;border-radius:11px;display:flex;align-items:center;justify-content:center}
+.aico svg{width:16px;height:16px;stroke-width:2;fill:none}
+.atxt strong{display:block;font-size:14px;font-weight:700;color:var(--dk)}
+.atxt small{font-size:11px;color:var(--t2)}
+.ach{color:var(--t2);margin-left:auto;font-size:20px}
+
+/* Nav */
+.bnav{position:absolute;bottom:0;left:0;right:0;display:flex;justify-content:space-around;padding:10px 0 22px;background:var(--bg);border-top:1px solid var(--bd)}
+.ni{display:flex;flex-direction:column;align-items:center;gap:3px;font-size:10px;font-weight:700;color:var(--t2);cursor:pointer}
+.ni.a{color:var(--pk)}
+.ni svg{width:22px;height:22px;stroke-width:1.8;fill:none}
+.ni.a svg{stroke:var(--pk)}
+.pip{width:4px;height:4px;border-radius:50%;background:var(--pk)}
+</style>
+</head>
+<body>
+<div class="phone">
+  <!-- Hero -->
+  <div class="hero">
+    <div class="hero-blob1"></div>
+    <div class="hero-blob2"></div>
+    <div class="hero-emoji">🌸</div>
+    <div class="hero-overlay"></div>
+  </div>
+  <div class="sb"><span>9:41</span><span>●●●</span></div>
+  <div class="back"><svg viewBox="0 0 24 24"><polyline points="15 18 9 12 15 6"/></svg></div>
+  <div class="menu"><svg viewBox="0 0 24 24"><circle cx="12" cy="5" r="1" fill="currentColor" stroke="none"/><circle cx="12" cy="12" r="1" fill="currentColor" stroke="none"/><circle cx="12" cy="19" r="1" fill="currentColor" stroke="none"/></svg></div>
+
+  <!-- Sheet -->
+  <div class="sheet">
+    <div class="handle"></div>
+    <div class="name-row">
+      <h1>Amara,<br/><em>26</em></h1>
+      <div class="badge-col">
+        <span class="badge b-lime">✓ ID Verified</span>
+        <span class="badge b-p">✨ Serious</span>
+      </div>
+    </div>
+    <p class="loc">📍 Colombo, Sri Lanka · Woman</p>
+
+    <!-- Tabs -->
+    <div class="tabs">
+      <div class="tab a">About</div>
+      <div class="tab">Traits</div>
+      <div class="tab">Settings</div>
+    </div>
+
+    <!-- Stats -->
+    <div class="stats">
+      <div class="stat"><div class="stat-n" style="color:var(--pk)">4.8</div><div class="stat-l">Trust score</div></div>
+      <div class="stat"><div class="stat-n">12</div><div class="stat-l">Connections</div></div>
+    </div>
+
+    <!-- Quote -->
+    <div class="sec">
+      <div class="sec-lbl">ABOUT</div>
+      <div class="quote-block"><p>"Coffee addict who hikes on weekends and binge-reads philosophy on rainy days."</p></div>
+    </div>
+
+    <!-- Audio -->
+    <div class="sec">
+      <div class="sec-lbl">AUDIO INTRO</div>
+      <div class="audio-card">
+        <div class="play"><svg viewBox="0 0 24 24"><polygon points="5,3 19,12 5,21"/></svg></div>
+        <div class="wv" id="wv2"></div>
+        <span class="atm">0:42</span>
+      </div>
+    </div>
+
+    <!-- Looking for -->
+    <div class="sec">
+      <div class="sec-lbl">LOOKING FOR</div>
+      <div class="chips">
+        <span class="chip chip-pk">Serious relationship</span>
+        <span class="chip chip-p">Ages 24–34</span>
+        <span class="chip chip-lm">Honesty</span>
+        <span class="chip chip-lm">Kindness</span>
+      </div>
+    </div>
+
+    <!-- Music -->
+    <div class="sec">
+      <div class="sec-lbl">MUSIC TASTE</div>
+      <div class="chips">
+        <span class="chip chip-p">Indie pop</span>
+        <span class="chip chip-p">Lo-fi</span>
+        <span class="chip chip-pk">Jazz</span>
+        <span class="chip chip-pk">R&amp;B</span>
+      </div>
+    </div>
+
+    <!-- Traits -->
+    <div class="sec">
+      <div class="sec-lbl">PERSONALITY</div>
+      <div class="trait-row"><span class="tn">Openness</span><div class="tb"><div class="tf" style="width:82%"></div></div><span class="tv">4.1</span></div>
+      <div class="trait-row"><span class="tn">Agreeableness</span><div class="tb"><div class="tf" style="width:76%"></div></div><span class="tv">3.8</span></div>
+      <div class="trait-row"><span class="tn">Conscientiousness</span><div class="tb"><div class="tf" style="width:90%"></div></div><span class="tv">4.5</span></div>
+    </div>
+
+    <!-- Actions -->
+    <div class="actions">
+      <div class="act"><div class="aico" style="background:#EDE9FD"><svg viewBox="0 0 24 24" stroke="#6C4CF1"><circle cx="12" cy="12" r="3"/><path d="M19.4 15a1.65 1.65 0 00.33 1.82l.06.06a2 2 0 010 2.83 2 2 0 01-2.83 0l-.06-.06a1.65 1.65 0 00-1.82-.33 1.65 1.65 0 00-1 1.51V21a2 2 0 01-4 0v-.09A1.65 1.65 0 009 19.4a1.65 1.65 0 00-1.82.33l-.06.06a2 2 0 01-2.83-2.83l.06-.06A1.65 1.65 0 004.68 15a1.65 1.65 0 00-1.51-1H3a2 2 0 010-4h.09A1.65 1.65 0 004.6 9a1.65 1.65 0 00-.33-1.82l-.06-.06a2 2 0 012.83-2.83l.06.06A1.65 1.65 0 009 4.68a1.65 1.65 0 001-1.51V3a2 2 0 014 0v.09a1.65 1.65 0 001 1.51 1.65 1.65 0 001.82-.33l.06-.06a2 2 0 012.83 2.83l-.06.06A1.65 1.65 0 0019.4 9a1.65 1.65 0 001.51 1H21a2 2 0 010 4h-.09a1.65 1.65 0 00-1.51 1z"/></svg></div><div class="atxt"><strong>Settings</strong><small>Edit profile & privacy</small></div><span class="ach">›</span></div>
+      <div class="act"><div class="aico" style="background:#F2FFD6"><svg viewBox="0 0 24 24" stroke="#7aab00"><path d="M9 12l2 2 4-4m5.618-4.016A11.955 11.955 0 0112 2.944a11.955 11.955 0 01-8.618 3.04A12.02 12.02 0 003 9c0 5.591 3.824 10.29 9 11.622 5.176-1.332 9-6.03 9-11.622 0-1.042-.133-2.052-.382-3.016z"/></svg></div><div class="atxt"><strong>Verification</strong><small>ID Verified</small></div><span class="ach">›</span></div>
+      <div class="act"><div class="aico" style="background:#FFF0F5"><svg viewBox="0 0 24 24" stroke="#C4176A"><path d="M12 2l3.09 6.26L22 9.27l-5 4.87 1.18 6.88L12 17.77l-6.18 3.25L7 14.14 2 9.27l6.91-1.01L12 2z"/></svg></div><div class="atxt"><strong>Membership</strong><small>Upgrade to Premium</small></div><span class="ach">›</span></div>
+    </div>
+    <div style="height:70px"></div>
+  </div>
+
+  <!-- Nav -->
+  <div class="bnav">
+    <div class="ni"><svg viewBox="0 0 24 24" stroke="currentColor"><path d="M3 9l9-7 9 7v11a2 2 0 01-2 2H5a2 2 0 01-2-2z"/></svg>Home</div>
+    <div class="ni"><svg viewBox="0 0 24 24" stroke="currentColor"><path d="M20.84 4.61a5.5 5.5 0 00-7.78 0L12 5.67l-1.06-1.06a5.5 5.5 0 00-7.78 7.78l1.06 1.06L12 21.23l7.78-7.78 1.06-1.06a5.5 5.5 0 000-7.78z"/></svg>Matches</div>
+    <div class="ni"><svg viewBox="0 0 24 24" stroke="currentColor"><path d="M21 15a2 2 0 01-2 2H7l-4 4V5a2 2 0 012-2h14a2 2 0 012 2z"/></svg>Chat</div>
+    <div class="ni a"><svg viewBox="0 0 24 24" stroke="currentColor"><path d="M20 21v-2a4 4 0 00-4-4H8a4 4 0 00-4 4v2"/><circle cx="12" cy="7" r="4"/></svg>Profile<div class="pip"></div></div>
+  </div>
+</div>
+<script>
+const w2=document.getElementById('wv2');
+[12,18,26,16,30,20,10,24,34,22,16,28,14,26,20].forEach((h,i)=>{
+  const b=document.createElement('div');
+  b.style.cssText=`width:3.5px;height:${h}px;border-radius:3px;flex-shrink:0;background:${i<8?'linear-gradient(to top,#6C4CF1,#FF3D7F)':'#EDE9FB'}`;
+  w2.appendChild(b);
+});
+</script>
+</body>
+</html>

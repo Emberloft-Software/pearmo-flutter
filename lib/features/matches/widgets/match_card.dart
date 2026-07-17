@@ -3,9 +3,9 @@ import 'package:flutter/material.dart';
 import '../../../core/theme/app_colors.dart';
 import '../../../core/theme/app_text_styles.dart';
 import '../../../providers/matches_providers.dart';
-import '../../../shared/widgets/widgets.dart';
+import '../../../shared/avatars/avatar_catalog.dart';
 
-/// One of today's curated candidates, shown as a tappable card on the
+/// One of today's curated candidates, shown as a tappable bento card on the
 /// matches screen. Always leads with the avatar — a photo is never shown
 /// here even if the candidate has opted in, to keep the daily list
 /// consistent and low-pressure.
@@ -18,40 +18,113 @@ class MatchCardWidget extends StatelessWidget {
   @override
   Widget build(BuildContext context) {
     final profile = card.profile;
+    final character = AvatarCatalog.resolve(profile.avatarId);
+    final percent = (card.match.score * 100).round().clamp(0, 100);
+    final isVerified = profile.verificationTier.label != 'Unverified';
 
-    return PearmoCard(
-      onTap: onTap,
-      child: Row(
-        children: [
-          AvatarDisplay(avatarId: profile.avatarId, size: 64),
-          const SizedBox(width: 16),
-          Expanded(
-            child: Column(
-              crossAxisAlignment: CrossAxisAlignment.start,
-              children: [
-                Row(
+    return Material(
+      color: AppColors.surface,
+      borderRadius: BorderRadius.circular(24),
+      child: InkWell(
+        onTap: onTap,
+        borderRadius: BorderRadius.circular(24),
+        child: Container(
+          padding: const EdgeInsets.all(14),
+          decoration: BoxDecoration(
+            borderRadius: BorderRadius.circular(24),
+            border: Border.all(color: AppColors.divider),
+          ),
+          child: Row(
+            children: [
+              // Character on the shared stage gradient — rounded bento tile.
+              Container(
+                width: 72,
+                height: 72,
+                decoration: BoxDecoration(
+                  borderRadius: BorderRadius.circular(20),
+                  gradient: const LinearGradient(
+                    colors: AppColors.heroGradient,
+                    begin: Alignment.topRight,
+                    end: Alignment.bottomLeft,
+                  ),
+                ),
+                clipBehavior: Clip.antiAlias,
+                child: Image.asset(
+                  character.assetPath,
+                  fit: BoxFit.cover,
+                  alignment: Alignment.topCenter,
+                  errorBuilder: (_, _, _) => const Icon(
+                    Icons.person,
+                    color: Colors.white,
+                    size: 32,
+                  ),
+                ),
+              ),
+              const SizedBox(width: 14),
+              Expanded(
+                child: Column(
+                  crossAxisAlignment: CrossAxisAlignment.start,
                   children: [
-                    Text('${profile.age} · ${profile.gender.label}', style: AppTextStyles.title),
-                    if (profile.verificationTier.label != 'Unverified') ...[
-                      const SizedBox(width: 8),
-                      const Icon(Icons.verified, color: AppColors.secondary, size: 18),
-                    ],
+                    Row(
+                      children: [
+                        Flexible(
+                          child: Text(
+                            '${profile.age} · ${profile.gender.label}',
+                            style: AppTextStyles.title,
+                            overflow: TextOverflow.ellipsis,
+                          ),
+                        ),
+                        if (isVerified) ...[
+                          const SizedBox(width: 6),
+                          const Icon(Icons.verified,
+                              color: AppColors.primary, size: 17),
+                        ],
+                      ],
+                    ),
+                    const SizedBox(height: 3),
+                    Text(
+                      'The ${character.character.name}'
+                      '${profile.regionName != null ? ' · ${profile.regionName}' : ''}',
+                      style: AppTextStyles.caption,
+                      overflow: TextOverflow.ellipsis,
+                    ),
+                    const SizedBox(height: 6),
+                    Text(
+                      profile.relationshipIntent.label,
+                      style: AppTextStyles.caption
+                          .copyWith(color: AppColors.primaryDark, fontWeight: FontWeight.w600),
+                    ),
                   ],
                 ),
-                const SizedBox(height: 4),
-                Text(profile.relationshipIntent.label, style: AppTextStyles.body),
-                if (profile.regionName != null) ...[
-                  const SizedBox(height: 4),
-                  Text(
-                    profile.regionName!,
-                    style: AppTextStyles.caption,
-                  ),
-                ],
-              ],
-            ),
+              ),
+              const SizedBox(width: 10),
+              // Match score chip — ink tile, lime number (v5 "match" moment).
+              Container(
+                padding: const EdgeInsets.symmetric(horizontal: 12, vertical: 9),
+                decoration: BoxDecoration(
+                  color: AppColors.textPrimary,
+                  borderRadius: BorderRadius.circular(16),
+                ),
+                child: Column(
+                  mainAxisSize: MainAxisSize.min,
+                  children: [
+                    Text(
+                      '$percent',
+                      style: AppTextStyles.statNumber
+                          .copyWith(fontSize: 20, color: AppColors.secondary),
+                    ),
+                    const SizedBox(height: 1),
+                    Text(
+                      'MATCH',
+                      style: AppTextStyles.label
+                          .copyWith(fontSize: 8, color: Colors.white70, letterSpacing: 1.2),
+                    ),
+                  ],
+                ),
+              ),
+            ],
           ),
-          const Icon(Icons.chevron_right, color: AppColors.textSecondary),
-        ],
+        ),
       ),
     );
   }

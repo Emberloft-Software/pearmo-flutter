@@ -88,6 +88,12 @@ flutter:
   # the material Icons class.
   uses-material-design: true
 
+  # 3D character avatars (20 animals × male/female variants), rendered by
+  # AvatarCatalog/AvatarDisplay. Static app content — deliberately bundled
+  # rather than served from Supabase storage (no network, works offline).
+  assets:
+    - assets/avatars/
+
   # To add assets to your application, add an assets section, like this:
   # assets:
   #   - images/a_dot_burr.jpeg

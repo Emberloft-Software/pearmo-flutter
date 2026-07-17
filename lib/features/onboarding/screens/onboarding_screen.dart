@@ -166,7 +166,11 @@ class _OnboardingScreenState extends ConsumerState<OnboardingScreen> {
         title: 'Pick an avatar',
         subtitle: "This is how you'll appear to matches until you choose to share a photo.",
         canContinue: true,
-        content: AvatarPicker(selectedId: draft.avatarId, onSelected: controller.setAvatarId),
+        content: AvatarPicker(
+          selectedId: draft.avatarId,
+          onSelected: controller.setAvatarId,
+          gender: draft.gender,
+        ),
       ),
       _StepDef(
         title: 'Add a voice intro',
