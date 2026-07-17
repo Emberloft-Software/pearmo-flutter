@@ -45,14 +45,25 @@ class OnboardingScaffold extends StatelessWidget {
           children: [
             Padding(
               padding: const EdgeInsets.symmetric(horizontal: 24),
-              child: ClipRRect(
-                borderRadius: BorderRadius.circular(8),
-                child: LinearProgressIndicator(
-                  value: step / totalSteps,
-                  minHeight: 8,
-                  backgroundColor: AppColors.surfaceMuted,
-                  color: AppColors.primary,
-                ),
+              child: Row(
+                children: [
+                  Expanded(
+                    child: ClipRRect(
+                      borderRadius: BorderRadius.circular(8),
+                      child: LinearProgressIndicator(
+                        value: step / totalSteps,
+                        minHeight: 6,
+                        backgroundColor: AppColors.surfaceMuted,
+                        color: AppColors.primary,
+                      ),
+                    ),
+                  ),
+                  const SizedBox(width: 12),
+                  Text(
+                    '$step / $totalSteps',
+                    style: AppTextStyles.caption.copyWith(fontWeight: FontWeight.w700),
+                  ),
+                ],
               ),
             ),
             Expanded(

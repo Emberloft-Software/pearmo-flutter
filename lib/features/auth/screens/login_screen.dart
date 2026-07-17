@@ -62,14 +62,42 @@ class _LoginScreenState extends ConsumerState<LoginScreen> {
               crossAxisAlignment: CrossAxisAlignment.start,
               children: [
                 const Spacer(),
+                // Two of the 3D characters on the stage gradient — the brand
+                // moment before any text.
                 Container(
-                  width: 72,
-                  height: 72,
-                  decoration: const BoxDecoration(
-                    gradient: LinearGradient(colors: AppColors.heroGradient),
-                    shape: BoxShape.circle,
+                  width: 108,
+                  height: 96,
+                  decoration: BoxDecoration(
+                    gradient: const LinearGradient(
+                      colors: AppColors.heroGradient,
+                      begin: Alignment.topRight,
+                      end: Alignment.bottomLeft,
+                    ),
+                    borderRadius: BorderRadius.circular(28),
                   ),
-                  child: const Icon(Icons.favorite, color: Colors.white, size: 36),
+                  clipBehavior: Clip.antiAlias,
+                  child: Stack(
+                    children: [
+                      Positioned(
+                        left: -14,
+                        bottom: -6,
+                        width: 76,
+                        child: Image.asset(
+                          'assets/avatars/fox-f.png',
+                          errorBuilder: (_, _, _) => const SizedBox.shrink(),
+                        ),
+                      ),
+                      Positioned(
+                        right: -14,
+                        bottom: -6,
+                        width: 76,
+                        child: Image.asset(
+                          'assets/avatars/wolf-m.png',
+                          errorBuilder: (_, _, _) => const SizedBox.shrink(),
+                        ),
+                      ),
+                    ],
+                  ),
                 ),
                 const SizedBox(height: 24),
                 Text('Welcome to ${AppConstants.appName}', style: AppTextStyles.displayMedium),

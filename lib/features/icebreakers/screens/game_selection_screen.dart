@@ -21,6 +21,14 @@ const _gameDescriptions = {
   GameType.drawTogether: 'Doodle on a shared canvas together.',
 };
 
+/// Stroke icons per game — the design system uses icons, never emojis.
+const _gameIcons = {
+  GameType.wouldYouRather: Icons.alt_route,
+  GameType.prompts: Icons.question_answer_outlined,
+  GameType.drawTogether: Icons.gesture,
+  GameType.trivia: Icons.quiz_outlined,
+};
+
 /// Pick (or resume) an ice-breaker game for a connection. Playing a game
 /// together is how a connection in `ice_breaking` moves things along
 /// before chat unlocks.
@@ -101,12 +109,14 @@ class _GameSelectionScreenState extends ConsumerState<GameSelectionScreen> {
                           Container(
                             width: 48,
                             height: 48,
-                            decoration: const BoxDecoration(
-                              color: AppColors.primaryLight,
-                              shape: BoxShape.circle,
+                            decoration: BoxDecoration(
+                              color: AppColors.secondaryLight,
+                              borderRadius: BorderRadius.circular(15),
                             ),
-                            child: Center(
-                              child: Text(type.emoji, style: const TextStyle(fontSize: 24)),
+                            child: Icon(
+                              _gameIcons[type] ?? Icons.extension_outlined,
+                              color: AppColors.secondaryDark,
+                              size: 24,
                             ),
                           ),
                           const SizedBox(width: 16),

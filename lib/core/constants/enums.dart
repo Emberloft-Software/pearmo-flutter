@@ -350,13 +350,6 @@ enum GameType {
         GameType.prompts => '20 Questions',
       };
 
-  String get emoji => switch (this) {
-        GameType.wouldYouRather => '🤔',
-        GameType.drawTogether => '🎨',
-        GameType.trivia => '🧠',
-        GameType.prompts => '💬',
-      };
-
   static GameType fromDb(String value) => GameType.values
       .firstWhere((e) => e.dbValue == value, orElse: () => GameType.prompts);
 }

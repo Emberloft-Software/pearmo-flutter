@@ -30,9 +30,21 @@ class _HomeShellState extends State<HomeShell> {
         currentIndex: _index,
         onTap: (index) => setState(() => _index = index),
         items: const [
-          BottomNavigationBarItem(icon: Icon(Icons.favorite_outline), label: 'Matches'),
-          BottomNavigationBarItem(icon: Icon(Icons.chat_bubble_outline), label: 'Connection'),
-          BottomNavigationBarItem(icon: Icon(Icons.person_outline), label: 'Profile'),
+          BottomNavigationBarItem(
+            icon: Icon(Icons.favorite_outline),
+            activeIcon: Icon(Icons.favorite),
+            label: 'Matches',
+          ),
+          BottomNavigationBarItem(
+            icon: Icon(Icons.chat_bubble_outline),
+            activeIcon: Icon(Icons.chat_bubble),
+            label: 'Connection',
+          ),
+          BottomNavigationBarItem(
+            icon: Icon(Icons.person_outline),
+            activeIcon: Icon(Icons.person),
+            label: 'Profile',
+          ),
         ],
       ),
     );
