@@ -108,7 +108,7 @@ class _ConnectionHubScreenState extends ConsumerState<ConnectionHubScreen> {
                         'each other.',
                   );
                 }
-                final statusColor = _statusColor(connection.status.dbValue);
+                final statusColor = StatusPill.colorFor(connection.status.dbValue);
                 final otherUserId = userId != null ? connection.otherUserId(userId) : null;
                 return _ActiveConnectionCard(
                   otherUserId: otherUserId,
@@ -129,15 +129,69 @@ class _ConnectionHubScreenState extends ConsumerState<ConnectionHubScreen> {
     );
   }
 
-  Color _statusColor(String status) => switch (status) {
-        'pending' => AppColors.statusPending,
-        'ice_breaking' => AppColors.statusIceBreaking,
-        'limited_chat' => AppColors.statusLimitedChat,
-        'open_chat' => AppColors.statusOpenChat,
-        'media_unlocked' => AppColors.statusMediaUnlocked,
-        'date_planned' => AppColors.statusDatePlanned,
-        _ => AppColors.statusEnded,
-      };
+}
+
+/// The single active connection, as a tappable bento card: the other
+/// person's avatar on the stage gradient, a color-coded status pill and a
+/// one-line hint of what to do next.
+class _ActiveConnectionCard extends ConsumerWidget {
+  const _ActiveConnectionCard({
+    required this.otherUserId,
+    required this.statusLabel,
+    required this.statusColor,
+    required this.caption,
+    required this.onTap,
+  });
+
+  final String? otherUserId;
+  final String statusLabel;
+  final Color statusColor;
+  final String caption;
+  final VoidCallback onTap;
+
+  @override
+  Widget build(BuildContext context, WidgetRef ref) {
+    final profileAsync =
+        otherUserId != null ? ref.watch(candidateProfileProvider(otherUserId!)) : null;
+
+    return Material(
+      color: AppColors.surface,
+      borderRadius: BorderRadius.circular(24),
+      child: InkWell(
+        onTap: onTap,
+        borderRadius: BorderRadius.circular(24),
+        child: Container(
+          padding: const EdgeInsets.all(14),
+          decoration: BoxDecoration(
+            borderRadius: BorderRadius.circular(24),
+            border: Border.all(color: AppColors.divider),
+          ),
+          child: Row(
+            children: [
+              if (profileAsync != null)
+                profileAsync.when(
+                  data: (profile) => AvatarDisplay(avatarId: profile.avatarId, size: 64),
+                  loading: () => const SizedBox(width: 64, height: 64),
+                  error: (_, _) => const SizedBox(width: 64, height: 64),
+                ),
+              const SizedBox(width: 14),
+              Expanded(
+                child: Column(
+                  crossAxisAlignment: CrossAxisAlignment.start,
+                  children: [
+                    StatusPill(label: statusLabel, color: statusColor),
+                    const SizedBox(height: 8),
+                    Text(caption, style: AppTextStyles.caption),
+                  ],
+                ),
+              ),
+              const Icon(Icons.chevron_right, color: AppColors.textSecondary),
+            ],
+          ),
+        ),
+      ),
+    );
+  }
 }
 
 class _IncomingRequestCard extends ConsumerWidget {
@@ -158,7 +212,13 @@ class _IncomingRequestCard extends ConsumerWidget {
     final profileAsync =
         candidateId != null ? ref.watch(candidateProfileProvider(candidateId!)) : null;
 
-    return PearmoCard(
+    return Container(
+      padding: const EdgeInsets.all(16),
+      decoration: BoxDecoration(
+        color: AppColors.surface,
+        borderRadius: BorderRadius.circular(24),
+        border: Border.all(color: AppColors.pink.withValues(alpha: 0.45), width: 1.5),
+      ),
       child: Column(
         crossAxisAlignment: CrossAxisAlignment.start,
         children: [
@@ -166,15 +226,22 @@ class _IncomingRequestCard extends ConsumerWidget {
             children: [
               if (profileAsync != null)
                 profileAsync.when(
-                  data: (profile) => AvatarDisplay(avatarId: profile.avatarId, size: 48),
-                  loading: () => const SizedBox(width: 48, height: 48),
-                  error: (_, _) => const SizedBox(width: 48, height: 48),
+                  data: (profile) => AvatarDisplay(avatarId: profile.avatarId, size: 52),
+                  loading: () => const SizedBox(width: 52, height: 52),
+                  error: (_, _) => const SizedBox(width: 52, height: 52),
                 ),
               const SizedBox(width: 12),
               Expanded(
-                child: Text(
-                  'Someone wants to connect with you',
-                  style: AppTextStyles.bodyMedium,
+                child: Column(
+                  crossAxisAlignment: CrossAxisAlignment.start,
+                  children: [
+                    Text('Someone wants to connect', style: AppTextStyles.title),
+                    const SizedBox(height: 2),
+                    Text(
+                      'Open to see if the spark is mutual.',
+                      style: AppTextStyles.caption.copyWith(color: AppColors.magenta),
+                    ),
+                  ],
                 ),
               ),
             ],

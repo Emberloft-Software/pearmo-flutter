@@ -13,4 +13,5 @@ export 'pearmo_card.dart';
 export 'quote_card.dart';
 export 'section_header.dart';
 export 'signed_avatar_display.dart';
+export 'status_pill.dart';
 export 'verify_to_unlock_dialog.dart';

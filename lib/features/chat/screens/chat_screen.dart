@@ -7,7 +7,6 @@ import '../../../core/constants/app_constants.dart';
 import '../../../core/constants/enums.dart';
 import '../../../core/theme/app_colors.dart';
 import '../../../core/theme/app_text_styles.dart';
-import '../../../core/theme/app_theme.dart';
 import '../../../core/utils/error_mapper.dart';
 import '../../../data/models/message.dart';
 import '../../../providers/auth_providers.dart';
@@ -146,33 +145,53 @@ class _ChatScreenState extends ConsumerState<ChatScreen> {
                   child: ErrorBanner(message: _error!),
                 ),
               if (canChat)
-                SafeArea(
-                  minimum: const EdgeInsets.all(12),
-                  child: Row(
-                    children: [
-                      Expanded(
-                        child: TextField(
-                          controller: _controller,
-                          minLines: 1,
-                          maxLines: 4,
-                          decoration: const InputDecoration(hintText: 'Type a message...'),
+                Container(
+                  decoration: const BoxDecoration(
+                    color: AppColors.surface,
+                    border: Border(top: BorderSide(color: AppColors.divider)),
+                  ),
+                  child: SafeArea(
+                    minimum: const EdgeInsets.all(12),
+                    child: Row(
+                      crossAxisAlignment: CrossAxisAlignment.end,
+                      children: [
+                        Expanded(
+                          child: TextField(
+                            controller: _controller,
+                            minLines: 1,
+                            maxLines: 4,
+                            decoration: const InputDecoration(hintText: 'Type a message...'),
+                          ),
                         ),
-                      ),
-                      const SizedBox(width: 8),
-                      _isSending
-                          ? const Padding(
-                              padding: EdgeInsets.all(12),
-                              child: SizedBox(
-                                width: 20,
-                                height: 20,
-                                child: CircularProgressIndicator(strokeWidth: 2, color: AppColors.primary),
+                        const SizedBox(width: 10),
+                        _isSending
+                            ? Container(
+                                width: 48,
+                                height: 48,
+                                padding: const EdgeInsets.all(14),
+                                decoration: const BoxDecoration(
+                                  color: AppColors.primaryLight,
+                                  shape: BoxShape.circle,
+                                ),
+                                child: const CircularProgressIndicator(
+                                    strokeWidth: 2, color: AppColors.primary),
+                              )
+                            : Material(
+                                color: AppColors.primary,
+                                shape: const CircleBorder(),
+                                child: InkWell(
+                                  customBorder: const CircleBorder(),
+                                  onTap: () => _send(userId),
+                                  child: const SizedBox(
+                                    width: 48,
+                                    height: 48,
+                                    child: Icon(Icons.send_rounded,
+                                        color: Colors.white, size: 22),
+                                  ),
+                                ),
                               ),
-                            )
-                          : IconButton(
-                              onPressed: () => _send(userId),
-                              icon: const Icon(Icons.send, color: AppColors.primary),
-                            ),
-                    ],
+                      ],
+                    ),
                   ),
                 ),
             ],
@@ -199,13 +218,22 @@ class _NoticeBanner extends StatelessWidget {
   Widget build(BuildContext context) {
     return Container(
       width: double.infinity,
-      padding: const EdgeInsets.all(12),
-      color: AppColors.accentLavender.withValues(alpha: 0.15),
+      margin: const EdgeInsets.fromLTRB(12, 10, 12, 0),
+      padding: const EdgeInsets.symmetric(horizontal: 14, vertical: 11),
+      decoration: BoxDecoration(
+        color: AppColors.primaryLight,
+        borderRadius: BorderRadius.circular(16),
+      ),
       child: Row(
         children: [
-          Icon(icon, color: AppColors.accentLavender, size: 20),
-          const SizedBox(width: 8),
-          Expanded(child: Text(message, style: AppTextStyles.caption)),
+          Icon(icon, color: AppColors.primaryDark, size: 20),
+          const SizedBox(width: 10),
+          Expanded(
+            child: Text(
+              message,
+              style: AppTextStyles.caption.copyWith(color: AppColors.textPrimary),
+            ),
+          ),
           ?action,
         ],
       ),
@@ -221,6 +249,14 @@ class _MessageBubble extends StatelessWidget {
 
   @override
   Widget build(BuildContext context) {
+    // Asymmetric radii point the "tail" corner toward the sender.
+    final radius = BorderRadius.only(
+      topLeft: const Radius.circular(20),
+      topRight: const Radius.circular(20),
+      bottomLeft: Radius.circular(isMine ? 20 : 6),
+      bottomRight: Radius.circular(isMine ? 6 : 20),
+    );
+
     return Align(
       alignment: isMine ? Alignment.centerRight : Alignment.centerLeft,
       child: Container(
@@ -228,18 +264,29 @@ class _MessageBubble extends StatelessWidget {
         constraints: BoxConstraints(maxWidth: MediaQuery.of(context).size.width * 0.75),
         padding: const EdgeInsets.symmetric(horizontal: 16, vertical: 10),
         decoration: BoxDecoration(
-          color: isMine ? AppColors.primaryLight : AppColors.surfaceMuted,
-          borderRadius: BorderRadius.circular(AppTheme.radiusMedium),
+          color: isMine ? AppColors.primary : AppColors.surface,
+          borderRadius: radius,
+          border: isMine ? null : Border.all(color: AppColors.divider),
         ),
         child: Column(
           crossAxisAlignment: CrossAxisAlignment.start,
           mainAxisSize: MainAxisSize.min,
           children: [
             SelectionContainer.disabled(
-              child: Text(message.content, style: AppTextStyles.body),
+              child: Text(
+                message.content,
+                style: AppTextStyles.body
+                    .copyWith(color: isMine ? Colors.white : AppColors.textPrimary),
+              ),
             ),
             const SizedBox(height: 2),
-            Text(DateFormat.Hm().format(message.sentAt), style: AppTextStyles.caption),
+            Text(
+              DateFormat.Hm().format(message.sentAt),
+              style: AppTextStyles.caption.copyWith(
+                fontSize: 10.5,
+                color: isMine ? Colors.white70 : AppColors.textSecondary,
+              ),
+            ),
           ],
         ),
       ),

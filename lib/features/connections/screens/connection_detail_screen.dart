@@ -12,6 +12,7 @@ import '../../../providers/connections_providers.dart';
 import '../../../providers/consent_providers.dart';
 import '../../../providers/matches_providers.dart';
 import '../../../providers/repository_providers.dart';
+import '../../../shared/avatars/avatar_catalog.dart';
 import '../../../shared/widgets/widgets.dart';
 import '../../safety/widgets/checkin_panel.dart';
 import '../widgets/consent_tile.dart';
@@ -148,53 +149,73 @@ class _ConnectionDetailScreenState extends ConsumerState<ConnectionDetailScreen>
       padding: const EdgeInsets.all(20),
       children: [
         profileAsync.when(
-          data: (profile) => PearmoCard(
-            child: Row(
-              children: [
-                AvatarDisplay(
-                  avatarId: profile.avatarId,
-                  photoUrl: profile.profilePhotoUrl,
-                  showPhoto: profile.hasPublicPhoto,
-                  size: 56,
-                ),
-                const SizedBox(width: 16),
-                Expanded(
-                  child: Column(
-                    crossAxisAlignment: CrossAxisAlignment.start,
-                    children: [
-                      Text('${profile.age} · ${profile.gender.label}', style: AppTextStyles.title),
-                      const SizedBox(height: 4),
-                      Text(connection.status.label, style: AppTextStyles.caption),
-                    ],
+          data: (profile) {
+            final character = AvatarCatalog.resolve(profile.avatarId).character;
+            return Container(
+              padding: const EdgeInsets.all(16),
+              decoration: BoxDecoration(
+                color: AppColors.surface,
+                borderRadius: BorderRadius.circular(24),
+                border: Border.all(color: AppColors.divider),
+              ),
+              child: Row(
+                children: [
+                  SignedAvatarDisplay(
+                    avatarId: profile.avatarId,
+                    photoPath: profile.profilePhotoUrl,
+                    showPhoto: profile.hasPublicPhoto,
+                    size: 64,
                   ),
-                ),
-              ],
-            ),
-          ),
+                  const SizedBox(width: 14),
+                  Expanded(
+                    child: Column(
+                      crossAxisAlignment: CrossAxisAlignment.start,
+                      children: [
+                        Text('${profile.age} · ${profile.gender.label}',
+                            style: AppTextStyles.title),
+                        const SizedBox(height: 2),
+                        Text('The ${character.name}', style: AppTextStyles.caption),
+                        const SizedBox(height: 8),
+                        StatusPill(
+                          label: connection.status.label,
+                          color: StatusPill.colorFor(connection.status.dbValue),
+                        ),
+                      ],
+                    ),
+                  ),
+                ],
+              ),
+            );
+          },
           loading: () => const LoadingIndicator(),
           error: (error, _) => ErrorBanner(message: ErrorMapper.map(error)),
         ),
-        const SizedBox(height: 16),
+        const SizedBox(height: 12),
         if (!connection.status.canChat && connection.status != ConnectionStatus.ended)
           Material(
-            color: AppColors.accentLavender.withValues(alpha: 0.15),
-            borderRadius: BorderRadius.circular(16),
+            color: AppColors.secondaryLight,
+            borderRadius: BorderRadius.circular(20),
             child: InkWell(
-              borderRadius: BorderRadius.circular(16),
+              borderRadius: BorderRadius.circular(20),
               onTap: () => context.push('/connection/${widget.connectionId}/games'),
-              child: Padding(
+              child: Container(
                 padding: const EdgeInsets.all(16),
+                decoration: BoxDecoration(
+                  borderRadius: BorderRadius.circular(20),
+                  border: Border.all(color: AppColors.secondary),
+                ),
                 child: Row(
                   children: [
-                    const Icon(Icons.extension_outlined, color: AppColors.accentLavender),
+                    const Icon(Icons.extension_outlined, color: AppColors.secondaryDark),
                     const SizedBox(width: 12),
                     Expanded(
                       child: Text(
                         'Play an ice-breaker game together to unlock chat.',
-                        style: AppTextStyles.body,
+                        style: AppTextStyles.bodyMedium
+                            .copyWith(color: AppColors.secondaryDark),
                       ),
                     ),
-                    const Icon(Icons.chevron_right, color: AppColors.accentLavender),
+                    const Icon(Icons.chevron_right, color: AppColors.secondaryDark),
                   ],
                 ),
               ),
