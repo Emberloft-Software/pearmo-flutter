@@ -11,6 +11,7 @@ import '../../../providers/auth_providers.dart';
 import '../../../providers/connections_providers.dart';
 import '../../../providers/consent_providers.dart';
 import '../../../providers/matches_providers.dart';
+import '../../../providers/profile_providers.dart';
 import '../../../providers/repository_providers.dart';
 import '../../../shared/avatars/avatar_catalog.dart';
 import '../../../shared/widgets/widgets.dart';
@@ -190,6 +191,34 @@ class _ConnectionDetailScreenState extends ConsumerState<ConnectionDetailScreen>
           loading: () => const LoadingIndicator(),
           error: (error, _) => ErrorBanner(message: ErrorMapper.map(error)),
         ),
+        // What you two have in common — real genre overlap between your own
+        // profile and theirs (both already loaded; no extra queries). The
+        // match % chip appears only if this person's daily-match row is
+        // still around; otherwise it's omitted rather than faked.
+        Builder(builder: (context) {
+          final myProfile = ref.watch(myProfileProvider).valueOrNull;
+          final theirProfile = ref.watch(candidateProfileProvider(otherUserId)).valueOrNull;
+          if (myProfile == null || theirProfile == null) return const SizedBox.shrink();
+          final shared =
+              theirProfile.musicGenres.where(myProfile.musicGenres.contains).toList();
+          if (shared.isEmpty) return const SizedBox.shrink();
+          final score = ref
+              .watch(dailyMatchCardsProvider)
+              .valueOrNull
+              ?.where((c) => c.match.candidateId == otherUserId)
+              .firstOrNull
+              ?.match
+              .score;
+          return Padding(
+            padding: const EdgeInsets.only(top: 12),
+            child: TasteMatchCard(
+              myAvatarId: myProfile.avatarId,
+              theirAvatarId: theirProfile.avatarId,
+              sharedGenres: shared,
+              matchPercent: score == null ? null : (score * 100).round().clamp(0, 100),
+            ),
+          );
+        }),
         const SizedBox(height: 12),
         if (!connection.status.canChat && connection.status != ConnectionStatus.ended)
           Material(

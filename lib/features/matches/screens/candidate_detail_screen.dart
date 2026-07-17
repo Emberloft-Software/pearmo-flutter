@@ -187,6 +187,8 @@ class _CandidateDetailScreenState extends ConsumerState<CandidateDetailScreen> {
                       myAvatarId: myProfile.avatarId,
                       theirAvatarId: profile.avatarId,
                       sharedGenres: shared,
+                      matchPercent:
+                          score == null ? null : (score * 100).round().clamp(0, 100),
                     ),
                   );
                 }),

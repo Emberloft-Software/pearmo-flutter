@@ -11,9 +11,13 @@ import 'loading_indicator.dart';
 /// Plays a candidate's or the current user's voice intro from a private
 /// storage path, signing the URL on demand.
 class AudioIntroPlayer extends ConsumerStatefulWidget {
-  const AudioIntroPlayer({super.key, required this.storagePath});
+  const AudioIntroPlayer({super.key, required this.storagePath, this.compact = false});
 
   final String storagePath;
+
+  /// Compact mode: just a circular play/pause button (for embedding in the
+  /// profile hero card) instead of the full "Voice intro" row.
+  final bool compact;
 
   @override
   ConsumerState<AudioIntroPlayer> createState() => _AudioIntroPlayerState();
@@ -49,6 +53,39 @@ class _AudioIntroPlayerState extends ConsumerState<AudioIntroPlayer> {
   @override
   Widget build(BuildContext context) {
     final signedUrl = ref.watch(signedAudioIntroUrlProvider(widget.storagePath));
+
+    if (widget.compact) {
+      return signedUrl.when(
+        data: (url) => Material(
+          color: Colors.white.withValues(alpha: 0.95),
+          shape: const CircleBorder(),
+          child: InkWell(
+            customBorder: const CircleBorder(),
+            onTap: () => _toggle(url),
+            child: SizedBox(
+              width: 44,
+              height: 44,
+              child: Icon(
+                _isPlaying ? Icons.pause_rounded : Icons.play_arrow_rounded,
+                color: AppColors.primaryDark,
+                size: 26,
+              ),
+            ),
+          ),
+        ),
+        loading: () => Container(
+          width: 44,
+          height: 44,
+          padding: const EdgeInsets.all(13),
+          decoration: BoxDecoration(
+            color: Colors.white.withValues(alpha: 0.95),
+            shape: BoxShape.circle,
+          ),
+          child: const CircularProgressIndicator(strokeWidth: 2, color: AppColors.primary),
+        ),
+        error: (_, _) => const SizedBox.shrink(),
+      );
+    }
 
     return Container(
       padding: const EdgeInsets.symmetric(horizontal: 16, vertical: 12),

@@ -30,15 +30,20 @@ class QuoteCard extends StatelessWidget {
       clipBehavior: Clip.antiAlias,
       child: Stack(
         children: [
-          // Watermark quotation mark, centered behind the text.
+          // Watermark quotation mark, optically centered behind the text
+          // (the serif glyph's ink sits high in its em box, so it needs a
+          // downward nudge to look visually centered).
           Positioned.fill(
             child: Center(
-              child: Text(
-                '“',
-                style: AppTextStyles.quote.copyWith(
-                  fontSize: 130,
-                  height: 0.4,
-                  color: AppColors.pink.withValues(alpha: 0.10),
+              child: Transform.translate(
+                offset: const Offset(0, 42),
+                child: Text(
+                  '“',
+                  style: AppTextStyles.quote.copyWith(
+                    fontSize: 140,
+                    height: 1.0,
+                    color: AppColors.pink.withValues(alpha: 0.10),
+                  ),
                 ),
               ),
             ),

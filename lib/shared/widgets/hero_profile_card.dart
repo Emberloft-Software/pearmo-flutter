@@ -3,6 +3,7 @@ import 'package:flutter/material.dart';
 import '../../core/theme/app_colors.dart';
 import '../../core/theme/app_text_styles.dart';
 import '../avatars/avatar_catalog.dart';
+import 'audio_intro_player.dart';
 import 'signed_avatar_display.dart';
 
 /// Full-width gradient hero used at the top of profile screens — the one
@@ -28,6 +29,7 @@ class HeroProfileCard extends StatelessWidget {
     this.matchPercent,
     this.displayName,
     this.kicker,
+    this.audioPath,
   });
 
   final String avatarId;
@@ -47,11 +49,16 @@ class HeroProfileCard extends StatelessWidget {
   /// 0–100 match score chip (candidate screens only); hidden when null.
   final int? matchPercent;
 
-  /// Big editorial name. Providing this switches to the editorial layout.
+  /// Editorial name line (shown small, under the big title). Providing
+  /// this switches to the editorial layout.
   final String? displayName;
 
-  /// Small uppercase line above the name, e.g. "Profile · She/Her".
+  /// Small uppercase line at the top, e.g. "Profile · She/Her".
   final String? kicker;
+
+  /// Voice-intro storage path; when set, a compact play button is embedded
+  /// in the hero (editorial layout only).
+  final String? audioPath;
 
   @override
   Widget build(BuildContext context) {
@@ -68,18 +75,18 @@ class HeroProfileCard extends StatelessWidget {
 
     if (displayName != null) {
       return Container(
-        height: 216,
+        height: 190,
         decoration: decoration,
         clipBehavior: Clip.antiAlias,
         child: Stack(
           children: [
             // Lime glow behind the character, like the HTML hero.
             Positioned(
-              right: -30,
-              bottom: -40,
+              right: -34,
+              bottom: -46,
               child: Container(
-                width: 190,
-                height: 150,
+                width: 220,
+                height: 175,
                 decoration: BoxDecoration(
                   shape: BoxShape.circle,
                   gradient: RadialGradient(
@@ -91,35 +98,43 @@ class HeroProfileCard extends StatelessWidget {
                 ),
               ),
             ),
+            // Character fills the card's full height — no dead space above.
             Positioned(
-              right: -18,
-              bottom: -6,
-              width: 168,
+              right: -22,
+              top: 6,
+              bottom: -8,
               child: Image.asset(
                 character.assetPath,
+                fit: BoxFit.fitHeight,
+                alignment: Alignment.bottomRight,
                 errorBuilder: (_, _, _) => const SizedBox.shrink(),
               ),
             ),
+            // Kicker pinned to the top so the card has no empty band.
+            if (kicker != null)
+              Positioned(
+                left: 20,
+                top: 16,
+                child: Text(
+                  kicker!.toUpperCase(),
+                  style: AppTextStyles.label.copyWith(
+                    color: AppColors.secondary,
+                    fontSize: 10.5,
+                    letterSpacing: 2,
+                  ),
+                ),
+              ),
             Positioned(
               left: 20,
-              right: 150,
-              bottom: 20,
+              right: 168,
+              bottom: 18,
               child: Column(
                 crossAxisAlignment: CrossAxisAlignment.start,
                 mainAxisSize: MainAxisSize.min,
                 children: [
-                  if (kicker != null)
-                    Text(
-                      kicker!.toUpperCase(),
-                      style: AppTextStyles.label.copyWith(
-                        color: AppColors.secondary,
-                        fontSize: 10.5,
-                        letterSpacing: 2,
-                      ),
-                    ),
-                  const SizedBox(height: 6),
+                  // Big line: age · gender.
                   Text(
-                    displayName!,
+                    title,
                     maxLines: 2,
                     overflow: TextOverflow.ellipsis,
                     style: AppTextStyles.displayMedium.copyWith(
@@ -128,10 +143,13 @@ class HeroProfileCard extends StatelessWidget {
                       height: 1.02,
                     ),
                   ),
-                  const SizedBox(height: 8),
+                  const SizedBox(height: 6),
+                  // Small line: the character/display name.
                   Text(
-                    title,
-                    style: AppTextStyles.bodyMedium.copyWith(color: Colors.white.withValues(alpha: 0.85)),
+                    displayName!,
+                    overflow: TextOverflow.ellipsis,
+                    style: AppTextStyles.bodyMedium
+                        .copyWith(color: Colors.white.withValues(alpha: 0.85)),
                   ),
                   if (subtitle != null) ...[
                     const SizedBox(height: 3),
@@ -150,6 +168,11 @@ class HeroProfileCard extends StatelessWidget {
                         ),
                       ],
                     ),
+                  ],
+                  // Voice-intro play button, below the location line.
+                  if (audioPath != null && audioPath!.isNotEmpty) ...[
+                    const SizedBox(height: 10),
+                    AudioIntroPlayer(storagePath: audioPath!, compact: true),
                   ],
                 ],
               ),

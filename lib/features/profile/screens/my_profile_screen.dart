@@ -9,6 +9,9 @@ import '../../../core/theme/app_colors.dart';
 import '../../../core/theme/app_text_styles.dart';
 import '../../../core/utils/error_mapper.dart';
 import '../../../data/models/profile.dart';
+import '../../../providers/auth_providers.dart';
+import '../../../providers/connections_providers.dart';
+import '../../../providers/matches_providers.dart';
 import '../../../providers/profile_providers.dart';
 import '../../../providers/repository_providers.dart';
 import '../../../shared/avatars/avatar_catalog.dart';
@@ -45,9 +48,9 @@ class _MyProfileScreenState extends ConsumerState<MyProfileScreen> {
         titleSpacing: 16,
         title: profileAsync.maybeWhen(
           data: (profile) => profile == null
-              ? const Text('Your Profile')
+              ? const Text('Profile')
               : _HeaderTitle(profile: profile, tier: tierAsync.valueOrNull),
-          orElse: () => const Text('Your Profile'),
+          orElse: () => const Text('Profile'),
         ),
       ),
       body: profileAsync.when(
@@ -85,6 +88,7 @@ class _MyProfileScreenState extends ConsumerState<MyProfileScreen> {
           subtitle: profile.regionName,
           tierLabel: tier?.label,
           isVerified: tier != null && tier.label != 'Unverified',
+          audioPath: profile.audioIntroUrl,
         ),
         const SizedBox(height: 12),
         _SegmentedTabs(
@@ -122,10 +126,6 @@ class _MyProfileScreenState extends ConsumerState<MyProfileScreen> {
 
   List<Widget> _tabChildren(Profile profile) => switch (_tab) {
         0 => [
-            if (profile.audioIntroUrl != null && profile.audioIntroUrl!.isNotEmpty) ...[
-              AudioIntroPlayer(storagePath: profile.audioIntroUrl!),
-              const SizedBox(height: 12),
-            ],
             QuoteCard(
               label: 'In your own words',
               text: profile.aboutText,
@@ -213,8 +213,45 @@ class _MyProfileScreenState extends ConsumerState<MyProfileScreen> {
                     )
                   : GenreTileGrid(genres: profile.musicGenres),
             ),
+            ..._connectionTasteMatch(profile),
           ],
       };
+
+  /// "You & your connection both play X on repeat" — shown under Music when
+  /// there is an active connection whose genres overlap yours. All data is
+  /// already loaded by existing providers; the match % chip appears only if
+  /// that person's daily-match row still exists (never fabricated).
+  List<Widget> _connectionTasteMatch(Profile profile) {
+    final connection = ref.watch(activeConnectionProvider).valueOrNull;
+    final userId = ref.watch(currentUserIdProvider);
+    if (connection == null || userId == null) return const [];
+
+    final otherUserId = connection.otherUserId(userId);
+    final theirProfile = ref.watch(candidateProfileProvider(otherUserId)).valueOrNull;
+    if (theirProfile == null) return const [];
+
+    final shared =
+        theirProfile.musicGenres.where(profile.musicGenres.contains).toList();
+    if (shared.isEmpty) return const [];
+
+    final score = ref
+        .watch(dailyMatchCardsProvider)
+        .valueOrNull
+        ?.where((c) => c.match.candidateId == otherUserId)
+        .firstOrNull
+        ?.match
+        .score;
+
+    return [
+      const SizedBox(height: 12),
+      TasteMatchCard(
+        myAvatarId: profile.avatarId,
+        theirAvatarId: theirProfile.avatarId,
+        sharedGenres: shared,
+        matchPercent: score == null ? null : (score * 100).round().clamp(0, 100),
+      ),
+    ];
+  }
 }
 
 /// Compact app-bar identity row: small avatar, name + age, region, and the

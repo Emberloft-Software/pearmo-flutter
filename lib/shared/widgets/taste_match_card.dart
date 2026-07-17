@@ -15,11 +15,16 @@ class TasteMatchCard extends StatelessWidget {
     required this.myAvatarId,
     required this.theirAvatarId,
     required this.sharedGenres,
+    this.matchPercent,
   });
 
   final String myAvatarId;
   final String theirAvatarId;
   final List<MusicGenre> sharedGenres;
+
+  /// 0–100 compatibility score chip (ink tile, lime number — the v5
+  /// "match" moment). Hidden when null (e.g. no daily-match row exists).
+  final int? matchPercent;
 
   @override
   Widget build(BuildContext context) {
@@ -75,6 +80,35 @@ class TasteMatchCard extends StatelessWidget {
               ],
             ),
           ),
+          if (matchPercent != null) ...[
+            const SizedBox(width: 10),
+            Container(
+              padding: const EdgeInsets.symmetric(horizontal: 12, vertical: 8),
+              decoration: BoxDecoration(
+                color: AppColors.textPrimary,
+                borderRadius: BorderRadius.circular(14),
+              ),
+              child: Column(
+                mainAxisSize: MainAxisSize.min,
+                children: [
+                  Text(
+                    '$matchPercent',
+                    style: AppTextStyles.statNumber
+                        .copyWith(fontSize: 19, color: AppColors.secondary),
+                  ),
+                  const SizedBox(height: 1),
+                  Text(
+                    'MATCH',
+                    style: AppTextStyles.label.copyWith(
+                      fontSize: 7.5,
+                      color: Colors.white70,
+                      letterSpacing: 1.2,
+                    ),
+                  ),
+                ],
+              ),
+            ),
+          ],
         ],
       ),
     );
