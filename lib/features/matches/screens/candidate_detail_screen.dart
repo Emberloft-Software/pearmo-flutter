@@ -7,6 +7,7 @@ import '../../../data/models/public_profile.dart';
 import '../../../providers/auth_providers.dart';
 import '../../../providers/connections_providers.dart';
 import '../../../providers/matches_providers.dart';
+import '../../../providers/profile_providers.dart';
 import '../../../providers/repository_providers.dart';
 import '../../../shared/widgets/widgets.dart';
 
@@ -169,9 +170,26 @@ class _CandidateDetailScreenState extends ConsumerState<CandidateDetailScreen> {
                 const SizedBox(height: 12),
                 BentoCard(
                   label: 'Music taste',
-                  child:
-                      AttributeChipList(labels: profile.musicGenres.map((e) => e.label).toList()),
+                  child: GenreTileGrid(genres: profile.musicGenres),
                 ),
+                // Real genre overlap with the signed-in user's own profile
+                // (both already loaded — no extra queries, no fake numbers).
+                Builder(builder: (context) {
+                  final myProfile = ref.watch(myProfileProvider).valueOrNull;
+                  if (myProfile == null) return const SizedBox.shrink();
+                  final shared = profile.musicGenres
+                      .where(myProfile.musicGenres.contains)
+                      .toList();
+                  if (shared.isEmpty) return const SizedBox.shrink();
+                  return Padding(
+                    padding: const EdgeInsets.only(top: 12),
+                    child: TasteMatchCard(
+                      myAvatarId: myProfile.avatarId,
+                      theirAvatarId: profile.avatarId,
+                      sharedGenres: shared,
+                    ),
+                  );
+                }),
               ],
               if (_error != null) ...[
                 const SizedBox(height: 16),

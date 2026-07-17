@@ -4,6 +4,12 @@ import '../../core/constants/enums.dart';
 /// onboarding plus the settings fields the user can edit later.
 class Profile {
   final String userId;
+
+  /// From `display_name`. The column exists in the schema but no app flow
+  /// writes it yet, so this is null for most users — callers must fall
+  /// back (e.g. to the avatar character's name). Never fabricate a name.
+  final String? displayName;
+
   final DateTime dateOfBirth;
   final Gender gender;
   final List<Gender> seeking;
@@ -42,6 +48,7 @@ class Profile {
 
   const Profile({
     required this.userId,
+    this.displayName,
     required this.dateOfBirth,
     required this.gender,
     required this.seeking,
@@ -83,6 +90,7 @@ class Profile {
   factory Profile.fromJson(Map<String, dynamic> json) {
     return Profile(
       userId: json['user_id'] as String,
+      displayName: json['display_name'] as String?,
       dateOfBirth: DateTime.parse(json['date_of_birth'] as String),
       gender: Gender.fromDb(json['gender'] as String),
       seeking: ((json['seeking'] as List?) ?? const [])
@@ -155,6 +163,7 @@ class Profile {
   }) {
     return Profile(
       userId: userId,
+      displayName: displayName,
       dateOfBirth: dateOfBirth,
       gender: gender,
       seeking: seeking,

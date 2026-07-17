@@ -11,11 +11,12 @@ import '../../../core/utils/error_mapper.dart';
 import '../../../data/models/profile.dart';
 import '../../../providers/profile_providers.dart';
 import '../../../providers/repository_providers.dart';
+import '../../../shared/avatars/avatar_catalog.dart';
 import '../../../shared/widgets/widgets.dart';
 
-/// The signed-in user's own profile — a read-only view of everything set
-/// during onboarding plus their live verification tier. Editing lives in
-/// Settings, Verification and Membership below.
+/// The signed-in user's own profile: pinned hero card, then tabbed bento
+/// sections (About / Personality / Music) and a compact account-action
+/// grid. Editing lives in Settings, Verification and Membership.
 ///
 /// The personality radar renders the private `trait_*` scores (1–5). It is
 /// deliberately only shown here — traits are never exposed to other users
@@ -24,16 +25,31 @@ import '../../../shared/widgets/widgets.dart';
 // TODO(backend): the brainstorm's AI agent assistant (chat-based profile
 // help, conversation coaching, etc.) has no edge function yet — would need
 // its own entry point here once that's built.
-class MyProfileScreen extends ConsumerWidget {
+class MyProfileScreen extends ConsumerStatefulWidget {
   const MyProfileScreen({super.key});
 
   @override
-  Widget build(BuildContext context, WidgetRef ref) {
+  ConsumerState<MyProfileScreen> createState() => _MyProfileScreenState();
+}
+
+class _MyProfileScreenState extends ConsumerState<MyProfileScreen> {
+  int _tab = 0;
+
+  @override
+  Widget build(BuildContext context) {
     final profileAsync = ref.watch(myProfileProvider);
     final tierAsync = ref.watch(myVerificationTierProvider);
 
     return Scaffold(
-      appBar: AppBar(title: const Text('Your Profile')),
+      appBar: AppBar(
+        titleSpacing: 16,
+        title: profileAsync.maybeWhen(
+          data: (profile) => profile == null
+              ? const Text('Your Profile')
+              : _HeaderTitle(profile: profile, tier: tierAsync.valueOrNull),
+          orElse: () => const Text('Your Profile'),
+        ),
+      ),
       body: profileAsync.when(
         data: (profile) {
           if (profile == null) {
@@ -43,7 +59,7 @@ class MyProfileScreen extends ConsumerWidget {
               message: 'Complete onboarding to set up your profile.',
             );
           }
-          return _buildBody(context, ref, profile, tierAsync.valueOrNull);
+          return _buildBody(context, profile, tierAsync.valueOrNull);
         },
         loading: () => const LoadingIndicator(),
         error: (error, _) => Padding(
@@ -54,7 +70,7 @@ class MyProfileScreen extends ConsumerWidget {
     );
   }
 
-  Widget _buildBody(BuildContext context, WidgetRef ref, Profile profile, VerificationTier? tier) {
+  Widget _buildBody(BuildContext context, Profile profile, VerificationTier? tier) {
     return ListView(
       padding: const EdgeInsets.all(16),
       children: [
@@ -62,89 +78,472 @@ class MyProfileScreen extends ConsumerWidget {
           avatarId: profile.avatarId,
           photoPath: profile.profilePhotoUrl,
           showPhoto: profile.isPhotoPublic,
+          displayName: profile.displayName ??
+              'The ${AvatarCatalog.resolve(profile.avatarId).character.name}',
+          kicker: 'Profile · ${_pronouns(profile.gender)}',
           title: '${profile.age} · ${profile.gender.label}',
           subtitle: profile.regionName,
           tierLabel: tier?.label,
           isVerified: tier != null && tier.label != 'Unverified',
         ),
         const SizedBox(height: 12),
-        if (profile.audioIntroUrl != null && profile.audioIntroUrl!.isNotEmpty) ...[
-          AudioIntroPlayer(storagePath: profile.audioIntroUrl!),
-          const SizedBox(height: 12),
-        ],
-        QuoteCard(
-          label: 'In your own words',
-          text: profile.aboutText,
-          emptyPlaceholder: 'Add something about yourself in settings.',
+        _SegmentedTabs(
+          index: _tab,
+          onChanged: (i) => setState(() => _tab = i),
+          items: const [
+            (Icons.person_outline, 'About'),
+            (Icons.track_changes, 'Personality'),
+            (Icons.music_note_outlined, 'Music'),
+          ],
         ),
         const SizedBox(height: 12),
-        BentoCard(
-          label: 'Personality',
+        ..._tabChildren(profile),
+        const SizedBox(height: 24),
+        Padding(
+          padding: const EdgeInsets.only(left: 4),
+          child: Text('ACCOUNT', style: AppTextStyles.label),
+        ),
+        const SizedBox(height: 10),
+        _AccountGrid(
+          onSettings: () => context.push('/settings'),
+          onVerification: () => context.push('/verification'),
+          onMembership: () => context.push('/payments'),
+          onSignOut: () => ref.read(authRepositoryProvider).signOut(),
+        ),
+      ],
+    );
+  }
+
+  static String _pronouns(Gender gender) => switch (gender) {
+        Gender.woman => 'She/Her',
+        Gender.man => 'He/Him',
+        _ => 'They/Them',
+      };
+
+  List<Widget> _tabChildren(Profile profile) => switch (_tab) {
+        0 => [
+            if (profile.audioIntroUrl != null && profile.audioIntroUrl!.isNotEmpty) ...[
+              AudioIntroPlayer(storagePath: profile.audioIntroUrl!),
+              const SizedBox(height: 12),
+            ],
+            QuoteCard(
+              label: 'In your own words',
+              text: profile.aboutText,
+              emptyPlaceholder: 'Add something about yourself in settings.',
+            ),
+            const SizedBox(height: 12),
+            BentoCard(
+              label: 'Looking for',
+              child: AttributeChipList(labels: [
+                profile.relationshipIntent.label,
+                'Ages ${profile.seekingAgeMin}–${profile.seekingAgeMax}',
+                ...profile.seeking.map((e) => e.label),
+              ]),
+            ),
+            if (profile.partnerValues.isNotEmpty) ...[
+              const SizedBox(height: 12),
+              BentoCard(
+                label: 'Values most in a partner',
+                child: AttributeChipList(
+                    labels: profile.partnerValues.map((e) => e.label).toList()),
+              ),
+            ],
+          ],
+        1 => [
+            BentoCard(
+              label: 'Personality',
+              child: Column(
+                children: [
+                  const SizedBox(height: 4),
+                  _TraitRadar(profile: profile),
+                  const SizedBox(height: 8),
+                  Text(
+                    'Only you can see this — matches never see your trait scores.',
+                    style: AppTextStyles.caption,
+                    textAlign: TextAlign.center,
+                  ),
+                ],
+              ),
+            ),
+            const SizedBox(height: 12),
+            _TraitRow(
+              icon: Icons.auto_awesome_outlined,
+              name: 'Openness',
+              description: 'Curious, creative, open to new ideas',
+              score: profile.traitOpenness,
+            ),
+            _TraitRow(
+              icon: Icons.track_changes,
+              name: 'Conscientiousness',
+              description: 'Organized, reliable, goal-driven',
+              score: profile.traitConscientiousness,
+            ),
+            _TraitRow(
+              icon: Icons.bolt_outlined,
+              name: 'Extraversion',
+              description: 'Where you draw your social energy',
+              score: profile.traitExtraversion,
+            ),
+            _TraitRow(
+              icon: Icons.favorite_outline,
+              name: 'Agreeableness',
+              description: 'Warm, empathetic, cooperative',
+              score: profile.traitAgreeableness,
+            ),
+            _TraitRow(
+              icon: Icons.spa_outlined,
+              name: 'Emotional stability',
+              description: 'Calm and steady under stress',
+              score: profile.traitEmotionalStability,
+            ),
+            _TraitRow(
+              icon: Icons.shield_outlined,
+              name: 'Attachment security',
+              description: 'Comfort with closeness and trust',
+              score: profile.traitAttachmentSecurity,
+            ),
+          ],
+        _ => [
+            BentoCard(
+              label: 'Music taste',
+              child: profile.musicGenres.isEmpty
+                  ? Text(
+                      'No genres picked yet.',
+                      style: AppTextStyles.body.copyWith(color: AppColors.textSecondary),
+                    )
+                  : GenreTileGrid(genres: profile.musicGenres),
+            ),
+          ],
+      };
+}
+
+/// Compact app-bar identity row: small avatar, name + age, region, and the
+/// lime ID badge when verified — mirrors the v5 HTML phone header.
+class _HeaderTitle extends StatelessWidget {
+  const _HeaderTitle({required this.profile, required this.tier});
+
+  final Profile profile;
+  final VerificationTier? tier;
+
+  @override
+  Widget build(BuildContext context) {
+    final character = AvatarCatalog.resolve(profile.avatarId).character;
+    final name = profile.displayName?.split(' ').first ?? 'The ${character.name}';
+    final isVerified = tier != null && tier!.label != 'Unverified';
+
+    return Row(
+      children: [
+        AvatarDisplay(avatarId: profile.avatarId, size: 36),
+        const SizedBox(width: 10),
+        Expanded(
           child: Column(
+            crossAxisAlignment: CrossAxisAlignment.start,
+            mainAxisSize: MainAxisSize.min,
             children: [
-              const SizedBox(height: 4),
-              _TraitRadar(profile: profile),
-              const SizedBox(height: 8),
               Text(
-                'Only you can see this — matches never see your trait scores.',
-                style: AppTextStyles.caption,
-                textAlign: TextAlign.center,
+                '$name, ${profile.age}',
+                style: AppTextStyles.title.copyWith(fontSize: 17),
+                overflow: TextOverflow.ellipsis,
+              ),
+              if (profile.regionName != null)
+                Row(
+                  children: [
+                    const Icon(Icons.place_outlined,
+                        size: 11, color: AppColors.textSecondary),
+                    const SizedBox(width: 3),
+                    Flexible(
+                      child: Text(
+                        profile.regionName!,
+                        style: AppTextStyles.caption.copyWith(fontSize: 11),
+                        overflow: TextOverflow.ellipsis,
+                      ),
+                    ),
+                  ],
+                ),
+            ],
+          ),
+        ),
+        if (isVerified)
+          Container(
+            margin: const EdgeInsets.only(left: 8),
+            padding: const EdgeInsets.symmetric(horizontal: 10, vertical: 5),
+            decoration: BoxDecoration(
+              color: AppColors.secondary,
+              borderRadius: BorderRadius.circular(999),
+            ),
+            child: Row(
+              mainAxisSize: MainAxisSize.min,
+              children: [
+                const Icon(Icons.verified_user, size: 12, color: AppColors.textPrimary),
+                const SizedBox(width: 4),
+                Text(
+                  'ID',
+                  style: AppTextStyles.caption.copyWith(
+                    fontSize: 10,
+                    fontWeight: FontWeight.w800,
+                    color: AppColors.textPrimary,
+                  ),
+                ),
+              ],
+            ),
+          ),
+      ],
+    );
+  }
+}
+
+/// One trait explained: icon, name, description, score and mini bar —
+/// the v5 HTML trait-legend rows.
+class _TraitRow extends StatelessWidget {
+  const _TraitRow({
+    required this.icon,
+    required this.name,
+    required this.description,
+    required this.score,
+  });
+
+  final IconData icon;
+  final String name;
+  final String description;
+
+  /// 1.0–5.0.
+  final double score;
+
+  @override
+  Widget build(BuildContext context) {
+    return Container(
+      margin: const EdgeInsets.only(bottom: 9),
+      padding: const EdgeInsets.symmetric(horizontal: 15, vertical: 13),
+      decoration: BoxDecoration(
+        color: AppColors.surface,
+        borderRadius: BorderRadius.circular(18),
+        border: Border.all(color: AppColors.divider),
+      ),
+      child: Row(
+        children: [
+          Container(
+            width: 36,
+            height: 36,
+            decoration: BoxDecoration(
+              color: AppColors.surfaceMuted,
+              borderRadius: BorderRadius.circular(12),
+            ),
+            child: Icon(icon, size: 17, color: AppColors.textPrimary),
+          ),
+          const SizedBox(width: 12),
+          Expanded(
+            child: Column(
+              crossAxisAlignment: CrossAxisAlignment.start,
+              children: [
+                Text(name, style: AppTextStyles.bodyMedium),
+                const SizedBox(height: 2),
+                Text(description, style: AppTextStyles.caption),
+              ],
+            ),
+          ),
+          const SizedBox(width: 10),
+          Column(
+            crossAxisAlignment: CrossAxisAlignment.end,
+            children: [
+              Text(
+                score.toStringAsFixed(1),
+                style: AppTextStyles.statNumber.copyWith(fontSize: 17),
+              ),
+              const SizedBox(height: 6),
+              Container(
+                width: 56,
+                height: 5,
+                decoration: BoxDecoration(
+                  color: AppColors.surfaceMuted,
+                  borderRadius: BorderRadius.circular(3),
+                ),
+                child: FractionallySizedBox(
+                  alignment: Alignment.centerLeft,
+                  widthFactor: ((score - 1) / 4).clamp(0.0, 1.0),
+                  child: Container(
+                    decoration: BoxDecoration(
+                      color: AppColors.primary,
+                      borderRadius: BorderRadius.circular(3),
+                    ),
+                  ),
+                ),
+              ),
+            ],
+          ),
+        ],
+      ),
+    );
+  }
+}
+
+/// Pill-style segmented control for switching profile sections.
+class _SegmentedTabs extends StatelessWidget {
+  const _SegmentedTabs({
+    required this.index,
+    required this.onChanged,
+    required this.items,
+  });
+
+  final int index;
+  final ValueChanged<int> onChanged;
+  final List<(IconData, String)> items;
+
+  @override
+  Widget build(BuildContext context) {
+    return Container(
+      padding: const EdgeInsets.all(4),
+      decoration: BoxDecoration(
+        color: AppColors.surfaceMuted,
+        borderRadius: BorderRadius.circular(999),
+      ),
+      child: Row(
+        children: [
+          for (var i = 0; i < items.length; i++)
+            Expanded(
+              child: GestureDetector(
+                onTap: () => onChanged(i),
+                child: Container(
+                  padding: const EdgeInsets.symmetric(vertical: 10),
+                  decoration: BoxDecoration(
+                    color: i == index ? AppColors.surface : Colors.transparent,
+                    borderRadius: BorderRadius.circular(999),
+                    border: i == index ? Border.all(color: AppColors.divider) : null,
+                  ),
+                  child: Row(
+                    mainAxisAlignment: MainAxisAlignment.center,
+                    children: [
+                      Icon(
+                        items[i].$1,
+                        size: 15,
+                        color: i == index ? AppColors.primaryDark : AppColors.textSecondary,
+                      ),
+                      const SizedBox(width: 6),
+                      Text(
+                        items[i].$2,
+                        style: AppTextStyles.caption.copyWith(
+                          fontWeight: FontWeight.w700,
+                          color: i == index ? AppColors.textPrimary : AppColors.textSecondary,
+                        ),
+                      ),
+                    ],
+                  ),
+                ),
+              ),
+            ),
+        ],
+      ),
+    );
+  }
+}
+
+/// 2×2 grid of compact account actions — replaces the old stack of four
+/// full-width buttons. Sign out is styled as the destructive action.
+class _AccountGrid extends StatelessWidget {
+  const _AccountGrid({
+    required this.onSettings,
+    required this.onVerification,
+    required this.onMembership,
+    required this.onSignOut,
+  });
+
+  final VoidCallback onSettings;
+  final VoidCallback onVerification;
+  final VoidCallback onMembership;
+  final VoidCallback onSignOut;
+
+  @override
+  Widget build(BuildContext context) {
+    return GridView.count(
+      crossAxisCount: 2,
+      shrinkWrap: true,
+      physics: const NeverScrollableScrollPhysics(),
+      mainAxisSpacing: 10,
+      crossAxisSpacing: 10,
+      childAspectRatio: 2.9,
+      children: [
+        _AccountTile(
+          icon: Icons.settings_outlined,
+          label: 'Settings',
+          onTap: onSettings,
+        ),
+        _AccountTile(
+          icon: Icons.verified_user_outlined,
+          label: 'Verification',
+          onTap: onVerification,
+        ),
+        _AccountTile(
+          icon: Icons.workspace_premium_outlined,
+          label: 'Membership',
+          onTap: onMembership,
+        ),
+        _AccountTile(
+          icon: Icons.logout,
+          label: 'Sign out',
+          isDestructive: true,
+          onTap: onSignOut,
+        ),
+      ],
+    );
+  }
+}
+
+class _AccountTile extends StatelessWidget {
+  const _AccountTile({
+    required this.icon,
+    required this.label,
+    required this.onTap,
+    this.isDestructive = false,
+  });
+
+  final IconData icon;
+  final String label;
+  final VoidCallback onTap;
+  final bool isDestructive;
+
+  @override
+  Widget build(BuildContext context) {
+    final iconColor = isDestructive ? AppColors.danger : AppColors.primaryDark;
+    final iconBg = isDestructive
+        ? AppColors.danger.withValues(alpha: 0.1)
+        : AppColors.primaryLight;
+
+    return Material(
+      color: AppColors.surface,
+      borderRadius: BorderRadius.circular(20),
+      child: InkWell(
+        onTap: onTap,
+        borderRadius: BorderRadius.circular(20),
+        child: Container(
+          padding: const EdgeInsets.symmetric(horizontal: 12),
+          decoration: BoxDecoration(
+            borderRadius: BorderRadius.circular(20),
+            border: Border.all(color: AppColors.divider),
+          ),
+          child: Row(
+            children: [
+              Container(
+                width: 32,
+                height: 32,
+                decoration: BoxDecoration(
+                  color: iconBg,
+                  borderRadius: BorderRadius.circular(10),
+                ),
+                child: Icon(icon, size: 17, color: iconColor),
+              ),
+              const SizedBox(width: 10),
+              Expanded(
+                child: Text(
+                  label,
+                  style: AppTextStyles.bodyMedium.copyWith(
+                    color: isDestructive ? AppColors.danger : AppColors.textPrimary,
+                  ),
+                  overflow: TextOverflow.ellipsis,
+                ),
               ),
             ],
           ),
         ),
-        const SizedBox(height: 12),
-        BentoCard(
-          label: 'Looking for',
-          child: AttributeChipList(labels: [
-            profile.relationshipIntent.label,
-            'Ages ${profile.seekingAgeMin}–${profile.seekingAgeMax}',
-            ...profile.seeking.map((e) => e.label),
-          ]),
-        ),
-        if (profile.partnerValues.isNotEmpty) ...[
-          const SizedBox(height: 12),
-          BentoCard(
-            label: 'Values most in a partner',
-            child: AttributeChipList(labels: profile.partnerValues.map((e) => e.label).toList()),
-          ),
-        ],
-        if (profile.musicGenres.isNotEmpty) ...[
-          const SizedBox(height: 12),
-          BentoCard(
-            label: 'Music taste',
-            child: AttributeChipList(labels: profile.musicGenres.map((e) => e.label).toList()),
-          ),
-        ],
-        const SizedBox(height: 24),
-        PearmoButton(
-          label: 'Settings',
-          variant: PearmoButtonVariant.outline,
-          icon: Icons.settings_outlined,
-          onPressed: () => context.push('/settings'),
-        ),
-        const SizedBox(height: 12),
-        PearmoButton(
-          label: 'Verification',
-          variant: PearmoButtonVariant.outline,
-          icon: Icons.verified_user_outlined,
-          onPressed: () => context.push('/verification'),
-        ),
-        const SizedBox(height: 12),
-        PearmoButton(
-          label: 'Membership',
-          variant: PearmoButtonVariant.outline,
-          icon: Icons.workspace_premium_outlined,
-          onPressed: () => context.push('/payments'),
-        ),
-        const SizedBox(height: 12),
-        PearmoButton(
-          label: 'Sign out',
-          variant: PearmoButtonVariant.outline,
-          icon: Icons.logout,
-          onPressed: () => ref.read(authRepositoryProvider).signOut(),
-        ),
-      ],
+      ),
     );
   }
 }
