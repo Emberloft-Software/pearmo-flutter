@@ -16,7 +16,10 @@ class MessagesRepository {
         .from('messages')
         .stream(primaryKey: ['id'])
         .eq('connection_id', connectionId)
-        .order('sent_at')
+        // SupabaseStreamBuilder.order() defaults to ascending: false —
+        // without this, messages arrive newest-first and render at the top
+        // of a normal (non-reversed) ListView instead of the bottom.
+        .order('sent_at', ascending: true)
         .map((rows) => rows.map((e) => Message.fromJson(e)).toList());
   }
 
@@ -33,4 +36,11 @@ class MessagesRepository {
       'content_type': contentType,
     });
   }
+
+  /// Ephemeral per-connection channel for typing indicators — pure Realtime
+  /// Broadcast, never persisted to any table (no RLS/migration involved).
+  /// Caller owns the channel's lifecycle: call `.subscribe()` after wiring
+  /// up listeners, and `SupabaseClient.removeChannel()` when done with it.
+  RealtimeChannel typingChannel(String connectionId) =>
+      _client.channel('typing:$connectionId');
 }

@@ -13,6 +13,12 @@ class AvatarCharacter {
     required this.name,
     required this.tagline,
     required this.description,
+    required this.extraversion,
+    required this.agreeableness,
+    required this.conscientiousness,
+    required this.emotionalStability,
+    required this.openness,
+    required this.attachmentSecurity,
   });
 
   /// Stable id stem — `avatar_id` in the DB is `'$key-m'` or `'$key-f'`.
@@ -25,8 +31,28 @@ class AvatarCharacter {
   /// One-sentence meaning shown when the character is selected.
   final String description;
 
+  /// This character's own personality "profile" (1-5 scale, same scale as
+  /// `profiles.trait_*`), hand-derived from its tagline/description above —
+  /// used by [AvatarCatalog.suggestCharacter] to find the closest match to
+  /// the user's actual PEARMO answers. Not shown in the UI directly.
+  final double extraversion;
+  final double agreeableness;
+  final double conscientiousness;
+  final double emotionalStability;
+  final double openness;
+  final double attachmentSecurity;
+
   String idFor(bool male) => male ? '$key-m' : '$key-f';
   String assetFor(bool male) => 'assets/avatars/$key-${male ? 'm' : 'f'}.png';
+
+  double traitValue(PersonalityTrait trait) => switch (trait) {
+        PersonalityTrait.extraversion => extraversion,
+        PersonalityTrait.agreeableness => agreeableness,
+        PersonalityTrait.conscientiousness => conscientiousness,
+        PersonalityTrait.emotionalStability => emotionalStability,
+        PersonalityTrait.openness => openness,
+        PersonalityTrait.attachmentSecurity => attachmentSecurity,
+      };
 }
 
 /// Resolved view of a concrete `avatar_id` (character + gender variant).
@@ -50,6 +76,10 @@ class AvatarCatalog {
   AvatarCatalog._();
 
   /// Set A — anthro-animal trait projection. Order defines picker order.
+  /// Each entry's `extraversion`/`agreeableness`/`conscientiousness`/
+  /// `emotionalStability`/`openness`/`attachmentSecurity` (1-5 scale) is a
+  /// hand-derived reading of its own tagline/description above, used only
+  /// by [suggestCharacter] — not shown to the user directly.
   static const List<AvatarCharacter> characters = [
     AvatarCharacter(
       key: 'fox',
@@ -57,6 +87,12 @@ class AvatarCatalog {
       tagline: 'Clever · Flirtatious · Quick-witted',
       description:
           'A little hard to read, and treats banter as a form of flirting.',
+      extraversion: 4.0,
+      agreeableness: 2.5,
+      conscientiousness: 3.0,
+      emotionalStability: 3.5,
+      openness: 4.5,
+      attachmentSecurity: 2.5,
     ),
     AvatarCharacter(
       key: 'wolf',
@@ -64,12 +100,24 @@ class AvatarCatalog {
       tagline: 'Loyal · Intense · Protective',
       description:
           'Forms deep, ride-or-die bonds rather than wide social circles.',
+      extraversion: 2.5,
+      agreeableness: 4.0,
+      conscientiousness: 4.0,
+      emotionalStability: 3.5,
+      openness: 3.0,
+      attachmentSecurity: 4.5,
     ),
     AvatarCharacter(
       key: 'owl',
       name: 'Owl',
       tagline: 'Introspective · Observant · Quietly wise',
       description: 'Listens more than they talk, and notices everything.',
+      extraversion: 1.5,
+      agreeableness: 3.5,
+      conscientiousness: 4.0,
+      emotionalStability: 4.0,
+      openness: 4.5,
+      attachmentSecurity: 3.5,
     ),
     AvatarCharacter(
       key: 'otter',
@@ -77,12 +125,24 @@ class AvatarCatalog {
       tagline: 'Playful · Social · Affectionate',
       description:
           'Flirts through jokes and warmth — closeness comes naturally.',
+      extraversion: 4.5,
+      agreeableness: 4.5,
+      conscientiousness: 3.0,
+      emotionalStability: 3.5,
+      openness: 4.0,
+      attachmentSecurity: 4.0,
     ),
     AvatarCharacter(
       key: 'deer',
       name: 'Deer',
       tagline: 'Gentle · Cautious · Sensitive',
       description: 'Needs safety and slow pacing before opening up.',
+      extraversion: 2.0,
+      agreeableness: 4.0,
+      conscientiousness: 3.0,
+      emotionalStability: 2.0,
+      openness: 3.0,
+      attachmentSecurity: 2.5,
     ),
     AvatarCharacter(
       key: 'bear',
@@ -90,24 +150,48 @@ class AvatarCatalog {
       tagline: 'Warm · Steady · Protective-but-soft',
       description:
           'The big teddy bear — a reassuring presence over excitement.',
+      extraversion: 2.5,
+      agreeableness: 4.5,
+      conscientiousness: 4.0,
+      emotionalStability: 4.5,
+      openness: 3.0,
+      attachmentSecurity: 4.5,
     ),
     AvatarCharacter(
       key: 'cat',
       name: 'Cat',
       tagline: 'Independent · Selective · A little aloof',
       description: 'Values autonomy and gives affection on their own terms.',
+      extraversion: 2.5,
+      agreeableness: 2.5,
+      conscientiousness: 3.5,
+      emotionalStability: 4.0,
+      openness: 3.0,
+      attachmentSecurity: 2.0,
     ),
     AvatarCharacter(
       key: 'dog',
       name: 'Dog',
       tagline: 'Loyal · Eager · Emotionally open',
       description: 'Wears their heart on their sleeve — no emotional games.',
+      extraversion: 4.5,
+      agreeableness: 4.5,
+      conscientiousness: 3.0,
+      emotionalStability: 3.0,
+      openness: 3.0,
+      attachmentSecurity: 4.5,
     ),
     AvatarCharacter(
       key: 'crow',
       name: 'Raven',
       tagline: 'Sharp-minded · Dark-humored · Mysterious',
       description: 'Intelligent and intriguing, but emotionally guarded.',
+      extraversion: 2.5,
+      agreeableness: 3.0,
+      conscientiousness: 3.5,
+      emotionalStability: 3.5,
+      openness: 4.5,
+      attachmentSecurity: 2.0,
     ),
     AvatarCharacter(
       key: 'rabbit',
@@ -115,36 +199,72 @@ class AvatarCatalog {
       tagline: 'Sweet · Excitable · Affectionate',
       description:
           'Needs reassurance early, then loves warmly once comfortable.',
+      extraversion: 4.0,
+      agreeableness: 4.5,
+      conscientiousness: 2.5,
+      emotionalStability: 2.5,
+      openness: 3.0,
+      attachmentSecurity: 3.0,
     ),
     AvatarCharacter(
       key: 'hawk',
       name: 'Hawk',
       tagline: 'Driven · Focused · Ambitious',
       description: 'Leads with goals and direction rather than feelings.',
+      extraversion: 3.0,
+      agreeableness: 2.5,
+      conscientiousness: 4.5,
+      emotionalStability: 4.0,
+      openness: 3.5,
+      attachmentSecurity: 2.5,
     ),
     AvatarCharacter(
       key: 'horse',
       name: 'Horse',
       tagline: 'Graceful · Free-spirited · Untamed',
       description: 'Needs independence inside a relationship, never control.',
+      extraversion: 3.5,
+      agreeableness: 3.0,
+      conscientiousness: 2.5,
+      emotionalStability: 3.5,
+      openness: 4.5,
+      attachmentSecurity: 2.0,
     ),
     AvatarCharacter(
       key: 'panther',
       name: 'Panther',
       tagline: 'Confident · Sensual · Deliberate',
       description: 'Comfortable with their own intensity and magnetism.',
+      extraversion: 3.5,
+      agreeableness: 3.0,
+      conscientiousness: 4.0,
+      emotionalStability: 4.0,
+      openness: 3.5,
+      attachmentSecurity: 3.5,
     ),
     AvatarCharacter(
       key: 'squirrel',
       name: 'Squirrel',
       tagline: 'Energetic · Spontaneous · Endearing chaos',
       description: 'Fun and full of surprises — a little unpredictable.',
+      extraversion: 4.5,
+      agreeableness: 3.5,
+      conscientiousness: 1.5,
+      emotionalStability: 2.5,
+      openness: 4.0,
+      attachmentSecurity: 3.0,
     ),
     AvatarCharacter(
       key: 'swan',
       name: 'Swan',
       tagline: 'Elegant · Composed · Deeply feeling',
       description: 'Poised on the outside, deeply emotional underneath.',
+      extraversion: 3.0,
+      agreeableness: 4.0,
+      conscientiousness: 4.0,
+      emotionalStability: 2.5,
+      openness: 3.5,
+      attachmentSecurity: 4.0,
     ),
     AvatarCharacter(
       key: 'tiger',
@@ -152,12 +272,24 @@ class AvatarCatalog {
       tagline: 'Bold · Dominant · Unshrinking',
       description:
           'Wants a partner who matches their energy, not soothes it.',
+      extraversion: 4.5,
+      agreeableness: 2.0,
+      conscientiousness: 3.5,
+      emotionalStability: 4.5,
+      openness: 3.5,
+      attachmentSecurity: 3.0,
     ),
     AvatarCharacter(
       key: 'hedgehog',
       name: 'Hedgehog',
       tagline: 'Soft · Guarded · Worth the wait',
       description: 'Slow to trust, protective of their heart, sweet once in.',
+      extraversion: 1.5,
+      agreeableness: 3.5,
+      conscientiousness: 3.0,
+      emotionalStability: 2.5,
+      openness: 2.5,
+      attachmentSecurity: 2.0,
     ),
     AvatarCharacter(
       key: 'dolphin',
@@ -165,18 +297,36 @@ class AvatarCatalog {
       tagline: 'Playful · Perceptive · Social',
       description:
           'The fun friend who is also surprisingly emotionally tuned-in.',
+      extraversion: 4.5,
+      agreeableness: 4.0,
+      conscientiousness: 3.0,
+      emotionalStability: 4.0,
+      openness: 4.0,
+      attachmentSecurity: 3.5,
     ),
     AvatarCharacter(
       key: 'lion',
       name: 'Lion',
       tagline: 'Confident · Protective · Leader energy',
       description: 'Naturally takes charge and looks after their pride.',
+      extraversion: 4.0,
+      agreeableness: 3.5,
+      conscientiousness: 4.0,
+      emotionalStability: 4.5,
+      openness: 3.0,
+      attachmentSecurity: 4.0,
     ),
     AvatarCharacter(
       key: 'koala',
       name: 'Koala',
       tagline: 'Laid-back · Low-drama · Cuddly',
       description: 'Wants comfort and calm over excitement — undemanding.',
+      extraversion: 2.0,
+      agreeableness: 4.0,
+      conscientiousness: 2.5,
+      emotionalStability: 4.0,
+      openness: 2.5,
+      attachmentSecurity: 3.5,
     ),
   ];
 
@@ -193,6 +343,26 @@ class AvatarCatalog {
         Gender.woman => [for (final c in characters) c.idFor(false)],
         _ => allIds,
       };
+
+  /// The character whose hand-derived trait profile is closest to the
+  /// user's actual PEARMO answers (same `1 - |diff|/4` per-trait similarity
+  /// used by `score_compatibility`, just comparing a person to a character
+  /// instead of two people). Gender variant is chosen separately by the
+  /// caller — this only picks which of the 20 characters fits best.
+  static AvatarCharacter suggestCharacter(Map<PersonalityTrait, double> traitScores) {
+    return characters.reduce(
+      (best, c) => _matchScore(c, traitScores) > _matchScore(best, traitScores) ? c : best,
+    );
+  }
+
+  static double _matchScore(AvatarCharacter c, Map<PersonalityTrait, double> traitScores) {
+    var score = 0.0;
+    for (final trait in PersonalityTrait.values) {
+      final diff = (c.traitValue(trait) - (traitScores[trait] ?? 3.0)).abs();
+      score += 1 - (diff / 4).clamp(0, 1);
+    }
+    return score;
+  }
 
   /// Resolves any `avatar_id` — new (`fox-f`) or legacy (`av_007`) — to a
   /// character + variant. Unknown ids fall back to the first character so

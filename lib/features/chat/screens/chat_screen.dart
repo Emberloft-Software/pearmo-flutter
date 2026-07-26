@@ -1,7 +1,10 @@
+import 'dart:async';
+
 import 'package:flutter/material.dart';
 import 'package:flutter_riverpod/flutter_riverpod.dart';
 import 'package:go_router/go_router.dart';
 import 'package:intl/intl.dart';
+import 'package:supabase_flutter/supabase_flutter.dart';
 
 import '../../../core/constants/app_constants.dart';
 import '../../../core/constants/enums.dart';
@@ -39,11 +42,59 @@ class _ChatScreenState extends ConsumerState<ChatScreen> {
   bool _isSending = false;
   String? _error;
 
+  // Typing indicator — pure Realtime Broadcast (see
+  // MessagesRepository.typingChannel), nothing persisted to any table.
+  late final SupabaseClient _supabaseClient;
+  RealtimeChannel? _typingChannel;
+  Timer? _typingClearTimer;
+  DateTime? _lastTypingSentAt;
+  bool _otherIsTyping = false;
+
+  @override
+  void initState() {
+    super.initState();
+    _supabaseClient = ref.read(supabaseClientProvider);
+    _controller.addListener(_onComposerChanged);
+
+    final myUserId = ref.read(currentUserIdProvider);
+    _typingChannel = ref.read(messagesRepositoryProvider).typingChannel(widget.connectionId)
+      ..onBroadcast(
+        event: 'typing',
+        callback: (payload) {
+          final fromUserId = payload['user_id'] as String?;
+          if (fromUserId == null || fromUserId == myUserId) return;
+          _typingClearTimer?.cancel();
+          setState(() => _otherIsTyping = true);
+          _typingClearTimer = Timer(const Duration(seconds: 3), () {
+            if (mounted) setState(() => _otherIsTyping = false);
+          });
+        },
+      ).subscribe();
+  }
+
   @override
   void dispose() {
+    _controller.removeListener(_onComposerChanged);
     _controller.dispose();
     _scrollController.dispose();
+    _typingClearTimer?.cancel();
+    final channel = _typingChannel;
+    if (channel != null) _supabaseClient.removeChannel(channel);
     super.dispose();
+  }
+
+  /// Broadcasts a "typing" event, throttled to at most once every 2s so
+  /// every keystroke doesn't open a new round trip.
+  void _onComposerChanged() {
+    if (_controller.text.isEmpty) return;
+    final userId = ref.read(currentUserIdProvider);
+    if (userId == null) return;
+    final now = DateTime.now();
+    if (_lastTypingSentAt != null && now.difference(_lastTypingSentAt!) < const Duration(seconds: 2)) {
+      return;
+    }
+    _lastTypingSentAt = now;
+    _typingChannel?.sendBroadcastMessage(event: 'typing', payload: {'user_id': userId});
   }
 
   Future<void> _send(String userId) async {
@@ -75,7 +126,21 @@ class _ChatScreenState extends ConsumerState<ChatScreen> {
     final messagesAsync = ref.watch(messagesStreamProvider(widget.connectionId));
 
     return Scaffold(
-      appBar: AppBar(title: const Text('Chat')),
+      appBar: AppBar(
+        title: const Text('Chat'),
+        actions: [
+          connectionAsync.maybeWhen(
+            data: (connection) => connection != null && connection.status != ConnectionStatus.ended
+                ? IconButton(
+                    onPressed: () => context.push('/connection/${widget.connectionId}/games'),
+                    icon: const Icon(Icons.extension_outlined),
+                    tooltip: 'Ice-breaker games',
+                  )
+                : const SizedBox.shrink(),
+            orElse: () => const SizedBox.shrink(),
+          ),
+        ],
+      ),
       body: connectionAsync.when(
         data: (connection) {
           if (connection == null || userId == null) {
@@ -139,6 +204,11 @@ class _ChatScreenState extends ConsumerState<ChatScreen> {
                   ),
                 ),
               ),
+              if (_otherIsTyping)
+                const Padding(
+                  padding: EdgeInsets.fromLTRB(16, 0, 16, 8),
+                  child: Align(alignment: Alignment.centerLeft, child: _TypingIndicator()),
+                ),
               if (_error != null)
                 Padding(
                   padding: const EdgeInsets.symmetric(horizontal: 16),
@@ -202,6 +272,68 @@ class _ChatScreenState extends ConsumerState<ChatScreen> {
           padding: const EdgeInsets.all(20),
           child: ErrorBanner(message: ErrorMapper.map(error)),
         ),
+      ),
+    );
+  }
+}
+
+/// "Other person is typing" bubble — three dots pulsing in sequence, driven
+/// by one repeating [AnimationController] rather than per-dot timers.
+class _TypingIndicator extends StatefulWidget {
+  const _TypingIndicator();
+
+  @override
+  State<_TypingIndicator> createState() => _TypingIndicatorState();
+}
+
+class _TypingIndicatorState extends State<_TypingIndicator>
+    with SingleTickerProviderStateMixin {
+  late final AnimationController _controller = AnimationController(
+    vsync: this,
+    duration: const Duration(milliseconds: 900),
+  )..repeat();
+
+  @override
+  void dispose() {
+    _controller.dispose();
+    super.dispose();
+  }
+
+  @override
+  Widget build(BuildContext context) {
+    return Container(
+      padding: const EdgeInsets.symmetric(horizontal: 14, vertical: 10),
+      decoration: BoxDecoration(
+        color: AppColors.surface,
+        borderRadius: BorderRadius.circular(16),
+        border: Border.all(color: AppColors.divider),
+      ),
+      child: AnimatedBuilder(
+        animation: _controller,
+        builder: (context, _) {
+          return Row(
+            mainAxisSize: MainAxisSize.min,
+            children: List.generate(3, (i) {
+              // Stagger each dot's pulse by a third of the cycle.
+              final t = (_controller.value + i / 3) % 1.0;
+              final opacity = 0.3 + 0.7 * (0.5 - (t - 0.5).abs()) * 2;
+              return Padding(
+                padding: EdgeInsets.only(left: i == 0 ? 0 : 4),
+                child: Opacity(
+                  opacity: opacity.clamp(0.3, 1.0),
+                  child: Container(
+                    width: 7,
+                    height: 7,
+                    decoration: const BoxDecoration(
+                      color: AppColors.textSecondary,
+                      shape: BoxShape.circle,
+                    ),
+                  ),
+                ),
+              );
+            }),
+          );
+        },
       ),
     );
   }

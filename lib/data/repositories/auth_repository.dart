@@ -57,8 +57,10 @@ class AuthRepository {
   }
 
   /// Soft-deletes the account (see `delete-account` edge function and
-  /// CLAUDE.md's "Account deletion" section) then signs out locally —
-  /// irreversible from the user's side, distinct from a ban/deactivation.
+  /// CLAUDE.md's "Account deletion" section) then signs out locally. Wipes
+  /// PII/media and forces the profile back to onboarding-incomplete, but
+  /// does NOT block the phone number from signing back in — doing so lands
+  /// back in onboarding, same identity, fresh profile.
   Future<void> deleteAccount() async {
     await _client.functions.invoke(SupabaseConfig.fnDeleteAccount);
     await signOut();

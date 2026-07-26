@@ -10,17 +10,24 @@ import '../../../shared/widgets/avatar_display.dart';
 /// shown above it. When [gender] is man/woman the grid pre-filters to the
 /// matching variants (with a "Show all" toggle) — a display suggestion
 /// only; any user may pick any character.
+///
+/// If [traitScores] is provided (the PEARMO answers collected earlier in
+/// onboarding), "Suggested for you" also puts the best personality match
+/// first in the grid and pre-selects it on first visit — still just a
+/// suggestion, overridden the moment the user taps anything else.
 class AvatarPicker extends StatefulWidget {
   const AvatarPicker({
     super.key,
     required this.selectedId,
     required this.onSelected,
     this.gender,
+    this.traitScores,
   });
 
   final String selectedId;
   final ValueChanged<String> onSelected;
   final Gender? gender;
+  final Map<PersonalityTrait, double>? traitScores;
 
   @override
   State<AvatarPicker> createState() => _AvatarPickerState();
@@ -32,11 +39,34 @@ class _AvatarPickerState extends State<AvatarPicker> {
   bool get _canFilter =>
       widget.gender == Gender.man || widget.gender == Gender.woman;
 
+  AvatarCharacter? get _suggested =>
+      widget.traitScores != null ? AvatarCatalog.suggestCharacter(widget.traitScores!) : null;
+
+  @override
+  void initState() {
+    super.initState();
+    final suggested = _suggested;
+    // Only auto-apply if the current selection is still the untouched
+    // default — never override a choice the user (or a prior visit) made.
+    if (suggested != null && widget.selectedId == AvatarCatalog.allIds.first) {
+      final isMale = widget.gender == Gender.man;
+      WidgetsBinding.instance.addPostFrameCallback((_) {
+        widget.onSelected(suggested.idFor(isMale));
+      });
+    }
+  }
+
   @override
   Widget build(BuildContext context) {
-    final ids = _showAll || !_canFilter
+    var ids = _showAll || !_canFilter
         ? AvatarCatalog.allIds
         : AvatarCatalog.idsForGender(widget.gender);
+    final suggested = _suggested;
+    if (suggested != null && _canFilter && !_showAll) {
+      final isMale = widget.gender == Gender.man;
+      final suggestedId = suggested.idFor(isMale);
+      ids = [suggestedId, ...ids.where((id) => id != suggestedId)];
+    }
     final selected = AvatarCatalog.resolve(widget.selectedId);
 
     return Column(

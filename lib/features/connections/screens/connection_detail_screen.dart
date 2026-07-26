@@ -220,7 +220,12 @@ class _ConnectionDetailScreenState extends ConsumerState<ConnectionDetailScreen>
           );
         }),
         const SizedBox(height: 12),
-        if (!connection.status.canChat && connection.status != ConnectionStatus.ended)
+        // Always available while the connection is live — not just before
+        // chat unlocks. `ice_breaker_sessions` RLS has no status
+        // restriction at all (see CLAUDE.md), so there's no backend reason
+        // to hide this once chat opens; it's just a fun optional extra
+        // from then on instead of the unlock incentive.
+        if (connection.status != ConnectionStatus.ended)
           Material(
             color: AppColors.secondaryLight,
             borderRadius: BorderRadius.circular(20),
@@ -239,7 +244,9 @@ class _ConnectionDetailScreenState extends ConsumerState<ConnectionDetailScreen>
                     const SizedBox(width: 12),
                     Expanded(
                       child: Text(
-                        'Play an ice-breaker game together to unlock chat.',
+                        connection.status.canChat
+                            ? 'Play an ice-breaker game together.'
+                            : 'Play an ice-breaker game together to unlock chat.',
                         style: AppTextStyles.bodyMedium
                             .copyWith(color: AppColors.secondaryDark),
                       ),
@@ -250,12 +257,14 @@ class _ConnectionDetailScreenState extends ConsumerState<ConnectionDetailScreen>
               ),
             ),
           ),
-        if (connection.status.canChat)
+        if (connection.status.canChat) ...[
+          const SizedBox(height: 12),
           PearmoButton(
             label: 'Open chat',
             icon: Icons.chat_bubble_outline,
             onPressed: () => context.push('/connection/${widget.connectionId}/chat'),
           ),
+        ],
         if (connection.status == ConnectionStatus.ended) ...[
           Container(
             padding: const EdgeInsets.all(16),

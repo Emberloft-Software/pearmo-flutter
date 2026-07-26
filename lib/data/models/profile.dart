@@ -129,6 +129,12 @@ class Profile {
   /// Used for the initial onboarding insert.
   Map<String, dynamic> toInsertJson() => {
         'user_id': userId,
+        // Explicitly reset, not omitted — a previously-deleted identity's
+        // `display_name` was set to 'Deleted user' by `delete-account`, and
+        // no onboarding step collects a real one yet (see the field doc
+        // above), so a fresh/re-onboarding submission should clear it back
+        // to null rather than silently inheriting that placeholder forever.
+        'display_name': null,
         'date_of_birth':
             '${dateOfBirth.year.toString().padLeft(4, '0')}-${dateOfBirth.month.toString().padLeft(2, '0')}-${dateOfBirth.day.toString().padLeft(2, '0')}',
         'gender': gender.dbValue,
@@ -149,6 +155,14 @@ class Profile {
         'country_code': countryCode,
         'region_name': regionName,
         'onboarding_complete': onboardingComplete,
+        // Explicitly reset on every onboarding submission, not just left to
+        // the column default — matters for a previously-deleted identity
+        // re-onboarding, since `delete-account` sets both of these to hide
+        // the old profile. Without resetting them here, a re-onboarded
+        // profile would silently stay invisible until a manual Settings
+        // change.
+        'is_profile_active': true,
+        'hide_from_contacts': false,
       };
 
   Profile copyWith({

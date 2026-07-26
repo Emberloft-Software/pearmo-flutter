@@ -99,4 +99,21 @@ class PersonalityQuestions {
 
   static List<PersonalityQuestion> forTrait(PersonalityTrait trait) =>
       all.where((q) => q.trait == trait).toList();
+
+  /// Averages each trait's answers (reverse-scored items as `6 - answer`
+  /// first), per the PEARMO scoring doc. Missing answers default to the
+  /// neutral midpoint (3) rather than throwing — used both at final submit
+  /// (where every question is already guaranteed answered) and by the
+  /// avatar-suggestion step, which only needs a best-effort estimate.
+  static Map<PersonalityTrait, double> computeTraitScores(Map<String, int> answers) {
+    final scores = <PersonalityTrait, double>{};
+    for (final trait in PersonalityTrait.values) {
+      final values = forTrait(trait).map((q) {
+        final raw = answers[q.id] ?? 3;
+        return q.isReverse ? 6 - raw : raw;
+      });
+      scores[trait] = values.reduce((a, b) => a + b) / values.length;
+    }
+    return scores;
+  }
 }

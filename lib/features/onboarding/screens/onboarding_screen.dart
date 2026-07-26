@@ -170,6 +170,9 @@ class _OnboardingScreenState extends ConsumerState<OnboardingScreen> {
           selectedId: draft.avatarId,
           onSelected: controller.setAvatarId,
           gender: draft.gender,
+          traitScores: PersonalityQuestions.all.every((q) => draft.personalityAnswers.containsKey(q.id))
+              ? PersonalityQuestions.computeTraitScores(draft.personalityAnswers)
+              : null,
         ),
       ),
       _StepDef(

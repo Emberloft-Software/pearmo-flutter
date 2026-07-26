@@ -649,6 +649,32 @@ matches today.
 maximally trait-compatible with each other. Harmless for UI testing, just
 not meaningful signal if testing the scoring math specifically.
 
+**Avatar suggestion wired to real personality data (2026-07-10).** A
+friend's UI redesign (separate from this backend work) replaced the old
+generated-circle avatars with 20 anthro-animal characters
+([avatar_catalog.dart](lib/shared/avatars/avatar_catalog.dart), each with a
+male/female art variant) and added a "Suggested for you" vs "All
+characters" toggle in the onboarding avatar step — but that toggle only
+ever filtered by gender, the personality-flavored taglines (e.g. Fox:
+"Clever · Flirtatious · Quick-witted", Owl: "Introspective · Observant ·
+Quietly wise") weren't connected to anything. Added a hand-derived 6-trait
+profile (1-5 scale, same scale as `profiles.trait_*`) to each character —
+read off its existing tagline/description, not from any new source of
+truth — and `AvatarCatalog.suggestCharacter()` picks whichever character's
+profile is closest to the user's actual PEARMO answers (same
+`1 - |diff|/4` per-trait similarity `score_compatibility` uses, just
+comparing a person to a character instead of two people). Works because
+the avatar step in onboarding comes *after* all 6 personality trait
+screens, so `draft.personalityAnswers` is fully populated by the time
+`AvatarPicker` needs it — `PersonalityQuestions.computeTraitScores()` was
+pulled out of `OnboardingController` into a shared static method for this
+reason (both the picker and final `submit()` needed the same computation).
+`AvatarPicker` auto-selects the suggested character on first visit only if
+the selection is still at the untouched default (never overrides a real
+choice), and reorders the gender-filtered grid to put the suggestion
+first — tapping any other character still overrides it freely either way,
+same as the gender-only filtering already worked.
+
 ## Account deletion (2026-07-09)
 
 Added a real "Delete account" flow (Settings → Danger zone), plus a
@@ -680,23 +706,21 @@ On call:
 - Wipes `profiles`: `display_name` → `'Deleted user'`, `about_text` → `''`,
   `avatar_config`/`profile_photo_url`/`audio_intro_url`/`region_name` →
   `null`, `is_profile_active`/`is_photo_public` → `false`,
-  `hide_from_contacts` → `true`. **Deliberately untouched:**
-  `date_of_birth`/`gender`/`seeking`/`seeking_age_*`/`trait_*`/
-  `relationship_intent`/`partner_values`/`music_genres`/`avatar_id`/
-  `country_code` — none of these are individually identifying, and it
-  doesn't matter what's left since `is_profile_active = false` already
-  hides the row from `public_profiles` regardless.
+  `hide_from_contacts` → `true`, **`onboarding_complete` → `false`**.
+  **Deliberately untouched:** `date_of_birth`/`gender`/`seeking`/
+  `seeking_age_*`/`trait_*`/`relationship_intent`/`partner_values`/
+  `music_genres`/`avatar_id`/`country_code` — none of these are
+  individually identifying, and it doesn't matter what's left since
+  `onboarding_complete = false` already hides the row from
+  `public_profiles` (and gets overwritten by re-onboarding anyway — see
+  below).
 - Clears `verification_submissions.nic_front_path`/`nic_back_path`/
   `selfie_path` (the actual files, already removed from storage above) but
   **keeps `status`/`tier`/`rejection_reason`/`reviewed_at`/`reviewed_by`**
   — the review outcome is part of the moderation trail, not PII.
-- Sets `users.is_active = false` and a new `users.deleted_at timestamptz`
-  column (migration: `alter table public.users add column deleted_at
-  timestamptz;`) — **does not touch `phone`, `trust_score`,
-  `report_count`, or `verification_tier`.** The phone number stays
-  permanently tied to this now-unusable identity specifically so
-  delete-then-re-register can't launder a bad trust score onto a fresh
-  account.
+- Sets `users.last_deleted_at = now()` and increments
+  `users.deletion_count` — **does not touch `is_active`, `phone`,
+  `trust_score`, `report_count`, or `verification_tier`.**
 - **`messages`/`connections`/`daily_matches`/`reports`/
   `connection_ratings`/`date_checkins`/`consent_records`/
   `ice_breaker_sessions` are completely untouched** — deleting a user's
@@ -705,21 +729,82 @@ On call:
   messages remain visible to whoever they talked to (mainstream dating-app
   behavior — matches how Tinder/Bumble/Hinge handle this).
 
-**Client side:** `AuthRepository.deleteAccount()` invokes the edge
-function then immediately calls `signOut()` — so in the normal case the
-user never sees the `/blocked` screen at all, they just land on `/login`
-once the router re-evaluates `isLoggedIn = false`. `AppUser.deletedAt`/
-`isDeleted` and `BlockedScreen`'s new `isDeleted` branch only matter for
-the edge case where the edge function call succeeds but the app is killed
-before `signOut()` completes and a still-valid session reaches the
-router — that shows "Account deleted" copy instead of the
-ban/suspension copy, since it'd otherwise be confusing to a user who
-deleted their own account on purpose.
+**Revised 2026-07-10 — same phone can re-onboard after deletion, by user
+decision.** The first version of this feature also set `users.is_active =
+false`, permanently blocking that phone number from ever signing in again
+(enforced via the pre-existing ban/inactive router gate). The user decided
+this was too strict: deleting your account should let you start fresh with
+the same number, not lock you out forever — the anti-abuse goal (can't
+launder a bad reputation by deleting and re-registering) is already fully
+satisfied without a login block, since `trust_score`/`report_count`/
+`reports`/`connection_ratings` all stay tied to the same `users.id`
+regardless of whether the profile gets rebuilt. So:
+- `users.deleted_at` was **renamed to `last_deleted_at`** (a repeatable
+  historical timestamp, not a "currently deleted" flag) and a new
+  `users.deletion_count int not null default 0` column tracks how many
+  times this identity has gone through delete-and-recreate — a safety
+  signal for future moderation tooling to look at, never acted on
+  automatically today.
+- `delete-account` no longer touches `is_active` at all. Instead it sets
+  `profiles.onboarding_complete = false`, so signing back in with the same
+  phone hits the router's ordinary onboarding-incomplete redirect and
+  lands the user in a fresh onboarding flow — same `id`, same trust/report
+  history, brand new profile data.
+- `Profile.toInsertJson()` ([profile.dart](lib/data/models/profile.dart))
+  now explicitly writes `is_profile_active: true` and
+  `hide_from_contacts: false` on every onboarding submission (previously
+  these two columns were entirely Settings-only, never touched by
+  onboarding) — needed so a re-onboarded profile doesn't stay invisible
+  from the earlier deletion's `is_profile_active = false` until the user
+  manually flips it back on in Settings.
+- `BlockedScreen`'s `isDeleted` branch was removed (reverted to
+  ban-only copy) — with `is_active` no longer touched by deletion, that
+  branch became unreachable in practice, and leaving it would have
+  misled a future reader into thinking deletion still routes there.
 
-**Not yet confirmed run by the user:** `alter table public.users add
-column deleted_at timestamptz;` — needs to be run before the delete flow
-will work end-to-end (the edge function's `users` update will otherwise
-fail on the missing column).
+**Bug found + fixed 2026-07-10: brand-new edge functions need an explicit
+deploy step, not just committing the source.** After building this
+feature, `delete-account` failed with "Requested function was not found"
+the first time the user actually clicked the button — and no log entry
+appeared anywhere in Supabase, which was the giveaway: a nonexistent
+function name gets rejected by the Functions gateway before there's any
+function context to log against. Root cause was purely process, not code:
+`submit-verification` was an *existing* function so "paste the updated
+source into the dashboard" was enough, but `delete-account` was brand new
+and writing the file into this repo's `supabase/functions/delete-account/`
+folder never deploys it anywhere — that requires either the Supabase CLI
+(`supabase functions deploy`) or manually creating the function in
+Dashboard → Edge Functions first. Worth remembering for any *future* new
+edge function added this way: committing the file in this repo is
+necessary but not sufficient, unlike SQL (always run directly in the SQL
+Editor, so this gap doesn't happen there).
+
+**Two more fixes, 2026-07-10, found via actual end-to-end testing of a
+delete → re-onboard cycle:**
+- **Bug: re-onboarding didn't clear the "Deleted user" placeholder.** A
+  friend's separate UI redesign added `profiles.display_name` as a real
+  field ([profile.dart](lib/data/models/profile.dart), read by the new
+  profile header) on the assumption that "no app flow writes it yet" —
+  true until `delete-account` started setting it to `'Deleted user'`.
+  `saveOnboarding()`'s upsert never included `display_name` at all, so
+  that placeholder silently survived a full re-onboarding and showed as
+  "Deleted, 24" (etc.) in the profile header forever after. Fixed by
+  having `Profile.toInsertJson()` always explicitly write
+  `display_name: null` — no onboarding step collects a real display name
+  yet, so this just restores the pre-deletion fallback behavior (profile
+  header falls back to the avatar character's name) for both fresh and
+  re-onboarded profiles.
+- **Design change: `verification_tier` now resets to `'unverified'` on
+  deletion,** at the user's explicit request. The rest of `delete-account`
+  deliberately preserves `trust_score`/`report_count`/`phone` etc. so a
+  delete+recreate can't launder reputation — but verification is
+  different: its whole purpose is a human reviewer confirming a specific
+  submitted photo/ID, and that evidence is deleted by this same function.
+  Keeping the tier would let a "verified" badge point at nothing a
+  reviewer ever actually saw on the new profile. `verification_submissions`
+  history rows (status/tier/rejection_reason/reviewed_at/reviewed_by) are
+  still untouched — only the tier badge itself resets, not the audit
+  trail — so re-verification is simply required again after any deletion.
 
 ## Fake test accounts seeded for matching/connections UI testing
 
@@ -745,4 +830,80 @@ delete from public.profiles where user_id in (...same five ids...);
 delete from public.users where id in (...same five ids...);
 -- then delete the 5 auth users from the Dashboard too.
 ```
+
+## Chat realtime bugs + typing indicator (2026-07-10)
+
+Three reported issues in one pass, two confirmed root-caused against the
+installed package source rather than guessed:
+
+- **Bug found + fixed: newest message rendered at the top instead of the
+  bottom.** `MessagesRepository.watchMessages()`
+  ([messages_repository.dart](lib/data/repositories/messages_repository.dart))
+  called `.order('sent_at')` with no `ascending` argument. Checked the
+  installed `supabase` package source directly
+  (`supabase-2.12.2/lib/src/supabase_stream_builder.dart`) —
+  `SupabaseStreamBuilder.order()` defaults to **`ascending: false`**
+  (confirmed in source, not assumed), so messages arrived newest-first and
+  a plain non-reversed `ListView.builder` put the newest bubble at index 0
+  — the top. Fixed with an explicit `ascending: true`. The same
+  `.stream()` call elsewhere (`connections`, `consent_records`,
+  `ice_breaker_sessions`, `users` for verification tier) all filter to a
+  single row or don't render list position, so none of them were affected
+  by this same default.
+- **Likely cause of "chat doesn't update live, needs a refresh to receive
+  a message":** `.stream()` subscribes via Postgres Changes, which only
+  fires for tables added to the `supabase_realtime` publication — a
+  project-level Dashboard/SQL setting, invisible from this repo (same
+  category of gotcha as the SMS-hook/Text.lk and edge-function-deploy
+  issues earlier). Asked the user to run
+  `select schemaname, tablename from pg_publication_tables where pubname = 'supabase_realtime';`
+  to check whether `messages` (and the other 4 tables above, while
+  checking) are actually in it — if a table's missing, the fix is
+  `alter publication supabase_realtime add table <name>;`. **Not yet
+  confirmed which tables were missing or whether this was applied.**
+- **New feature: typing indicator.** Didn't exist anywhere in the
+  codebase before this — not a bug, net-new. Built with Realtime
+  **Broadcast** (`MessagesRepository.typingChannel()`), not Postgres
+  Changes — purely ephemeral, no table, no migration, no RLS involved.
+  One channel per connection, topic `typing:{connectionId}`; `ChatScreen`
+  ([chat_screen.dart](lib/features/chat/screens/chat_screen.dart))
+  subscribes in `initState`, broadcasts a `typing` event (throttled to
+  once per 2s) whenever the composer's text changes, and on receiving the
+  other participant's event shows a pulsing-dots `_TypingIndicator` that
+  clears itself 3s after the last event (a `Timer` reset on every new
+  event) — no explicit "stopped typing" signal is sent, just a timeout.
+  Channel is torn down via `SupabaseClient.removeChannel()` in `dispose()`.
+
+**Follow-up confirmed 2026-07-10:** the `pg_publication_tables` check came
+back empty on the first try purely because of a typo in the query
+(`supabase_realtime` misspelled) — once corrected, all 5 relevant tables
+(`messages`, `connections`, `consent_records`, `ice_breaker_sessions`,
+`users`) were already properly in the publication. **So the realtime
+publication was never actually the problem** — the user re-ran the
+`alter publication ... add table ...` fix anyway, which is a safe no-op
+for tables already present. If "needs a refresh" ever recurs, the actual
+cause is somewhere in the client subscription lifecycle
+(`messagesStreamProvider`/`ChatScreen`), not a missing-publication config
+gap — don't re-reach for that explanation without re-checking first.
+
+## Matches screen + ice-breaker games availability (2026-07-10)
+
+- **Added a "Current connection" card to the Matches screen**
+  ([matches_screen.dart](lib/features/matches/screens/matches_screen.dart)),
+  pinned above today's match list whenever `activeConnectionProvider` is
+  non-null — reuses the existing `getActiveConnection`/`StatusPill`/
+  `AvatarCatalog` patterns already used in `connection_detail_screen.dart`,
+  tapping it navigates to `/connection/:id`. No new provider or backend
+  query needed, `activeConnectionProvider` already existed.
+- **Ice-breaker games are now available for the whole lifetime of a
+  connection, not just before chat unlocks.** Previously
+  `connection_detail_screen.dart`'s games tile was gated on `!canChat`
+  (hidden the moment `limited_chat`+ was reached) — per the user's
+  explicit request, changed to show whenever `status != ended`, with the
+  copy switching from "...to unlock chat" to "...together" once chat is
+  already open (no functional gating changed, `ice_breaker_sessions` RLS
+  already had no status restriction — see earlier entries in this file).
+  Also added a persistent games icon to `ChatScreen`'s AppBar (same
+  `status != ended` condition) so games are reachable from inside an
+  already-open chat too, not only from the connection detail screen.
 

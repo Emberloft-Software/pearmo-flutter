@@ -96,7 +96,7 @@ final routerProvider = Provider<GoRouter>((ref) {
         path: '/blocked',
         builder: (context, state) {
           final appUser = ref.read(myAppUserProvider).valueOrNull;
-          return BlockedScreen(banReason: appUser?.banReason, isDeleted: appUser?.isDeleted ?? false);
+          return BlockedScreen(banReason: appUser?.banReason);
         },
       ),
       GoRoute(path: '/onboarding', builder: (context, state) => const OnboardingScreen()),

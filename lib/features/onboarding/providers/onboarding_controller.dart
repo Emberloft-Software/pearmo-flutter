@@ -76,21 +76,6 @@ class OnboardingController extends Notifier<OnboardingDraft> {
 
   void setAudioIntroLocalPath(String? path) => state = state.clone()..audioIntroLocalPath = path;
 
-  /// Averages each trait's answers (reverse-scored items as `6 - answer`
-  /// first), per the PEARMO scoring doc. Assumes every question has already
-  /// been answered — checked in `submit()` before this is called.
-  Map<PersonalityTrait, double> _computeTraitScores(Map<String, int> answers) {
-    final scores = <PersonalityTrait, double>{};
-    for (final trait in PersonalityTrait.values) {
-      final values = PersonalityQuestions.forTrait(trait).map((q) {
-        final raw = answers[q.id]!;
-        return q.isReverse ? 6 - raw : raw;
-      });
-      scores[trait] = values.reduce((a, b) => a + b) / values.length;
-    }
-    return scores;
-  }
-
   /// Saves the profile, uploads the audio intro (if recorded), and triggers
   /// the sentiment-analysis edge function — per the handoff doc's
   /// onboarding sequence. Returns a non-null warning message if the audio
@@ -118,7 +103,7 @@ class OnboardingController extends Notifier<OnboardingDraft> {
       throw StateError('Please answer every question before continuing');
     }
 
-    final traitScores = _computeTraitScores(draft.personalityAnswers);
+    final traitScores = PersonalityQuestions.computeTraitScores(draft.personalityAnswers);
 
     final profile = Profile(
       userId: userId,
