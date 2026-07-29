@@ -15,3 +15,10 @@ final gameSessionStreamProvider =
     StreamProvider.autoDispose.family<IceBreakerSession?, String>((ref, sessionId) {
   return ref.watch(gamesRepositoryProvider).watchSession(sessionId);
 });
+
+/// Realtime list of every session for a connection — used to notice a new
+/// game invite as soon as it's created, not just to display game state.
+final gameSessionsStreamProvider =
+    StreamProvider.autoDispose.family<List<IceBreakerSession>, String>((ref, connectionId) {
+  return ref.watch(gamesRepositoryProvider).watchSessions(connectionId);
+});

@@ -1,10 +1,13 @@
 import 'dart:async';
+import 'dart:io';
 
 import 'package:flutter/material.dart';
 import 'package:flutter_riverpod/flutter_riverpod.dart';
 import 'package:go_router/go_router.dart';
+import 'package:image_picker/image_picker.dart';
 import 'package:intl/intl.dart';
 import 'package:supabase_flutter/supabase_flutter.dart';
+import 'package:video_player/video_player.dart';
 
 import '../../../core/constants/app_constants.dart';
 import '../../../core/constants/enums.dart';
@@ -15,8 +18,11 @@ import '../../../data/models/message.dart';
 import '../../../providers/auth_providers.dart';
 import '../../../providers/connections_providers.dart';
 import '../../../providers/messages_providers.dart';
+import '../../../providers/notification_providers.dart';
 import '../../../providers/repository_providers.dart';
 import '../../../shared/widgets/widgets.dart';
+
+enum _MediaChoice { photo, video }
 
 /// Chat for an active connection. The backend enforces the
 /// connection-status gating and the 5-message cap during `limited_chat` —
@@ -56,6 +62,14 @@ class _ChatScreenState extends ConsumerState<ChatScreen> {
     _supabaseClient = ref.read(supabaseClientProvider);
     _controller.addListener(_onComposerChanged);
 
+    // Lets the app-wide notification watcher (see HomeShell) suppress a
+    // "new message" alert for the conversation already on screen.
+    Future.microtask(() {
+      if (mounted) {
+        ref.read(currentlyOpenChatConnectionIdProvider.notifier).state = widget.connectionId;
+      }
+    });
+
     final myUserId = ref.read(currentUserIdProvider);
     _typingChannel = ref.read(messagesRepositoryProvider).typingChannel(widget.connectionId)
       ..onBroadcast(
@@ -80,6 +94,11 @@ class _ChatScreenState extends ConsumerState<ChatScreen> {
     _typingClearTimer?.cancel();
     final channel = _typingChannel;
     if (channel != null) _supabaseClient.removeChannel(channel);
+    // Only clear if we're still the one "on top" — avoids a stale clear if
+    // another ChatScreen instance already took over.
+    if (ref.read(currentlyOpenChatConnectionIdProvider) == widget.connectionId) {
+      ref.read(currentlyOpenChatConnectionIdProvider.notifier).state = null;
+    }
     super.dispose();
   }
 
@@ -112,6 +131,65 @@ class _ChatScreenState extends ConsumerState<ChatScreen> {
             content: text,
           );
       _controller.clear();
+    } catch (e) {
+      setState(() => _error = ErrorMapper.map(e));
+    } finally {
+      if (mounted) setState(() => _isSending = false);
+    }
+  }
+
+  Future<void> _pickAndSendMedia(String userId) async {
+    final choice = await showModalBottomSheet<_MediaChoice>(
+      context: context,
+      builder: (context) => SafeArea(
+        child: Column(
+          mainAxisSize: MainAxisSize.min,
+          children: [
+            ListTile(
+              leading: const Icon(Icons.photo_outlined),
+              title: const Text('Photo'),
+              onTap: () => Navigator.of(context).pop(_MediaChoice.photo),
+            ),
+            ListTile(
+              leading: const Icon(Icons.videocam_outlined),
+              title: const Text('Video'),
+              onTap: () => Navigator.of(context).pop(_MediaChoice.video),
+            ),
+          ],
+        ),
+      ),
+    );
+    if (choice == null) return;
+
+    final picker = ImagePicker();
+    final picked = choice == _MediaChoice.photo
+        ? await picker.pickImage(source: ImageSource.gallery, imageQuality: 85)
+        : await picker.pickVideo(source: ImageSource.gallery);
+    if (picked == null || !mounted) return;
+
+    setState(() {
+      _isSending = true;
+      _error = null;
+    });
+    try {
+      final ext = picked.path.split('.').last;
+      // Unique per message (timestamp + sender), unlike the deterministic
+      // per-user paths elsewhere — so this never needs an UPDATE storage
+      // policy the way profile-photo/NIC uploads did (see CLAUDE.md).
+      final messageId = '${DateTime.now().microsecondsSinceEpoch}_$userId';
+      final path = await ref.read(storageRepositoryProvider).uploadChatMedia(
+            connectionId: widget.connectionId,
+            messageId: messageId,
+            file: File(picked.path),
+            ext: ext,
+          );
+      await ref.read(messagesRepositoryProvider).sendMessage(
+            connectionId: widget.connectionId,
+            senderId: userId,
+            content: choice == _MediaChoice.photo ? '📷 Photo' : '🎬 Video',
+            contentType: choice == _MediaChoice.photo ? 'image' : 'video',
+            mediaUrl: path,
+          );
     } catch (e) {
       setState(() => _error = ErrorMapper.map(e));
     } finally {
@@ -225,6 +303,11 @@ class _ChatScreenState extends ConsumerState<ChatScreen> {
                     child: Row(
                       crossAxisAlignment: CrossAxisAlignment.end,
                       children: [
+                        IconButton(
+                          onPressed: _isSending ? null : () => _pickAndSendMedia(userId),
+                          icon: const Icon(Icons.add_photo_alternate_outlined, color: AppColors.primary),
+                          tooltip: 'Share photo or video',
+                        ),
                         Expanded(
                           child: TextField(
                             controller: _controller,
@@ -388,13 +471,16 @@ class _MessageBubble extends StatelessWidget {
       bottomLeft: Radius.circular(isMine ? 20 : 6),
       bottomRight: Radius.circular(isMine ? 6 : 20),
     );
+    final hasMedia = (message.isImage || message.isVideo) && message.mediaUrl != null;
 
     return Align(
       alignment: isMine ? Alignment.centerRight : Alignment.centerLeft,
       child: Container(
         margin: const EdgeInsets.only(bottom: 8),
         constraints: BoxConstraints(maxWidth: MediaQuery.of(context).size.width * 0.75),
-        padding: const EdgeInsets.symmetric(horizontal: 16, vertical: 10),
+        padding: hasMedia
+            ? const EdgeInsets.all(6)
+            : const EdgeInsets.symmetric(horizontal: 16, vertical: 10),
         decoration: BoxDecoration(
           color: isMine ? AppColors.primary : AppColors.surface,
           borderRadius: radius,
@@ -404,23 +490,151 @@ class _MessageBubble extends StatelessWidget {
           crossAxisAlignment: CrossAxisAlignment.start,
           mainAxisSize: MainAxisSize.min,
           children: [
-            SelectionContainer.disabled(
-              child: Text(
-                message.content,
-                style: AppTextStyles.body
-                    .copyWith(color: isMine ? Colors.white : AppColors.textPrimary),
+            if (hasMedia)
+              ClipRRect(
+                borderRadius: BorderRadius.circular(14),
+                child: message.isImage
+                    ? _ImageBubbleContent(path: message.mediaUrl!)
+                    : _VideoBubbleContent(path: message.mediaUrl!),
+              )
+            else
+              SelectionContainer.disabled(
+                child: Text(
+                  message.content,
+                  style: AppTextStyles.body
+                      .copyWith(color: isMine ? Colors.white : AppColors.textPrimary),
+                ),
               ),
-            ),
-            const SizedBox(height: 2),
-            Text(
-              DateFormat.Hm().format(message.sentAt),
-              style: AppTextStyles.caption.copyWith(
-                fontSize: 10.5,
-                color: isMine ? Colors.white70 : AppColors.textSecondary,
+            Padding(
+              padding: EdgeInsets.only(top: hasMedia ? 4 : 2, left: hasMedia ? 4 : 0),
+              child: Text(
+                DateFormat.Hm().format(message.sentAt),
+                style: AppTextStyles.caption.copyWith(
+                  fontSize: 10.5,
+                  color: isMine ? Colors.white70 : AppColors.textSecondary,
+                ),
               ),
             ),
           ],
         ),
+      ),
+    );
+  }
+}
+
+/// Signed-URL image thumbnail — tap to view full-screen (zoomable).
+class _ImageBubbleContent extends ConsumerWidget {
+  const _ImageBubbleContent({required this.path});
+
+  final String path;
+
+  @override
+  Widget build(BuildContext context, WidgetRef ref) {
+    final urlAsync = ref.watch(signedChatMediaUrlProvider(path));
+    return urlAsync.when(
+      data: (url) => GestureDetector(
+        onTap: () => showDialog(
+          context: context,
+          builder: (_) => Dialog(
+            backgroundColor: Colors.transparent,
+            insetPadding: const EdgeInsets.all(12),
+            child: InteractiveViewer(child: Image.network(url)),
+          ),
+        ),
+        child: ConstrainedBox(
+          constraints: const BoxConstraints(maxHeight: 220, maxWidth: 220),
+          child: Image.network(url, fit: BoxFit.cover),
+        ),
+      ),
+      loading: () =>
+          const SizedBox(width: 160, height: 160, child: Center(child: LoadingIndicator())),
+      error: (_, _) => const SizedBox(
+        width: 160,
+        height: 100,
+        child: Center(child: Icon(Icons.broken_image_outlined)),
+      ),
+    );
+  }
+}
+
+/// Inline video bubble — tap to toggle play/pause. Loads the
+/// [VideoPlayerController] once the signed URL resolves.
+class _VideoBubbleContent extends ConsumerStatefulWidget {
+  const _VideoBubbleContent({required this.path});
+
+  final String path;
+
+  @override
+  ConsumerState<_VideoBubbleContent> createState() => _VideoBubbleContentState();
+}
+
+class _VideoBubbleContentState extends ConsumerState<_VideoBubbleContent> {
+  VideoPlayerController? _controller;
+  String? _loadedUrl;
+
+  void _initIfNeeded(String url) {
+    if (_loadedUrl == url) return;
+    _loadedUrl = url;
+    final controller = VideoPlayerController.networkUrl(Uri.parse(url));
+    controller.initialize().then((_) {
+      if (!mounted) {
+        controller.dispose();
+        return;
+      }
+      setState(() => _controller = controller);
+    });
+  }
+
+  @override
+  void dispose() {
+    _controller?.dispose();
+    super.dispose();
+  }
+
+  @override
+  Widget build(BuildContext context) {
+    final urlAsync = ref.watch(signedChatMediaUrlProvider(widget.path));
+    return urlAsync.when(
+      data: (url) {
+        _initIfNeeded(url);
+        final controller = _controller;
+        if (controller == null || !controller.value.isInitialized) {
+          return const SizedBox(
+              width: 220, height: 220, child: Center(child: LoadingIndicator()));
+        }
+        return GestureDetector(
+          onTap: () => setState(
+            () => controller.value.isPlaying ? controller.pause() : controller.play(),
+          ),
+          child: SizedBox(
+            width: 220,
+            child: AspectRatio(
+              aspectRatio: controller.value.aspectRatio,
+              child: Stack(
+                alignment: Alignment.center,
+                children: [
+                  VideoPlayer(controller),
+                  if (!controller.value.isPlaying)
+                    Container(
+                      decoration: BoxDecoration(
+                        color: Colors.black.withValues(alpha: 0.35),
+                        shape: BoxShape.circle,
+                      ),
+                      padding: const EdgeInsets.all(10),
+                      child: const Icon(Icons.play_arrow, color: Colors.white, size: 28),
+                    ),
+                ],
+              ),
+            ),
+          ),
+        );
+      },
+      loading: () =>
+          const SizedBox(width: 220, height: 220, child: Center(child: LoadingIndicator())),
+      error: (_, _) => const SizedBox(
+        width: 220,
+        height: 100,
+        child: Center(child: Icon(Icons.error_outline)),
       ),
     );
   }

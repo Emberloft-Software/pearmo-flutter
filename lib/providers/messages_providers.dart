@@ -8,3 +8,9 @@ final messagesStreamProvider =
     StreamProvider.autoDispose.family<List<Message>, String>((ref, connectionId) {
   return ref.watch(messagesRepositoryProvider).watchMessages(connectionId);
 });
+
+/// Signed URL for a chat media storage path (private `chat-media` bucket).
+final signedChatMediaUrlProvider =
+    FutureProvider.autoDispose.family<String, String>((ref, path) {
+  return ref.watch(storageRepositoryProvider).signedChatMediaUrl(path);
+});
