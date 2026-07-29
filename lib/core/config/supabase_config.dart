@@ -18,6 +18,7 @@ class SupabaseConfig {
   static const String profilePhotosBucket = 'profile-photos';
   static const String audioIntrosBucket = 'audio-intros';
   static const String nicDocumentsBucket = 'nic-documents';
+  static const String chatMediaBucket = 'chat-media';
 
   // Edge function names.
   static const String fnAnalyseProfile = 'analyse-profile';

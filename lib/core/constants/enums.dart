@@ -222,40 +222,30 @@ enum ConnectionStatus {
       .firstWhere((e) => e.dbValue == value, orElse: () => ConnectionStatus.pending);
 }
 
-/// The 6 progressive-unlock consent categories.
+/// Progressive-unlock consent categories. Trimmed 2026-07-11 (removed
+/// `voiceCall`/`videoCall`/`locationShare`/`giftAddress` at the user's
+/// request — calling was judged more complex than worth building right
+/// now, and location/gift sharing weren't wired to any real feature yet
+/// anyway). The DB `consent_type` enum still has those values (Postgres
+/// enums can't easily drop values), but nothing client-side offers them
+/// anymore — see CLAUDE.md.
 enum ConsentType {
   chatUnlock,
-  mediaShare,
-  voiceCall,
-  videoCall,
-  locationShare,
-  giftAddress;
+  mediaShare;
 
   String get dbValue => switch (this) {
         ConsentType.chatUnlock => 'chat_unlock',
         ConsentType.mediaShare => 'media_share',
-        ConsentType.voiceCall => 'voice_call',
-        ConsentType.videoCall => 'video_call',
-        ConsentType.locationShare => 'location_share',
-        ConsentType.giftAddress => 'gift_address',
       };
 
   String get label => switch (this) {
         ConsentType.chatUnlock => 'Open chat',
         ConsentType.mediaShare => 'Share photos & videos',
-        ConsentType.voiceCall => 'Voice calls',
-        ConsentType.videoCall => 'Video calls',
-        ConsentType.locationShare => 'Share location',
-        ConsentType.giftAddress => 'Gift delivery address',
       };
 
   String get description => switch (this) {
         ConsentType.chatUnlock => 'Unlocks the full chat between you both.',
         ConsentType.mediaShare => 'Allows sending photos and videos in chat.',
-        ConsentType.voiceCall => 'Allows starting voice calls.',
-        ConsentType.videoCall => 'Allows starting video calls.',
-        ConsentType.locationShare => 'Shares a general location with each other.',
-        ConsentType.giftAddress => 'Allows a gift to be delivered to you anonymously.',
       };
 
   static ConsentType fromDb(String value) => ConsentType.values

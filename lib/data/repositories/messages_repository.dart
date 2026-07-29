@@ -28,12 +28,14 @@ class MessagesRepository {
     required String senderId,
     required String content,
     String contentType = 'text',
+    String? mediaUrl,
   }) async {
     await _client.from('messages').insert({
       'connection_id': connectionId,
       'sender_id': senderId,
       'content': content,
       'content_type': contentType,
+      if (mediaUrl != null) 'media_url': mediaUrl,
     });
   }
 

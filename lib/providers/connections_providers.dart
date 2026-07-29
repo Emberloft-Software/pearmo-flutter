@@ -25,3 +25,13 @@ final connectionStreamProvider =
     StreamProvider.autoDispose.family<Connection?, String>((ref, connectionId) {
   return ref.watch(connectionsRepositoryProvider).watchConnection(connectionId);
 });
+
+/// Live version of [incomingRequestsProvider] — used by the notification
+/// watcher, which needs to notice a new request arriving, not just fetch
+/// the list once.
+final incomingRequestsStreamProvider =
+    StreamProvider.autoDispose<List<Connection>>((ref) {
+  final userId = ref.watch(currentUserIdProvider);
+  if (userId == null) return Stream.value(const []);
+  return ref.watch(connectionsRepositoryProvider).watchIncomingRequests(userId);
+});

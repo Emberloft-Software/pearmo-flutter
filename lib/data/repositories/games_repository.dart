@@ -48,4 +48,16 @@ class GamesRepository {
         .eq('id', sessionId)
         .map((rows) => rows.isEmpty ? null : IceBreakerSession.fromJson(rows.first));
   }
+
+  /// Realtime list of every session for a connection — used by the
+  /// notification watcher to detect a brand-new game invite. `getSessions`
+  /// stays a one-shot fetch for the game-selection screen; this is only
+  /// for the live "did a new session just appear" check.
+  Stream<List<IceBreakerSession>> watchSessions(String connectionId) {
+    return _client
+        .from('ice_breaker_sessions')
+        .stream(primaryKey: ['id'])
+        .eq('connection_id', connectionId)
+        .map((rows) => rows.map((e) => IceBreakerSession.fromJson(e)).toList());
+  }
 }

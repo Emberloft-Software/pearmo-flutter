@@ -291,10 +291,6 @@ class _ConnectionDetailScreenState extends ConsumerState<ConnectionDetailScreen>
           CheckinPanel(connectionId: widget.connectionId),
         ],
         const SizedBox(height: 24),
-        // TODO(backend): once `gift_address` consent is granted, the
-        // brainstorm's gift-sharing flow (affiliate catalog + anonymous
-        // delivery) needs its own screen and edge function — neither exists
-        // yet, so this panel only handles the consent toggle itself.
         const SectionHeader(
           title: 'Shared unlocks',
           subtitle: 'Each of these only unlocks once you both agree.',

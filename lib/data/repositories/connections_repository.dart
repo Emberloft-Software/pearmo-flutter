@@ -44,6 +44,22 @@ class ConnectionsRepository {
         .map((rows) => rows.isEmpty ? null : Connection.fromJson(rows.first));
   }
 
+  /// Live version of `getIncomingRequests` — used by the notification
+  /// watcher to notice a new request as it arrives. Filters to `pending`
+  /// client-side rather than chaining a second `.eq()` on the stream
+  /// builder, since only `receiver_id` is confirmed safe to filter
+  /// server-side on a realtime stream here.
+  Stream<List<Connection>> watchIncomingRequests(String userId) {
+    return _client
+        .from('connections')
+        .stream(primaryKey: ['id'])
+        .eq('receiver_id', userId)
+        .map((rows) => rows
+            .map((e) => Connection.fromJson(e))
+            .where((c) => c.status == ConnectionStatus.pending)
+            .toList());
+  }
+
   Future<void> sendConnectionRequest({
     required String userId,
     required String candidateId,

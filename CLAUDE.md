@@ -907,3 +907,122 @@ gap — don't re-reach for that explanation without re-checking first.
   `status != ended` condition) so games are reachable from inside an
   already-open chat too, not only from the connection detail screen.
 
+## UI/feature batch (2026-07-11)
+
+Eight requested changes in one pass; one (live "seen"/presence in games) was
+deliberately **not built** — see reasoning below. One (20 Questions
+answer/question order) I could not reproduce from source — see note below.
+
+- **Matches screen connection card made prominent, with its own header.**
+  `_CurrentConnectionCard` (added 2026-07-10) now reuses the gradient
+  `HeroProfileCard` treatment (same component `my_profile_screen.dart`
+  uses) instead of a plain bordered row, under a `SectionHeader('Your
+  Connection')`. The in-body `"Today's Matches"` heading is now only shown
+  (below the connection section) when a connection exists — otherwise the
+  AppBar title alone is enough, matching how it looked before this pass.
+- **Removed voice/video call, location-share, and gift-address consent
+  types**, at the user's request (calling judged more complex than worth
+  building now; the other two weren't wired to any real feature).
+  `ConsentType` ([enums.dart](lib/core/constants/enums.dart)) now only has
+  `chatUnlock`/`mediaShare` — `ConsentType.values` is what
+  `connection_detail_screen.dart`'s "Shared unlocks" section iterates, so
+  removing the enum members was enough to remove the UI; the underlying
+  Postgres `consent_type` enum still has the old values (can't cheaply drop
+  enum values), just nothing client-side offers them anymore.
+- **Chat photo/video sharing — genuinely built, not a fix.** There was no
+  attachment UI or upload path in `chat_screen.dart` at all before this
+  (same category as the typing indicator earlier — reported as broken, but
+  actually never built). Added:
+  - New private storage bucket `chat-media` (SQL below — **not yet
+    confirmed run**), with per-connection-participant RLS (checks
+    `(storage.foldername(name))[1]` against `connections.initiator_id`/
+    `receiver_id`, not against a user id like the other buckets, since the
+    folder here is the connection, not the uploader).
+  - Paths are unique per message (`{connectionId}/{timestamp}_{senderId}.
+    {ext}`), unlike the deterministic per-user paths `profile-photos`/
+    `nic-documents` use — so this never needs an `UPDATE` storage policy,
+    sidestepping that whole earlier bug class entirely.
+  - `messages.content_type` needs `'video'` added to its check constraint
+    (previously `text`/`image`/`audio`/`system` only) — SQL below, **not
+    yet confirmed run**.
+  - `Message` model gained `mediaUrl` (from `media_url`) and
+    `isImage`/`isVideo` getters. `_MessageBubble` renders a signed-URL
+    thumbnail for images (tap for a zoomable full-screen view) and an
+    inline `video_player`-backed bubble for videos (tap to play/pause) —
+    new `video_player` dependency added to `pubspec.yaml`.
+  - Composer got an attachment button (`Icons.add_photo_alternate_outlined`)
+    opening a bottom sheet to choose Photo/Video, picked via `image_picker`
+    (already a dependency).
+- **"Would You Rather" bank expanded from 15 to 100 prompts**
+  ([icebreaker_content.dart](lib/features/icebreakers/data/icebreaker_content.dart)),
+  split roughly evenly across goofy/fun, serious/intellectual, and
+  romantic-but-tasteful (dating-app-appropriate, nothing explicit — kept
+  brand-safe for App Store review) themes, so two people playing
+  repeatedly don't loop back to the same ~15 within a few sessions.
+- **"20 Questions" answer/question order — could not reproduce from
+  source.** Read `prompts_game.dart` in full: each turn already renders
+  the question bubble before the answer bubble in the same `Column`
+  (question first = higher up the screen), and the `qa` array is appended
+  to (not prepended), so oldest-to-newest should render top-to-bottom
+  correctly. Did not change anything here rather than guess a fix for a
+  bug I couldn't locate — flagged back to the user for a screenshot/repro
+  steps if it's still happening.
+- **Draw Together: fixed the "screen shakes and doesn't draw correctly"
+  bug.** Root cause: the whole game body was a scrollable `ListView` with
+  the drawing `GestureDetector` nested inside it — the canvas's pan
+  gesture was competing with the list's scroll gesture in Flutter's
+  gesture arena, which is exactly what caused janky/incorrect stroke
+  tracking. Changed the outer container to a plain non-scrolling `Column`
+  (content fits without scrolling: instructions, toolbar, square canvas,
+  clear button), removing the competing recognizer entirely. Also added a
+  color-swatch picker (8 brand-palette colors, free choice per stroke
+  rather than one fixed color per player) and a 3-size stroke-width picker
+  — both stored per-stroke in `state['strokes'][n]['color'/'width']`, with
+  `_DrawingPainter` reading `width` with a `?? 4.0` fallback for
+  strokes drawn before this change.
+- **In-app/local notifications** — user chose this over real OS push
+  (which would need a Firebase project + APNs cert + server-side sender,
+  none of which exist). Built with `flutter_local_notifications` (already
+  an unused dependency in `pubspec.yaml` before this — someone had
+  apparently anticipated this feature already):
+  - [notification_service.dart](lib/core/notifications/notification_service.dart) —
+    thin init/show wrapper, initialized once in `main.dart`. Added
+    `POST_NOTIFICATIONS` to `AndroidManifest.xml` (required at runtime on
+    Android 13+, the plugin's permission request has nothing to grant
+    without it).
+  - [notification_watcher.dart](lib/features/home/notification_watcher.dart) —
+    invisible widget wrapping `HomeShell`, using `ref.listen` on three
+    Realtime-backed providers to fire notifications: new chat messages
+    (suppressed if that chat is the one currently open — tracked via new
+    `currentlyOpenChatConnectionIdProvider`, set/cleared by `ChatScreen`
+    itself), new incoming connection requests, and new ice-breaker game
+    sessions ("game invite"). The latter two needed new stream-based
+    providers (`incomingRequestsStreamProvider`,
+    `gameSessionsStreamProvider`) since the existing ones were one-shot
+    `FutureProvider`s that wouldn't notice new arrivals without an
+    explicit refetch.
+  - Known limitation: `ice_breaker_sessions` has no `created_by` column
+    (confirmed via CLAUDE.md's schema dump), so there's no way to tell who
+    started a game session — the creator will also see their own "game
+    invite" notification fire once. Left as a minor accepted redundancy
+    rather than guessing at schema changes to track it.
+  - This is local-only, not push: notifications only fire while the app
+    process is alive (foreground or backgrounded), never when fully
+    killed, since there's no server-side sender or device-token
+    infrastructure. That's a deliberate, discussed scope choice, not a
+    limitation anyone should be surprised by later.
+- **Live "online"/presence indicator for games — deliberately not
+  built.** The user was explicitly on the fence and asked for a judgment
+  call. Recommended against it: "is this person active right now" is a
+  known dating-app safety anti-pattern (lets someone correlate online
+  status with real-world routines — Hinge/Bumble/Tinder all deliberately
+  omit it), and cuts directly against this app's existing safety-first
+  design choices elsewhere (anonymous avatars until photo consent, hide-
+  from-contacts, no exact location, careful verification gating). Nothing
+  was implemented for this.
+
+**SQL not yet confirmed run** (needed for chat media sharing to work
+end-to-end — see git history of this file for the exact statements handed
+to the user): create the `chat-media` storage bucket + its two RLS
+policies, and add `'video'` to `messages.content_type`'s check constraint.
+
