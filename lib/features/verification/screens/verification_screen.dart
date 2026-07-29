@@ -38,6 +38,8 @@ class VerificationScreen extends ConsumerWidget {
             loading: () => const LoadingIndicator(),
             error: (error, _) => ErrorBanner(message: ErrorMapper.map(error)),
           ),
+          const SizedBox(height: 12),
+          VerificationDisclaimer(tier: tierAsync.valueOrNull),
           const SizedBox(height: 24),
           _SelfieTierCard(currentTier: tierAsync.valueOrNull),
           const SizedBox(height: 24),

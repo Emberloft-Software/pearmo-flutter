@@ -88,6 +88,7 @@ class _MyProfileScreenState extends ConsumerState<MyProfileScreen> {
           subtitle: profile.regionName,
           tierLabel: tier?.label,
           isVerified: tier != null && tier.label != 'Unverified',
+          tier: tier,
           audioPath: profile.audioIntroUrl,
         ),
         const SizedBox(height: 12),
@@ -301,27 +302,30 @@ class _HeaderTitle extends StatelessWidget {
           ),
         ),
         if (isVerified)
-          Container(
-            margin: const EdgeInsets.only(left: 8),
-            padding: const EdgeInsets.symmetric(horizontal: 10, vertical: 5),
-            decoration: BoxDecoration(
-              color: AppColors.secondary,
-              borderRadius: BorderRadius.circular(999),
-            ),
-            child: Row(
-              mainAxisSize: MainAxisSize.min,
-              children: [
-                const Icon(Icons.verified_user, size: 12, color: AppColors.textPrimary),
-                const SizedBox(width: 4),
-                Text(
-                  'ID',
-                  style: AppTextStyles.caption.copyWith(
-                    fontSize: 10,
-                    fontWeight: FontWeight.w800,
-                    color: AppColors.textPrimary,
+          GestureDetector(
+            onTap: () => showVerificationInfoDialog(context, tier: tier),
+            child: Container(
+              margin: const EdgeInsets.only(left: 8),
+              padding: const EdgeInsets.symmetric(horizontal: 10, vertical: 5),
+              decoration: BoxDecoration(
+                color: AppColors.secondary,
+                borderRadius: BorderRadius.circular(999),
+              ),
+              child: Row(
+                mainAxisSize: MainAxisSize.min,
+                children: [
+                  const Icon(Icons.verified_user, size: 12, color: AppColors.textPrimary),
+                  const SizedBox(width: 4),
+                  Text(
+                    tier!.label,
+                    style: AppTextStyles.caption.copyWith(
+                      fontSize: 10,
+                      fontWeight: FontWeight.w800,
+                      color: AppColors.textPrimary,
+                    ),
                   ),
-                ),
-              ],
+                ],
+              ),
             ),
           ),
       ],

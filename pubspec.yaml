@@ -63,6 +63,7 @@ dependencies:
   geolocator: ^13.0.2
   flutter_contacts: ^1.1.9+2
   flutter_local_notifications: ^18.0.1
+  timezone: ^0.9.4
   crypto: ^3.0.6
   path_provider: ^2.1.6
   url_launcher: ^6.3.1

@@ -141,6 +141,7 @@ class _CandidateDetailScreenState extends ConsumerState<CandidateDetailScreen> {
                 subtitle: profile.regionName,
                 tierLabel: profile.verificationTier.label,
                 isVerified: profile.verificationTier.label != 'Unverified',
+                tier: profile.verificationTier,
                 matchPercent: score == null ? null : (score * 100).round().clamp(0, 100),
               ),
               const SizedBox(height: 12),

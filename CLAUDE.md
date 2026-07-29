@@ -1026,3 +1026,162 @@ end-to-end — see git history of this file for the exact statements handed
 to the user): create the `chat-media` storage bucket + its two RLS
 policies, and add `'video'` to `messages.content_type`'s check constraint.
 
+## Legal/safety review follow-up (2026-07-29)
+
+User pasted an external legal/safety security-review document (PDPA No. 9
+of 2022 special-category data, Penal Code 365/365A risk around
+`seeking`/orientation-revealing data, "verified" badge misrepresentation,
+date-checkin emergency-contact false promise, NIC image retention) and
+asked for a plan before any changes; after presenting the plan, the user
+made 4 explicit decisions in one message. Three are implemented below;
+the 4th (strict same-tier matching) is blocked on the user supplying
+`generate_daily_matches()`'s current source — per this file's standing
+practice, its SQL is never hand-reconstructed from memory, always
+requested verbatim first.
+
+**1. Check-in reframed as a personal alarm, not an emergency-contact
+system.** The original "date check-in" feature implied Pearmo would
+contact `emergency_contact` (or someone) if a user missed a check-in — it
+never did (see the 2026-07-01 entry above: no trigger existed at all
+until a `pg_cron` escalation job was added, and even that only flips a
+`status` column, it doesn't call/text anyone). That gap was itself the
+false promise the review flagged. Rather than building real SMS/call
+infra, the feature is now honestly scoped down to what a phone can
+actually do unassisted: a **local, on-device alarm**.
+- [checkin_panel.dart](lib/features/safety/widgets/checkin_panel.dart) —
+  renamed throughout to "check-in alarm" (`SectionHeader`, button label,
+  card title), with a persistent disclaimer box stating plainly: *"This
+  alarm only sounds on your own phone. Pearmo does not call, text, or
+  notify anyone — including the contact below — automatically. If you
+  don't check in, your check-in is simply marked missed in the app."* The
+  `emergencyContact` text field itself is kept (per the user's explicit
+  "alarm route with clear disclaimers" decision — not removed), but
+  relabeled "Optional — a personal note of who you'd call" with a caption
+  reiterating Pearmo never contacts that number — the field is now
+  honestly just a personal note-to-self, not a system integration.
+- Uses `NotificationService.instance.scheduleAlarm()` (already built
+  2026-07-x for the notifications batch —
+  [notification_service.dart](lib/core/notifications/notification_service.dart),
+  `AndroidScheduleMode.alarmClock` + `fullScreenIntent` + iOS
+  `InterruptionLevel.timeSensitive`) against `checkin.nextDeadline`. A
+  stable local alarm id is derived per check-in via `_alarmIdFor()`
+  (`checkinId.hashCode & 0x7FFFFFFF` — `flutter_local_notifications` needs
+  an int, not the uuid string). Rescheduled on `_acknowledge()` (extends to
+  the next interval) and cancelled on `_cancel()`.
+- `_CheckinTile` now shows "Missed check-in" instead of the raw
+  `'escalated'` enum string for that status.
+- **Known limitation, stated deliberately, not hidden:** this alarm only
+  fires while the app process is alive (same local-notification
+  constraint as the rest of the notification system, see the 2026-07-x
+  entry above) — killing the app kills the alarm too. Acceptable for this
+  feature's actual purpose (a personal reminder), unlike the old framing
+  which implied a safety-net guarantee.
+
+**2. Age-gating → strict same-tier-only matching — SQL handed to user
+2026-07-29, not yet confirmed run.** Decision: `unverified` should only
+match `unverified`, `selfie_verified` only `selfie_verified`,
+`id_verified` only `id_verified` (replacing the pyramid where higher
+tiers saw everyone below them — see the "Tiered verification" section
+above for the visibility logic being replaced). User provided the
+function's real source via
+`select pg_get_functiondef(oid) from pg_proc where proname = 'generate_daily_matches';`
+per this file's established rule (never guess at a Postgres function's
+current source) — only the tier `case` block changed, everything else
+(24h-expiry/no-op-if-unexpired guard, active-hours/banned/shadow-
+suppressed/already-connected filters, `score_compatibility` call) is
+untouched:
+```sql
+and case
+  when user_tier = 'unverified'      then u.verification_tier = 'unverified'
+  when user_tier = 'selfie_verified' then u.verification_tier = 'selfie_verified'
+  when user_tier = 'id_verified'     then u.verification_tier = 'id_verified'
+  when user_tier = 'paid_verified'   then true
+  else false
+end
+```
+`paid_verified` was **not** specified by the user's instruction (only the
+three tiers above were named as strict pairs) — kept seeing everyone
+(`then true`) as a stated assumption, not yet explicitly confirmed.
+Existing `daily_matches` rows for test accounts won't reflect this until
+they expire (24h) or are deleted manually
+(`delete from public.daily_matches where expires_at > now();`), since the
+function no-ops while unexpired rows exist.
+
+**3. NIC image cleanup — new scheduled edge function, built in this
+repo.** New function
+[supabase/functions/cleanup-verification-media/index.ts](supabase/functions/cleanup-verification-media/index.ts):
+for every `verification_submissions` row with `status` in
+(`approved`, `rejected`) that still has a `nic_front_path`/`nic_back_path`,
+deletes those files from the `nic-documents` storage bucket and nulls both
+columns. Deliberately **keeps the row itself** (`status`/`tier`/
+`rejection_reason`/`reviewed_at`/`reviewed_by`) as the permanent moderation
+record — only the actual government-ID image files + their path columns
+are cleared, same "keep the audit trail, drop the sensitive payload"
+pattern as `delete-account`'s handling of `verification_submissions`
+(2026-07-09 section above). Authenticated via a shared `x-cron-secret`
+header checked against a `CRON_SECRET` function secret, not a user JWT,
+since a `pg_cron`/`pg_net` scheduled call has no user session behind it.
+**Not yet done, required before this works:**
+- This is a **brand-new** edge function — per the standing lesson in this
+  file (first hit with `delete-account`), writing the file in this repo
+  does not deploy it. Must be created via Supabase CLI
+  (`supabase functions deploy cleanup-verification-media`) or manually in
+  Dashboard → Edge Functions.
+- Set the `CRON_SECRET` secret on the deployed function (any random
+  string, matched against the header the cron job sends).
+- Schedule it via `pg_cron`/`pg_net`, e.g. daily:
+  ```sql
+  select cron.schedule(
+    'cleanup-verification-media',
+    '0 3 * * *',
+    $$
+    select net.http_post(
+      url := 'https://akodhmnaykaifzxxvher.supabase.co/functions/v1/cleanup-verification-media',
+      headers := jsonb_build_object('x-cron-secret', '<same value as CRON_SECRET>')
+    );
+    $$
+  );
+  ```
+- None of this has been confirmed run/deployed by the user yet.
+
+**4. Verification-copy disclaimers — "verified" is terminology, not a
+claim of a background check.** New shared module
+[verification_disclaimer.dart](lib/shared/widgets/verification_disclaimer.dart):
+`verificationClaimFor(VerificationTier)` returns an exact, narrow claim
+per tier (e.g. `idVerified` → *"We've confirmed a live selfie check, and
+that a submitted national ID matches their selfie and stated age."*), and
+a constant `verificationSafetyDisclaimer` states plainly that Pearmo runs
+no criminal background checks and verification isn't a guarantee of
+anyone's safety/character/intentions. Two presentations built on top:
+`VerificationDisclaimer` (persistent inline box) and
+`showVerificationInfoDialog()` (tap-triggered dialog) — same copy, chosen
+per surface based on whether permanent screen space is warranted.
+Wired to every surface that shows a tier/verified badge:
+- [verification_screen.dart](lib/features/verification/screens/verification_screen.dart) —
+  persistent `VerificationDisclaimer` below the existing `_TierBanner`.
+- [hero_profile_card.dart](lib/shared/widgets/hero_profile_card.dart) —
+  new optional `tier` param; the centered-layout tier badge is wrapped in
+  a `GestureDetector` opening `showVerificationInfoDialog()` when tapped
+  (only the centered layout renders tier badges at all — the editorial
+  layout used on `my_profile_screen.dart` doesn't render a badge
+  regardless of `tier`, so passing `tier` there is inert but kept for
+  consistency/future use). Wired through from
+  [candidate_detail_screen.dart](lib/features/matches/screens/candidate_detail_screen.dart)'s
+  `HeroProfileCard` call.
+- **Bug found + fixed in the same pass:**
+  [my_profile_screen.dart](lib/features/profile/screens/my_profile_screen.dart)'s
+  `_HeaderTitle` (the compact app-bar identity row, a separate inline
+  badge that doesn't go through `HeroProfileCard` at all) hardcoded the
+  literal text `'ID'` on its badge for *any* verified tier — so a
+  `selfie_verified` user's app-bar badge claimed "ID" just as confidently
+  as an actual `id_verified` user's, which is precisely the kind of
+  imprecise verification language the review flagged. Fixed to render the
+  real `tier.label` (`"Selfie verified"` / `"Age verified"` / `"Verified
+  Plus"`) and made tappable via `showVerificationInfoDialog()`. Left the
+  badge's visibility condition unchanged (`isVerified` only — still hidden
+  entirely for `unverified`, not shown as a muted "Unverified" pill) since
+  that would be a layout change beyond what this review asked for.
+- `matches_screen.dart`'s `_CurrentConnectionCard` `HeroProfileCard` call
+  doesn't pass `tierLabel` at all, so no badge/disclaimer gap exists there
+  — left untouched.
+

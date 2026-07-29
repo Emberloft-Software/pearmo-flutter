@@ -1,10 +1,12 @@
 import 'package:flutter/material.dart';
 
+import '../../core/constants/enums.dart';
 import '../../core/theme/app_colors.dart';
 import '../../core/theme/app_text_styles.dart';
 import '../avatars/avatar_catalog.dart';
 import 'audio_intro_player.dart';
 import 'signed_avatar_display.dart';
+import 'verification_disclaimer.dart';
 
 /// Full-width gradient hero used at the top of profile screens — the one
 /// vivid moment per screen.
@@ -26,6 +28,7 @@ class HeroProfileCard extends StatelessWidget {
     this.subtitle,
     this.tierLabel,
     this.isVerified = false,
+    this.tier,
     this.matchPercent,
     this.displayName,
     this.kicker,
@@ -45,6 +48,11 @@ class HeroProfileCard extends StatelessWidget {
   /// Verification badge text; hidden when null. Centered layout only.
   final String? tierLabel;
   final bool isVerified;
+
+  /// If provided, tapping the tier badge opens a plain-language explanation
+  /// of what this tier actually confirms (see `verification_disclaimer.dart`)
+  /// — "verified" is terminology, not a claim of a background check.
+  final VerificationTier? tier;
 
   /// 0–100 match score chip (candidate screens only); hidden when null.
   final int? matchPercent;
@@ -213,11 +221,16 @@ class HeroProfileCard extends StatelessWidget {
                 foreground: AppColors.textPrimary,
               ),
               if (tierLabel != null)
-                _HeroBadge(
-                  icon: isVerified ? Icons.verified : Icons.shield_outlined,
-                  label: tierLabel!,
-                  background: Colors.white.withValues(alpha: isVerified ? 0.92 : 0.25),
-                  foreground: isVerified ? AppColors.primaryDark : Colors.white,
+                GestureDetector(
+                  onTap: tier == null
+                      ? null
+                      : () => showVerificationInfoDialog(context, tier: tier),
+                  child: _HeroBadge(
+                    icon: isVerified ? Icons.verified : Icons.shield_outlined,
+                    label: tierLabel!,
+                    background: Colors.white.withValues(alpha: isVerified ? 0.92 : 0.25),
+                    foreground: isVerified ? AppColors.primaryDark : Colors.white,
+                  ),
                 ),
               if (matchPercent != null)
                 _HeroBadge(

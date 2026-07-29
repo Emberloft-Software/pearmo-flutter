@@ -4,6 +4,17 @@
          (flutter_local_notifications) — without this the runtime permission
          request silently has nothing to grant. -->
     <uses-permission android:name="android.permission.POST_NOTIFICATIONS"/>
+    <!-- Required for the check-in alarm (AndroidScheduleMode.alarmClock) to
+         fire at the exact scheduled instant, including while the device is
+         idle. On Android 12+ this may still need the user to enable
+         "Alarms & reminders" for the app in system settings on some OEMs. -->
+    <uses-permission android:name="android.permission.SCHEDULE_EXACT_ALARM"/>
+    <uses-permission android:name="android.permission.USE_EXACT_ALARM"/>
+    <!-- Lets the check-in alarm attempt to wake/light the screen like a
+         real alarm. Android 14+ (API 34) restricts this to alarm/calling
+         apps specifically — may silently degrade to a loud heads-up
+         notification instead on some devices/OS versions. -->
+    <uses-permission android:name="android.permission.USE_FULL_SCREEN_INTENT"/>
     <application
         android:label="pearmo"
         android:name="${applicationName}"

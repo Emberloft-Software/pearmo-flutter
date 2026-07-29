@@ -17,6 +17,12 @@ class DateCheckin {
   final String status; // active / checked_in / escalated / cancelled
   final DateTime? escalatedAt;
 
+  /// How often a check-in is due, from `check_in_interval` (Postgres
+  /// `interval`, DB default 30 min) — used to schedule the local alarm at
+  /// `(lastCheckedInAt ?? scheduledFor) + checkInInterval`, matching the
+  /// same deadline math the server-side escalation cron uses.
+  final Duration checkInInterval;
+
   const DateCheckin({
     required this.id,
     required this.connectionId,
@@ -26,11 +32,26 @@ class DateCheckin {
     this.lastCheckedInAt,
     required this.status,
     this.escalatedAt,
+    this.checkInInterval = const Duration(minutes: 30),
   });
 
   bool get isUpcoming => status == 'active' && scheduledFor.isAfter(DateTime.now());
   bool get needsAcknowledgement =>
       status == 'active' && scheduledFor.isBefore(DateTime.now().add(const Duration(minutes: 30)));
+
+  /// When the alarm for this check-in should next fire.
+  DateTime get nextDeadline => (lastCheckedInAt ?? scheduledFor).add(checkInInterval);
+
+  static Duration _parseInterval(dynamic value) {
+    if (value is! String) return const Duration(minutes: 30);
+    // Postgres sends intervals under 24h as "HH:MM:SS" over PostgREST.
+    final parts = value.split(':');
+    if (parts.length < 2) return const Duration(minutes: 30);
+    final hours = int.tryParse(parts[0]) ?? 0;
+    final minutes = int.tryParse(parts[1]) ?? 30;
+    final seconds = parts.length > 2 ? int.tryParse(parts[2].split('.').first) ?? 0 : 0;
+    return Duration(hours: hours, minutes: minutes, seconds: seconds);
+  }
 
   factory DateCheckin.fromJson(Map<String, dynamic> json) {
     return DateCheckin(
@@ -45,6 +66,7 @@ class DateCheckin {
       status: json['status'] as String? ?? 'active',
       escalatedAt:
           json['escalated_at'] != null ? DateTime.parse(json['escalated_at'] as String) : null,
+      checkInInterval: _parseInterval(json['check_in_interval']),
     );
   }
 }
