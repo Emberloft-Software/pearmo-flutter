@@ -1334,6 +1334,53 @@ display, but it made *total* failure render identically to a genuine empty
 result, with no error anywhere. Now tracks the last error and rethrows if
 every lookup failed while match rows existed.
 
+## Match repetition + permanent exclusion rules (2026-08-03)
+
+Four changes to `generate_daily_matches`, all backend-only — the client
+just reads `daily_matches` and has no idea how rows are chosen, so no Dart
+change was needed for any of this.
+
+**1. Ended connections are now excluded permanently.** The candidate filter
+was `and status != 'ended'`, so once a connection ended both people went
+back into each other's pool the next day. The status check is gone: anyone
+you have *ever* had a `connections` row with is excluded forever. **Note
+this includes a `pending` request that was declined or expired via the
+`expire-pending-connections` cron** — one decline removes that person
+permanently. Deliberate, per user decision, but expensive in a small pool;
+if it needs relaxing, scope the `not in` to connections that reached
+`accepted` or beyond.
+
+**2. Reports exclude bidirectionally.** `reports` was never referenced by
+the matching function at all — you could report someone for harassment and
+have them back on your cards the next day. Now `not exists (... reporter_id
+/ reported_id ...)` in both directions. Side effect worth knowing:
+**reporting is now a de-facto block**, and each report still increments the
+reported user's `report_count`, which feeds `update_trust_score` and can
+shadow-suppress them. **There is still no plain user-to-user block feature
+anywhere in the app** — every "block" in `lib/` refers to account-level
+`is_banned`/`BlockedScreen`. Worth building before public launch; a user's
+only options today are "report them" (an accusation) or "end the
+connection".
+
+**3. Repeat suppression, ranked not filtered.** A `seen_rank` is computed
+per candidate — `0` never shown, `1` shown but never actioned, `2`
+explicitly passed on — and the batch is ordered `seen_rank asc, score
+desc`. So with a healthy pool a skipped person never returns; with a thin
+pool the user still gets a full batch instead of an empty screen. No
+threshold to tune: it's just sort order, and it adapts as the pool grows.
+
+**4. `daily_matches` is now a permanent history table.** The
+`delete ... where expires_at < now()` at the top of the function was
+removed — those rows *are* the "already shown" record that `seen_rank`
+reads. The client only ever queries `expires_at > now()`, so old rows stay
+invisible in the app. Two consequences: the insert became
+`on conflict (user_id, candidate_id) do update` (it was `do nothing`, which
+silently dropped every repeat because of the unique constraint), and
+`on_verification_tier_change` now **expires** rows (`set expires_at = now()`)
+instead of deleting them, so a tier change no longer wipes history. The
+table grows but is bounded by the unique pair constraint; a retention job
+dropping rows older than a few months is worth adding at scale.
+
 ## Project hygiene findings (2026-08-02)
 
 Full audit of the live project while wiring up the matching fix. Three
