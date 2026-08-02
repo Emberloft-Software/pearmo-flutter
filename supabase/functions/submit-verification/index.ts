@@ -8,7 +8,11 @@ Deno.serve(async (req) => {
   )
 
 
-  const authHeader = req.headers.get('Authorization')!
+  // Non-null assertion here meant a request with no Authorization header
+  // threw a TypeError and returned 500 instead of 401.
+  const authHeader = req.headers.get('Authorization')
+  if (!authHeader) return new Response('Unauthorized', { status: 401 })
+
   const { data: { user } } = await supabase.auth.getUser(
     authHeader.replace('Bearer ', '')
   )

@@ -1,0 +1,18 @@
+{
+  // Edge functions run on Deno, not Node. Without this, VS Code analyses
+  // them with Node/TypeScript assumptions and reports errors that aren't
+  // real: "Cannot find module 'https://esm.sh/...'", "Cannot find name
+  // 'Deno'", "Parameter 'req' implicitly has an 'any' type". The code is
+  // correct and deploys fine — the editor just didn't know the runtime.
+  //
+  // `enablePaths` scopes Deno to the functions folder only, so it never
+  // interferes with the Flutter/Dart tooling in the rest of the repo.
+  "deno.enable": true,
+  "deno.enablePaths": ["./supabase/functions"],
+  "deno.lint": true,
+  "deno.unstable": false,
+
+  "[typescript]": {
+    "editor.defaultFormatter": "denoland.vscode-deno"
+  }
+}

@@ -32,17 +32,19 @@ class MatchesScreen extends ConsumerWidget {
     final isConnected = activeConnection != null && userId != null;
 
     return Scaffold(
-      appBar: AppBar(
-        title: const Text("Today's Matches"),
-      ),
+      appBar: AppBar(title: const Text("Today's Matches")),
       body: Column(
         children: [
           // Kept while connected: verification still matters in an active
           // chat, since photo sharing needs both participants verified.
-          if (myTier == VerificationTier.unverified) const _UnverifiedPoolBanner(),
+          if (myTier == VerificationTier.unverified)
+            const _UnverifiedPoolBanner(),
 
           if (isConnected) ...[
-            _CurrentConnectionCard(connection: activeConnection, userId: userId),
+            _CurrentConnectionCard(
+              connection: activeConnection,
+              userId: userId,
+            ),
             // The card list is deliberately not rendered here. While a
             // connection is live, `enforce_single_active_connection` rejects
             // any new one and `canSendRequestProvider` disables the request
@@ -54,65 +56,71 @@ class MatchesScreen extends ConsumerWidget {
               child: EmptyState(
                 icon: Icons.favorite,
                 title: 'Matches are paused',
-                message: 'Pearmo is one connection at a time. Your next set of '
+                message:
+                    'Pearmo is one connection at a time. Your next set of '
                     'matches arrives once this connection ends.',
               ),
             ),
           ] else ...[
             // Only alongside a populated list — the empty state carries its
             // own version of this line.
-            if (cardsAsync.valueOrNull?.isNotEmpty ?? false) const _NextBatchNote(),
+            if (cardsAsync.valueOrNull?.isNotEmpty ?? false)
+              const _NextBatchNote(),
             Expanded(
-            child: RefreshIndicator(
-              color: AppColors.primary,
-              onRefresh: () async {
-                ref.invalidate(dailyMatchCardsProvider);
-                await ref.read(dailyMatchCardsProvider.future);
-              },
-              child: cardsAsync.when(
-                data: (cards) {
-                  if (cards.isEmpty) {
-                    return ListView(
-                      physics: const AlwaysScrollableScrollPhysics(),
-                      children: [
-                        SizedBox(
-                          height: MediaQuery.of(context).size.height * 0.7,
-                          child: const _EmptyMatches(),
-                        ),
-                      ],
-                    );
-                  }
-
-                  return ListView.separated(
-                    physics: const AlwaysScrollableScrollPhysics(),
-                    padding: const EdgeInsets.all(20),
-                    itemCount: cards.length,
-                    separatorBuilder: (_, _) => const SizedBox(height: 12),
-                    itemBuilder: (context, index) {
-                      final card = cards[index];
-                      return MatchCardWidget(
-                        card: card,
-                        onTap: () => context.push('/candidate/${card.match.candidateId}'),
-                      );
-                    },
-                  );
+              child: RefreshIndicator(
+                color: AppColors.primary,
+                onRefresh: () async {
+                  ref.invalidate(dailyMatchCardsProvider);
+                  await ref.read(dailyMatchCardsProvider.future);
                 },
-                loading: () => const LoadingIndicator(),
-                error: (error, _) => ListView(
-                  physics: const AlwaysScrollableScrollPhysics(),
-                  children: [
-                    Padding(
+                child: cardsAsync.when(
+                  data: (cards) {
+                    if (cards.isEmpty) {
+                      return ListView(
+                        physics: const AlwaysScrollableScrollPhysics(),
+                        children: [
+                          SizedBox(
+                            height: MediaQuery.of(context).size.height * 0.7,
+                            child: const _EmptyMatches(),
+                          ),
+                        ],
+                      );
+                    }
+
+                    return ListView.separated(
+                      physics: const AlwaysScrollableScrollPhysics(),
                       padding: const EdgeInsets.all(20),
-                      child: ErrorBanner(
-                        message: ErrorMapper.map(error),
-                        onRetry: () => ref.invalidate(dailyMatchCardsProvider),
+                      itemCount: cards.length,
+                      separatorBuilder: (_, _) => const SizedBox(height: 12),
+                      itemBuilder: (context, index) {
+                        final card = cards[index];
+                        return MatchCardWidget(
+                          card: card,
+                          onTap: () => context.push(
+                            '/candidate/${card.match.candidateId}',
+                          ),
+                        );
+                      },
+                    );
+                  },
+                  loading: () => const LoadingIndicator(),
+                  error: (error, _) => ListView(
+                    physics: const AlwaysScrollableScrollPhysics(),
+                    children: [
+                      Padding(
+                        padding: const EdgeInsets.all(20),
+                        child: ErrorBanner(
+                          message: ErrorMapper.map(error),
+                          onRetry: () =>
+                              ref.invalidate(dailyMatchCardsProvider),
+                        ),
                       ),
-                    ),
-                  ],
+                    ],
+                  ),
                 ),
               ),
             ),
-          ),
+          ],
         ],
       ),
     );
@@ -149,7 +157,11 @@ class _UnverifiedPoolBanner extends StatelessWidget {
         children: [
           Row(
             children: [
-              const Icon(Icons.shield_outlined, size: 16, color: AppColors.textSecondary),
+              const Icon(
+                Icons.shield_outlined,
+                size: 16,
+                color: AppColors.textSecondary,
+              ),
               const SizedBox(width: 6),
               Text(
                 "You're in the unverified pool",
@@ -235,7 +247,8 @@ class _EmptyMatches extends ConsumerWidget {
       // No unexpired batch — either brand new, or the pool genuinely had
       // nobody eligible. Honest about being early rather than implying a
       // schedule we can't promise in a small beta.
-      message = "You're early — we'll show you people as they join. "
+      message =
+          "You're early — we'll show you people as they join. "
           'Adding a voice intro and verifying make you easier to match.';
     } else {
       final remaining = expiry.difference(DateTime.now());
@@ -243,7 +256,8 @@ class _EmptyMatches extends ConsumerWidget {
       final label = hours >= 1
           ? '$hours hour${hours == 1 ? '' : 's'}'
           : '${remaining.inMinutes.clamp(1, 59)} minutes';
-      message = "You've seen everyone in today's set. Your next matches arrive in about $label.";
+      message =
+          "You've seen everyone in today's set. Your next matches arrive in about $label.";
     }
 
     return EmptyState(
@@ -262,7 +276,10 @@ class _EmptyMatches extends ConsumerWidget {
 /// anyone new while it's ongoing (`getActiveConnection`'s "one at a time"
 /// rule).
 class _CurrentConnectionCard extends ConsumerWidget {
-  const _CurrentConnectionCard({required this.connection, required this.userId});
+  const _CurrentConnectionCard({
+    required this.connection,
+    required this.userId,
+  });
 
   final Connection connection;
   final String userId;
@@ -299,7 +316,8 @@ class _CurrentConnectionCard extends ConsumerWidget {
                 ),
               ],
             ),
-            loading: () => const SizedBox(height: 190, child: LoadingIndicator()),
+            loading: () =>
+                const SizedBox(height: 190, child: LoadingIndicator()),
             error: (_, _) => const SizedBox.shrink(),
           ),
         ],

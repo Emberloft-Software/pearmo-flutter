@@ -522,9 +522,12 @@ function source aren't in this repo).
   `users.verification_tier` is already past `unverified`, closing the gap
   where tier ordering was only enforced by hiding the UI card, and (b) scope
   the "one pending submission" check to the same tier instead of blocking
-  across tiers. **Still needs to be pasted into the actual deployed
-  function in the Supabase dashboard** — editing the file in this repo
-  doesn't deploy it.
+  across tiers. **CONFIRMED DEPLOYED 2026-08-02** — the live function source
+  was read from Dashboard → Edge Functions → Code and contains both changes.
+  This entry previously said it still needed deploying; that was stale.
+  The only remaining repo-vs-live difference is the missing-`Authorization`-
+  header guard (returns 401 instead of a 500 from a TypeError), which is
+  robustness, not a security gap.
 - **Date check-in escalation has no confirmed trigger anywhere — confirmed
   2026-07-01.** `select jobid, schedule, command, active from cron.job;`
   ran successfully (so `pg_cron` is installed) but returned **zero rows** —
@@ -1378,7 +1381,78 @@ still exists and is still used by `emergencyContact`, which is a free-text
 note-to-self and shouldn't be country-restricted. Widening beyond Sri Lanka
 later means relaxing `normalizeSriLankanMobile` alone.
 
-**Two previously-unconfirmed deployments are in fact live:**
-`cleanup-verification-media` (every 30 min, succeeding) and
-`escalate-overdue-checkins` (every 5 min, succeeding).
+**`escalate-overdue-checkins` is live and genuinely working** (every 5 min;
+it's pure SQL, no HTTP call, so `cron.job_run_details` telling the truth
+about it is meaningful).
+
+**`cleanup-verification-media` was scheduled but had NEVER once run —
+found 2026-08-02.** `cron.job_run_details` showed `succeeded` on every
+invocation, which was misleading: `net.http_post` is asynchronous and
+returns a request id immediately, so "succeeded" only ever meant *the SQL
+ran*, never that the HTTP call was accepted. The real outcome lives in
+`net._http_response`, and every row there was **401
+`UNAUTHORIZED_NO_AUTH_HEADER` / "Missing authorization header"** going back
+as far as the table retains.
+
+Root cause: **Supabase Edge Functions enforce JWT verification by
+default.** The cron job sends only `x-cron-secret` and no
+`Authorization: Bearer <jwt>`, so the platform gateway rejected it before
+the function body executed — the `CRON_SECRET` check inside it was never
+reached. Consequence: **no NIC image has ever been deleted**, despite the
+whole function existing to close exactly that PDPA exposure.
+
+Fix: turn off "Verify JWT with legacy secret" in Dashboard → Edge Functions
+→ `cleanup-verification-media` → Settings. Correct for this function, since
+a scheduled call has no user session and `x-cron-secret` *is* its
+authentication (Supabase's own hint on that toggle says the same:
+"Recommended: OFF with JWT and custom auth logic in your function code").
+Do **not** instead put the `service_role` key in the `Authorization` header
+— that would sit in `cron.job.command` in plaintext and reads the entire
+database. Leave the toggle ON for `submit-verification` and
+`delete-account`, which are called by real user sessions.
+
+**RESOLVED 2026-08-03.** JWT verification turned off and `CRON_SECRET`
+re-set so the dashboard secret and `cron.job.command` finally hold the same
+string (they had diverged, which is why the first rotation attempt still
+401'd). First-ever successful run returned
+`200 {"cleaned":1,"checked":1}`.
+
+Second lesson from the same incident: **Supabase cannot display a saved
+function secret** ("Secrets can't be retrieved once saved"), so there is no
+way to compare it against what's in the cron job. When they disagree the
+only fix is to overwrite both from one known value — keep it in a password
+manager, never retype it.
+
+**Standing lesson for any future `pg_net`-invoked function: `cron.job_run_details`
+tells you nothing about whether the HTTP request worked. Always verify via
+`net._http_response.status_code`, and disable JWT verification on any
+function invoked by a scheduler rather than a user.**
+
+**OPEN — Auth SMS rate limits, deferred pending team discussion
+(2026-08-02).** Every SMS the app sends is the phone OTP from
+`AuthRepository.sendOtp()` → `signInWithOtp()`, called from exactly two
+places ([login_screen.dart](lib/features/auth/screens/login_screen.dart)
+"Send code" and [otp_screen.dart](lib/features/auth/screens/otp_screen.dart)
+"Resend"). Login and signup are the same code path, so one limit governs
+both. Current dashboard settings (Authentication → Rate Limits):
+- **Sending SMS messages: 150/hour** — 5× Supabase's default of 30, raised
+  by someone at some point. This is the hard ceiling on spend: worst case
+  3,600 messages/day. Recommended 15/hour for beta (360/day).
+- **Sign-ups and sign-ins: 30 per 5 min per IP** — caps how fast a *single
+  source* can drain the global SMS budget: 360 requests/hour from one IP is
+  enough to exhaust an hourly allowance in minutes and lock out real users.
+  Recommended 10.
+- Email/anonymous/Web3 limits are irrelevant — the app uses phone OTP only
+  (every `auth.users` row has no email) and never anonymous sign-in.
+- **"Enable IP address forwarding" must stay OFF.** It lets clients declare
+  their own IP, which is only safe behind a proxy you control; the app
+  talks to Supabase directly from devices, so enabling it would let anyone
+  claim a fresh IP per request and defeat every per-IP limit on that page.
+
+Note the project-wide (not per-user) scope: a low limit caps the bill but
+also means an attacker burning the allowance blocks legitimate sign-ins for
+the rest of that hour. A prepaid Text.lk balance is the stronger cap, since
+it can't be misconfigured. Client-side there is a 60s cooldown on the login
+send button, but the anon key ships in the app binary so the endpoint can
+be called directly — server-side limits are the only real control.
 
