@@ -10,6 +10,7 @@ import '../../../data/models/connection.dart';
 import '../../../providers/auth_providers.dart';
 import '../../../providers/connections_providers.dart';
 import '../../../providers/matches_providers.dart';
+import '../../../providers/profile_providers.dart';
 import '../../../shared/widgets/widgets.dart';
 import '../widgets/match_card.dart';
 
@@ -23,7 +24,12 @@ class MatchesScreen extends ConsumerWidget {
     final cardsAsync = ref.watch(dailyMatchCardsProvider);
     final activeConnection = ref.watch(activeConnectionProvider).valueOrNull;
     final userId = ref.watch(currentUserIdProvider);
-    final myTier = ref.watch(myAppUserProvider).valueOrNull?.verificationTier;
+    // Realtime-backed, not the one-shot `myAppUserProvider` — the banner has
+    // to disappear the moment the user's tier changes, without an app
+    // restart.
+    final myTier = ref.watch(myVerificationTierProvider).valueOrNull;
+
+    final isConnected = activeConnection != null && userId != null;
 
     return Scaffold(
       appBar: AppBar(
@@ -31,15 +37,32 @@ class MatchesScreen extends ConsumerWidget {
       ),
       body: Column(
         children: [
+          // Kept while connected: verification still matters in an active
+          // chat, since photo sharing needs both participants verified.
           if (myTier == VerificationTier.unverified) const _UnverifiedPoolBanner(),
-          if (activeConnection != null && userId != null) ...[
+
+          if (isConnected) ...[
             _CurrentConnectionCard(connection: activeConnection, userId: userId),
-            const Padding(
-              padding: EdgeInsets.fromLTRB(20, 20, 20, 4),
-              child: SectionHeader(title: "Today's Matches"),
+            // The card list is deliberately not rendered here. While a
+            // connection is live, `enforce_single_active_connection` rejects
+            // any new one and `canSendRequestProvider` disables the request
+            // button — so every card on screen is unreachable. Showing
+            // people you cannot contact is worse than showing none, and it
+            // contradicts the one-connection-at-a-time idea the whole app
+            // is built around.
+            const Expanded(
+              child: EmptyState(
+                icon: Icons.favorite,
+                title: 'Matches are paused',
+                message: 'Pearmo is one connection at a time. Your next set of '
+                    'matches arrives once this connection ends.',
+              ),
             ),
-          ],
-          Expanded(
+          ] else ...[
+            // Only alongside a populated list — the empty state carries its
+            // own version of this line.
+            if (cardsAsync.valueOrNull?.isNotEmpty ?? false) const _NextBatchNote(),
+            Expanded(
             child: RefreshIndicator(
               color: AppColors.primary,
               onRefresh: () async {
@@ -156,6 +179,40 @@ class _UnverifiedPoolBanner extends StatelessWidget {
               child: const Text('Verify to show your face'),
             ),
           ),
+        ],
+      ),
+    );
+  }
+}
+
+/// Small "New matches in about 14 hours" line above a populated list.
+///
+/// Batches last 24h from generation and `generate_daily_matches` no-ops
+/// until the current one expires, so this is a real countdown, not a
+/// gesture — it's read off the batch's own `expires_at`.
+class _NextBatchNote extends ConsumerWidget {
+  const _NextBatchNote();
+
+  @override
+  Widget build(BuildContext context, WidgetRef ref) {
+    final expiry = ref.watch(nextBatchExpiryProvider).valueOrNull;
+    if (expiry == null) return const SizedBox.shrink();
+
+    final remaining = expiry.difference(DateTime.now());
+    if (remaining.isNegative) return const SizedBox.shrink();
+
+    final hours = remaining.inHours;
+    final label = hours >= 1
+        ? '$hours hour${hours == 1 ? '' : 's'}'
+        : '${remaining.inMinutes.clamp(1, 59)} minutes';
+
+    return Padding(
+      padding: const EdgeInsets.fromLTRB(20, 14, 20, 0),
+      child: Row(
+        children: [
+          const Icon(Icons.schedule, size: 14, color: AppColors.textSecondary),
+          const SizedBox(width: 6),
+          Text('New matches in about $label', style: AppTextStyles.caption),
         ],
       ),
     );

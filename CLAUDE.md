@@ -1288,6 +1288,49 @@ no-op for up to 24h, so **nobody sees the newcomer for up to a day**. In a
 small beta that's asymmetric enough to matter. Untackled mitigation: delete
 a user's unexpired rows once they've actioned every card.
 
+## `public_profiles` was silently returning zero rows (2026-08-02)
+
+**After the matching pipeline was fixed and verified generating rows in the
+database, the app still showed "No new matches today" on every device.**
+Root cause: `public_profiles` had been defined with `security_invoker=true`,
+which applies *the querying user's* RLS to every table the view reads. The
+view is `from profiles p join users u on u.id = p.user_id`. `profiles` was
+fine (`profiles_select_any`, `auth.uid() is not null`), but **`users` only
+has an own-row SELECT policy**, so for any candidate the `users` side of
+that join was invisible, the join produced nothing, and the view returned
+rows **only for yourself**. Every candidate lookup in
+`dailyMatchCardsProvider` failed.
+
+Almost certainly introduced by someone clearing a Supabase advisor warning
+— the linter flags views *without* `security_invoker` as "Security Definer
+View", so enabling it looks like a fix. **It is not, for this view.** Fixed
+with:
+
+```sql
+alter view public.public_profiles set (security_invoker = off);
+revoke all on public.public_profiles from anon;
+grant select on public.public_profiles to authenticated;
+```
+
+A "public profiles" view exists precisely to bypass RLS in a controlled
+way: its own `where` clause (`is_active`, not banned, `is_profile_active`,
+`onboarding_complete`) is the access control, and its column list is a
+narrow projection — no phone, no `date_of_birth` (only a computed `age`),
+no `seeking`, no `trait_*`, no lat/lng, and `profile_photo_url` only when
+`is_photo_public`. With `security_invoker` off, access must be controlled
+by GRANT instead of RLS, hence the explicit revoke from `anon`. **The
+advisor will flag this view again — that warning is expected and should
+not be "fixed".** (It does expose `trust_score` to other users, which is
+pre-existing and worth revisiting separately.)
+
+**Second-order lesson, fixed in the same pass:**
+`dailyMatchCardsProvider` ([matches_providers.dart](lib/providers/matches_providers.dart))
+wrapped each candidate lookup in `catch (_) { continue; }` — legitimate for
+tolerating one candidate who got banned/paused between generation and
+display, but it made *total* failure render identically to a genuine empty
+result, with no error anywhere. Now tracks the last error and rethrows if
+every lookup failed while match rows existed.
+
 ## Project hygiene findings (2026-08-02)
 
 Full audit of the live project while wiring up the matching fix. Three
@@ -1313,14 +1356,27 @@ unused, per [avatar_catalog.dart](lib/shared/avatars/avatar_catalog.dart).
 read it. It was exposed during this audit and needs rotating. Future
 scheduled functions should avoid embedding secrets in the job command.
 
-**Phone numbers have no normalisation, and it has already created a
-duplicate account.** `auth.users` contained both `94760874718` and
-`760874718` — the same person, once with the country code and once
-without. [validators.dart](lib/core/utils/validators.dart) accepts any
-syntactically valid E.164 string, so `+760874718` passes as a legitimate
-foreign number and mints a separate identity. There is no country-code
-default and no handling of the local `07…` format Sri Lankan users
-actually type. Not yet fixed — will keep producing duplicates in beta.
+**Phone numbers had no normalisation, and it had already created a
+duplicate account.** `auth.users` contained one tester's number twice —
+once with the `94` country code and once as a bare local number. The old
+`Validators.phone` accepted any syntactically valid E.164 string, so the
+country-code-less form passed as a legitimate *foreign* number (a bare
+Sri Lankan mobile happens to parse as a valid `+7…` number) and minted a
+separate identity.
+
+**Fixed 2026-08-02, Sri Lanka only by explicit user decision.** New
+`Validators.normalizeSriLankanMobile()` / `sriLankanMobile()`
+([validators.dart](lib/core/utils/validators.dart)) collapse `0771234567`,
+`771234567`, `94771234567` and `+94771234567` to one canonical
+`+94771234567`, and `LoginScreen` now sends the **normalised** string to
+`signInWithOtp`, never the raw field text — that's the part that actually
+prevents duplicates, since Supabase Auth keys accounts by the exact string
+it receives. The field is digits-only behind a fixed `🇱🇰 +94` prefix.
+Landline prefixes (`011`, `081`, …) are rejected: every SL mobile is `07x`,
+and a landline can't receive an SMS OTP. The generic `Validators.phone`
+still exists and is still used by `emergencyContact`, which is a free-text
+note-to-self and shouldn't be country-restricted. Widening beyond Sri Lanka
+later means relaxing `normalizeSriLankanMobile` alone.
 
 **Two previously-unconfirmed deployments are in fact live:**
 `cleanup-verification-media` (every 30 min, succeeding) and

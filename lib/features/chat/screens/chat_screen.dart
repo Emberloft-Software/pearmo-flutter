@@ -20,6 +20,7 @@ import '../../../providers/connections_providers.dart';
 import '../../../providers/matches_providers.dart';
 import '../../../providers/messages_providers.dart';
 import '../../../providers/notification_providers.dart';
+import '../../../providers/profile_providers.dart';
 import '../../../providers/repository_providers.dart';
 import '../../../shared/widgets/widgets.dart';
 
@@ -213,6 +214,27 @@ class _ChatScreenState extends ConsumerState<ChatScreen> {
     final connectionAsync = ref.watch(connectionStreamProvider(widget.connectionId));
     final messagesAsync = ref.watch(messagesStreamProvider(widget.connectionId));
 
+    // My own tier arrives live via `myVerificationTierProvider`, but the
+    // *other* participant's comes from `public_profiles` — a view, and
+    // Realtime can't subscribe to views (streams need a table with a
+    // replica identity). Reading their `users` row directly isn't an option
+    // either: RLS on `users` is own-row only.
+    //
+    // The database posts a `system` message on every tier change, and that
+    // stream *is* live — so its arrival is the signal to re-read their
+    // profile. Without this the media button stays locked on the other
+    // person's device until they restart the app.
+    final otherUserId =
+        userId == null ? null : connectionAsync.valueOrNull?.otherUserId(userId);
+    if (otherUserId != null) {
+      ref.listen(messagesStreamProvider(widget.connectionId), (previous, next) {
+        final messages = next.valueOrNull;
+        if (messages == null || messages.isEmpty) return;
+        if (!messages.last.isSystem) return;
+        ref.invalidate(candidateProfileProvider(otherUserId));
+      });
+    }
+
     return Scaffold(
       appBar: AppBar(
         title: const Text('Chat'),
@@ -250,7 +272,7 @@ class _ChatScreenState extends ConsumerState<ChatScreen> {
           // This is UI gating only. The enforcement that matters is the
           // storage RLS policy on the `chat-media` bucket; see
           // docs/matching-and-verification-tiers.md.
-          final myTier = ref.watch(myAppUserProvider).valueOrNull?.verificationTier;
+          final myTier = ref.watch(myVerificationTierProvider).valueOrNull;
           final otherTier = ref
               .watch(candidateProfileProvider(connection.otherUserId(userId)))
               .valueOrNull
