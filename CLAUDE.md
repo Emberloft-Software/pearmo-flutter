@@ -1196,15 +1196,27 @@ hand-seeding or (unconfirmed, source not visible) a possible call inside
 `analyse-profile` at onboarding — either way nothing regenerated on day 2.
 All the earlier debugging of scoring/gates was downstream of this.
 
-**Second, independent cause, still unconfirmed against the live function
-source:** `Profile.toInsertJson()` never writes `active_hours_start`/
-`active_hours_end` — only `ProfileRepository.updateSettings()` does. So
-every freshly-onboarded profile has both NULL. If
-`generate_daily_matches`'s candidate filter is a bare `between`, NULL
-evaluates to NULL rather than true and **every new user is invisible as a
-candidate to everyone else**, which alone would explain two brand-new test
-accounts never seeing each other. Must be verified against
-`pg_get_functiondef` before assuming it's fixed.
+**A second theory — that NULL `active_hours` excluded every new profile —
+was investigated and is WRONG.** `Profile.toInsertJson()` does only write
+those columns via Settings, so every fresh profile really does have both
+NULL, but the real function source (pulled via `pg_get_functiondef`
+2026-08-02) already reads
+`p.active_hours_start is null or current_time between ...`, which handles
+exactly that case. Missing caller was the *only* cause. Don't re-reach for
+the active-hours explanation.
+
+**Bug found in the live function 2026-08-02: there was no cap on matches
+per day.** It scored up to 100 candidates and inserted every one with
+`score > 0` — `users.daily_match_count` was never read, and no trigger
+enforced it (confirmed against the full `pg_proc` list). "Up to 5" was true
+only in `AppConstants.dailyMatchCount` and the UI copy; the DB would have
+inserted 60+ rows per user once the pool grew. Fixed in the replacement
+function by ordering the scored pool by score desc and taking
+`coalesce(daily_match_count, 5)`.
+
+**Also confirmed 2026-08-02:** the strict same-tier `case` block handed
+over on 2026-07-29 *was* actually run — this file had it recorded as
+unconfirmed. It has now been replaced by the bootstrap rule below.
 
 Full design, all SQL, rollout order and test plan live in
 [docs/matching-and-verification-tiers.md](docs/matching-and-verification-tiers.md).
@@ -1244,11 +1256,17 @@ strict-at-launch inverts the incentive: on day one everyone is unverified,
 so the first person to verify would leave a populated pool for an empty one.
 The window closes itself — no manual flip needed.
 
-**SQL written but NOT RUN (all of it):** `refresh_my_matches()` wrapper +
-grant; `verified_pool_is_thin()`; two clause-level edits to
-`generate_daily_matches` (tier `case` + active-hours NULL handling —
-**pull the current source with `pg_get_functiondef` and edit it, never
-reconstruct it**); an `after update of verification_tier on users` trigger
+**APPLIED AND VERIFIED 2026-08-02:** `refresh_my_matches()` wrapper +
+grant, `verified_pool_is_thin()`, and the `generate_daily_matches`
+replacement (bootstrap tier rule + daily cap + `active_hours_end` guard +
+`set search_path`). Verified live: four unverified test profiles each
+generated exactly 2 matches with symmetric scores. Note
+`generate_daily_matches` no-ops while an unexpired batch exists, so any
+rule change needs `delete from public.daily_matches where user_id = ...`
+before it takes effect — `daily_matches` is derived data, always safe to
+delete, and unrelated to accounts/SMS credits.
+
+**STILL NOT RUN:** an `after update of verification_tier on users` trigger
 that deletes the user's stale batch, drops them from unverified users'
 pending cards, regenerates (delete **before** generate — the function
 no-ops while unexpired rows exist), and inserts a subject-neutral
@@ -1269,4 +1287,42 @@ cards immediately, but existing users' batches are already generated and
 no-op for up to 24h, so **nobody sees the newcomer for up to a day**. In a
 small beta that's asymmetric enough to matter. Untackled mitigation: delete
 a user's unexpired rows once they've actioned every card.
+
+## Project hygiene findings (2026-08-02)
+
+Full audit of the live project while wiring up the matching fix. Three
+things worth remembering:
+
+**Another app's (`Trio`) objects were created in this project by mistake.**
+Five `pg_cron` jobs (`lock-gigs`, `complete-gigs`, `recompute-bands`,
+`expire-friend-requests`, `expire-verifications`) and four storage buckets
+(`venues` — the only *public* bucket in the project — `shared-media`,
+`avatars`, `verification`). **No Trio data ever existed here:** every table
+in `public` is Pearmo's, every FK is Pearmo→Pearmo, all five job functions
+were missing from every schema, all four buckets were empty, and the jobs
+never appeared in `cron.job_run_details` (scheduled but never executing).
+The five cron jobs have been unscheduled; the buckets were still pending
+deletion at time of writing (must go through the dashboard/Storage API —
+`delete from storage.buckets` is blocked by a `storage.protect_delete()`
+trigger). Note the `avatars` bucket is *not* Pearmo's: avatars are bundled
+PNGs under `assets/avatars/` (40 files, 12 MB) and `public.avatars` is
+unused, per [avatar_catalog.dart](lib/shared/avatars/avatar_catalog.dart).
+
+**`CRON_SECRET` is stored in plaintext inside `cron.job.command`** for the
+`cleanup-verification-media` job, so anyone who can read `cron.job` can
+read it. It was exposed during this audit and needs rotating. Future
+scheduled functions should avoid embedding secrets in the job command.
+
+**Phone numbers have no normalisation, and it has already created a
+duplicate account.** `auth.users` contained both `94760874718` and
+`760874718` — the same person, once with the country code and once
+without. [validators.dart](lib/core/utils/validators.dart) accepts any
+syntactically valid E.164 string, so `+760874718` passes as a legitimate
+foreign number and mints a separate identity. There is no country-code
+default and no handling of the local `07…` format Sri Lankan users
+actually type. Not yet fixed — will keep producing duplicates in beta.
+
+**Two previously-unconfirmed deployments are in fact live:**
+`cleanup-verification-media` (every 30 min, succeeding) and
+`escalate-overdue-checkins` (every 5 min, succeeding).
 

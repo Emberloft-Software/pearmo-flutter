@@ -1,8 +1,8 @@
 # Matching pipeline + verification tiers
 
-**Status: app changes are done and analysed clean. None of the SQL below has
-been run — the app changes are inert until it is.** Read "Rollout order"
-before deploying anything.
+**Status (2026-08-02):** app changes done and analysed clean. SQL sections
+1–3 **applied and verified against the live database**. Sections 4 (tier
+trigger) and 5 (chat-media storage policy) are **not yet run**.
 
 Written 2026-08-02. Companion to `CLAUDE.md`, which stays the source of
 truth for schema/RLS ground truth; this file covers one feature end to end.
@@ -135,46 +135,43 @@ $$;
 Tune the `20`, or force strict mode early by replacing the body with
 `select false;`.
 
-### 3. Two edits to `generate_daily_matches`
+### 3. `generate_daily_matches` replacement — APPLIED
 
-**Do not reconstruct this function from memory.** Pull its current source,
-change only these two clauses, and paste the whole thing back:
+Three behavioural changes, everything else copied verbatim from the real
+source (pulled via `pg_get_functiondef`, never reconstructed):
 
-```sql
-select pg_get_functiondef(oid) from pg_proc where proname = 'generate_daily_matches';
-```
+**(a) Tier visibility → bootstrap-then-strict.** The pre-existing function
+already had the strict 3-way split live (contrary to `CLAUDE.md`, which had
+the 2026-07-29 change recorded as unconfirmed — it *was* run). Replaced
+with the bootstrap rule via `verified_pool_is_thin()`.
 
-**(a) Tier visibility** — replace the existing `case` block on
-`verification_tier`:
+**(b) Daily cap enforced — this was a real bug.** The function scored up to
+100 candidates and inserted **every one** with `score > 0`. It never read
+`users.daily_match_count`, and no trigger enforced it either. "Up to 5
+matches" was true in the app copy and in `AppConstants.dailyMatchCount`,
+but the database would have inserted 60+ rows once the user base grew. Now
+scores the candidate pool, orders by score descending, and takes
+`coalesce(daily_match_count, 5)`.
 
-```sql
-and case
-  when user_tier = 'unverified' then u.verification_tier = 'unverified'
-  when user_tier in ('selfie_verified', 'id_verified') then
-       u.verification_tier in ('selfie_verified', 'id_verified')
-    or (u.verification_tier = 'unverified' and public.verified_pool_is_thin())
-  when user_tier = 'paid_verified' then true
-  else false
-end
-```
+**(c) `active_hours_end is null` guard added.** The original only guarded
+`active_hours_start is null`, so a profile with a start but no end would
+vanish from every pool.
 
-**(b) Active hours** — onboarding never writes
-`active_hours_start`/`active_hours_end` (only Settings does), so every fresh
-profile has both NULL. If the current filter is a bare `between`, NULL makes
-it NULL rather than true and **every new user is invisible as a candidate to
-everyone**. Two brand-new test accounts can never see each other. Replace it
-with:
+**Correction to an earlier theory in this file and in `CLAUDE.md`:** the
+active-hours clause was *not* the cause of "new accounts never see each
+other". The real source already read
+`p.active_hours_start is null or current_time between ...`, which handles
+the all-NULL case every fresh profile has. The sole cause was that nothing
+ever called `generate_daily_matches`. The `end is null` addition above is a
+genuine but unrelated edge-case fix.
 
-```sql
-and (
-  p.active_hours_start is null
-  or p.active_hours_end is null
-  or (now() at time zone 'Asia/Colombo')::time
-       between p.active_hours_start and p.active_hours_end
-)
-```
+Also added `set search_path to 'public'` — `SECURITY DEFINER` without a
+fixed search_path is a privilege-escalation vector that Supabase's own
+advisor flags, and the sibling `score_compatibility` already had it.
 
-Adjust the alias (`p` vs `pr`) to match the real source.
+**Verified live:** four unverified test profiles (2 men seeking women, 2
+women seeking men, all age 24, overlapping age ranges) each generated
+exactly 2 matches with symmetric scores in both directions.
 
 ### 4. Tier-change trigger
 

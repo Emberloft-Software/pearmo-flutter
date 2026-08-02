@@ -38,15 +38,27 @@ final dailyMatchCardsProvider = FutureProvider.autoDispose<List<MatchCard>>((ref
   final matches = await matchesRepo.getTodaysMatches(userId);
 
   final cards = <MatchCard>[];
+  Object? lastError;
   for (final match in matches) {
     try {
       final profile = await matchesRepo.getCandidateProfile(match.candidateId);
       cards.add(MatchCard(match: match, profile: profile));
-    } catch (_) {
-      // Candidate profile may have been removed/banned since match
+    } catch (e) {
+      // Candidate profile may have been removed/banned/paused since match
       // generation — skip it rather than failing the whole list.
+      lastError = e;
       continue;
     }
+  }
+
+  // ...but if *every* lookup failed, that's not "no matches", it's a broken
+  // read path, and silently returning an empty list makes the two
+  // indistinguishable. That exact confusion cost an hour of debugging when
+  // `public_profiles` was switched to `security_invoker = true` and started
+  // returning nothing for other users — the screen just said "No new
+  // matches today" with no error anywhere.
+  if (cards.isEmpty && matches.isNotEmpty && lastError != null) {
+    throw lastError;
   }
   return cards;
 });
