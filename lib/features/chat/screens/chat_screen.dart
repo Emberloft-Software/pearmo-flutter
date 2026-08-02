@@ -17,6 +17,7 @@ import '../../../core/utils/error_mapper.dart';
 import '../../../data/models/message.dart';
 import '../../../providers/auth_providers.dart';
 import '../../../providers/connections_providers.dart';
+import '../../../providers/matches_providers.dart';
 import '../../../providers/messages_providers.dart';
 import '../../../providers/notification_providers.dart';
 import '../../../providers/repository_providers.dart';
@@ -138,6 +139,15 @@ class _ChatScreenState extends ConsumerState<ChatScreen> {
     }
   }
 
+  /// Explains why the attachment button is locked and offers the
+  /// verification flow. Kept tappable rather than hidden so the feature is
+  /// discoverable and the reason is legible — a greyed-out button with no
+  /// explanation is what makes gating feel arbitrary.
+  Future<void> _showMediaLocked(VerifyUnlockReason reason) async {
+    final wantsToVerify = await VerifyToUnlockDialog.show(context, reason: reason);
+    if (wantsToVerify && mounted) context.push('/verification');
+  }
+
   Future<void> _pickAndSendMedia(String userId) async {
     final choice = await showModalBottomSheet<_MediaChoice>(
       context: context,
@@ -227,6 +237,33 @@ class _ChatScreenState extends ConsumerState<ChatScreen> {
 
           final canChat = connection.status.canChat;
 
+          // Photo/video sharing requires BOTH participants at
+          // selfie_verified or higher. Before this, `_pickAndSendMedia` had
+          // no gate of any kind — not the sender's tier, not the
+          // recipient's, not even the `media_share` consent record.
+          //
+          // Fails closed on purpose: if either tier can't be resolved —
+          // the other person paused their profile so `public_profiles`
+          // returns no row, or the lookup is still in flight — media stays
+          // locked rather than defaulting open.
+          //
+          // This is UI gating only. The enforcement that matters is the
+          // storage RLS policy on the `chat-media` bucket; see
+          // docs/matching-and-verification-tiers.md.
+          final myTier = ref.watch(myAppUserProvider).valueOrNull?.verificationTier;
+          final otherTier = ref
+              .watch(candidateProfileProvider(connection.otherUserId(userId)))
+              .valueOrNull
+              ?.verificationTier;
+          final iAmVerified = myTier?.isAtLeastSelfieVerified ?? false;
+          final theyAreVerified = otherTier?.isAtLeastSelfieVerified ?? false;
+          final canShareMedia = iAmVerified && theyAreVerified;
+          final mediaLockReason = iAmVerified
+              ? VerifyUnlockReason.chatMediaOther
+              : theyAreVerified
+                  ? VerifyUnlockReason.chatMediaSelf
+                  : VerifyUnlockReason.chatMediaBoth;
+
           return Column(
             children: [
               if (!canChat)
@@ -271,6 +308,7 @@ class _ChatScreenState extends ConsumerState<ChatScreen> {
                       itemCount: messages.length,
                       itemBuilder: (context, index) {
                         final message = messages[index];
+                        if (message.isSystem) return _SystemNotice(message: message);
                         return _MessageBubble(message: message, isMine: message.isMine(userId));
                       },
                     );
@@ -304,9 +342,20 @@ class _ChatScreenState extends ConsumerState<ChatScreen> {
                       crossAxisAlignment: CrossAxisAlignment.end,
                       children: [
                         IconButton(
-                          onPressed: _isSending ? null : () => _pickAndSendMedia(userId),
-                          icon: const Icon(Icons.add_photo_alternate_outlined, color: AppColors.primary),
-                          tooltip: 'Share photo or video',
+                          onPressed: _isSending
+                              ? null
+                              : canShareMedia
+                                  ? () => _pickAndSendMedia(userId)
+                                  : () => _showMediaLocked(mediaLockReason),
+                          icon: Icon(
+                            canShareMedia
+                                ? Icons.add_photo_alternate_outlined
+                                : Icons.lock_outline,
+                            color: canShareMedia ? AppColors.primary : AppColors.textSecondary,
+                          ),
+                          tooltip: canShareMedia
+                              ? 'Share photo or video'
+                              : 'Photo sharing needs both of you verified',
                         ),
                         Expanded(
                           child: TextField(
@@ -450,6 +499,40 @@ class _NoticeBanner extends StatelessWidget {
             ),
           ),
           ?action,
+        ],
+      ),
+    );
+  }
+}
+
+/// Centred, non-attributed notice for `content_type = 'system'` rows.
+///
+/// Used when one participant's verification tier changes mid-connection.
+/// The change is announced in-thread rather than only as a push because a
+/// badge that silently upgrades mid-conversation changes who the other
+/// person understands they're talking to, with no signal — the thread entry
+/// is the durable, un-missable record. Push is optional on top of it.
+class _SystemNotice extends StatelessWidget {
+  const _SystemNotice({required this.message});
+
+  final Message message;
+
+  @override
+  Widget build(BuildContext context) {
+    return Padding(
+      padding: const EdgeInsets.symmetric(vertical: 10, horizontal: 24),
+      child: Row(
+        mainAxisAlignment: MainAxisAlignment.center,
+        children: [
+          const Icon(Icons.shield_outlined, size: 13, color: AppColors.textSecondary),
+          const SizedBox(width: 6),
+          Flexible(
+            child: Text(
+              message.content,
+              textAlign: TextAlign.center,
+              style: AppTextStyles.caption.copyWith(fontStyle: FontStyle.italic),
+            ),
+          ),
         ],
       ),
     );

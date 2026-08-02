@@ -1185,3 +1185,88 @@ Wired to every surface that shows a tier/verified badge:
   doesn't pass `tierLabel` at all, so no badge/disclaimer gap exists there
   — left untouched.
 
+## Matching pipeline had no trigger at all (2026-08-02)
+
+**Root cause of "we created test accounts and still get no matches":
+`generate_daily_matches()` was never called by anything.** Confirmed by
+grepping `lib/` for `.rpc(` (zero hits anywhere) and by this file's own
+2026-07-01 note that `cron.job` returned zero rows. `MatchesRepository`
+only ever *read* `daily_matches`. Whatever rows existed came from
+hand-seeding or (unconfirmed, source not visible) a possible call inside
+`analyse-profile` at onboarding — either way nothing regenerated on day 2.
+All the earlier debugging of scoring/gates was downstream of this.
+
+**Second, independent cause, still unconfirmed against the live function
+source:** `Profile.toInsertJson()` never writes `active_hours_start`/
+`active_hours_end` — only `ProfileRepository.updateSettings()` does. So
+every freshly-onboarded profile has both NULL. If
+`generate_daily_matches`'s candidate filter is a bare `between`, NULL
+evaluates to NULL rather than true and **every new user is invisible as a
+candidate to everyone else**, which alone would explain two brand-new test
+accounts never seeing each other. Must be verified against
+`pg_get_functiondef` before assuming it's fixed.
+
+Full design, all SQL, rollout order and test plan live in
+[docs/matching-and-verification-tiers.md](docs/matching-and-verification-tiers.md).
+Summary of what changed and what's still owed:
+
+**Client (done, `flutter analyze` clean):** new
+`refresh_my_matches` RPC wrapper called at the end of
+`OnboardingController.submit()` (so a new user's first screen is populated
+rather than "check back tomorrow") and again in `dailyMatchCardsProvider`
+(so day 2+ works); `MatchesRepository.getCurrentBatchExpiry()` +
+`nextBatchExpiryProvider` backing honest "next matches in Xh" copy; new
+`TierChip` shown for **every** tier including `unverified` (match cards and
+`_HeaderTitle` previously hid the badge unless verified, so an unverified
+profile looked like it had no verification state at all); an unverified-pool
+explainer banner on the matches screen; `VerifyToUnlockDialog`
+parameterised by `VerifyUnlockReason`; `Message.isSystem` + a `_SystemNotice`
+renderer in `chat_screen.dart` for `content_type = 'system'`.
+
+**Bug found + fixed: chat media had no verification gate whatsoever.**
+`_pickAndSendMedia()` checked nothing — not the sender's tier, not the
+recipient's, not even the `media_share` consent record — so any user in a
+chattable connection could send photos/videos. `VerifyToUnlockDialog` was
+wired only to Settings' "Add picture" ([settings_screen.dart](lib/features/settings/screens/settings_screen.dart)),
+never to chat. Now gated on **both** participants being
+`isAtLeastSelfieVerified`, failing closed when either tier can't be
+resolved (e.g. the other participant paused their profile, so
+`public_profiles` returns no row). **This is UI gating only** — the real
+enforcement is a storage RLS policy on `chat-media` that hasn't been
+applied yet.
+
+**Pool rule decided: bootstrap, then strict.** `unverified` sees only
+`unverified`; `selfie_verified`/`id_verified` see each other *plus*
+`unverified` while a new `verified_pool_is_thin()` helper says the verified
+pool has < 20 active profiles, then tighten automatically. Chosen over the
+pure 3-way strict split handed over on 2026-07-29 (still unrun) because
+strict-at-launch inverts the incentive: on day one everyone is unverified,
+so the first person to verify would leave a populated pool for an empty one.
+The window closes itself — no manual flip needed.
+
+**SQL written but NOT RUN (all of it):** `refresh_my_matches()` wrapper +
+grant; `verified_pool_is_thin()`; two clause-level edits to
+`generate_daily_matches` (tier `case` + active-hours NULL handling —
+**pull the current source with `pg_get_functiondef` and edit it, never
+reconstruct it**); an `after update of verification_tier on users` trigger
+that deletes the user's stale batch, drops them from unverified users'
+pending cards, regenerates (delete **before** generate — the function
+no-ops while unexpired rows exist), and inserts a subject-neutral
+`content_type='system'` message into every non-ended connection; and the
+`chat-media` bucket + both-participants-verified storage policies. Until
+this runs the client changes are inert — `refreshMyMatches()` failures are
+deliberately swallowed so a missing RPC degrades to the old behaviour
+rather than an error screen.
+
+**Deliberately not built, documented instead:** the bounded unverified
+window (7 days / 1 connection, then verification required). It's what caps
+how long a self-declared age goes unchecked *and* what stops the unverified
+pool silting up with people who refuse to verify — which is the cohort every
+new user would then meet first. Design + schema shape are in the doc.
+
+**Known reciprocity lag worth remembering:** a newly onboarded user gets 5
+cards immediately, but existing users' batches are already generated and
+no-op for up to 24h, so **nobody sees the newcomer for up to a day**. In a
+small beta that's asymmetric enough to matter. Untackled mitigation: delete
+a user's unexpired rows once they've actioned every card.
+

@@ -159,6 +159,24 @@ class OnboardingController extends Notifier<OnboardingDraft> {
           "or analyzing your profile. This won't stop you from using the app.";
     }
 
+    // Generate the first batch here rather than letting the matches screen
+    // do it on first open, so the very first thing a new user sees after 18
+    // onboarding steps is populated cards, not "No new matches today —
+    // check back tomorrow". Empty-first-session is the single biggest churn
+    // moment in the flow.
+    //
+    // Must run after `saveOnboarding` commits `onboarding_complete = true`
+    // (the candidate filters check it), and deliberately sits *outside* the
+    // best-effort block above — a failed audio upload or sentiment pass
+    // must not cost the user their first batch.
+    try {
+      await ref.read(matchesRepositoryProvider).refreshMyMatches();
+    } catch (_) {
+      // Non-fatal: the matches screen retries on every open. Not folded
+      // into `warning` either — "we couldn't generate matches" is not
+      // actionable for the user, and the retry is invisible and automatic.
+    }
+
     // Refresh so the router moves the user from /onboarding to /home.
     ref.invalidate(myProfileProvider);
     return warning;

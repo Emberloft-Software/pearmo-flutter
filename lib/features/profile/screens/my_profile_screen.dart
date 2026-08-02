@@ -267,7 +267,6 @@ class _HeaderTitle extends StatelessWidget {
   Widget build(BuildContext context) {
     final character = AvatarCatalog.resolve(profile.avatarId).character;
     final name = profile.displayName?.split(' ').first ?? 'The ${character.name}';
-    final isVerified = tier != null && tier!.label != 'Unverified';
 
     return Row(
       children: [
@@ -301,32 +300,14 @@ class _HeaderTitle extends StatelessWidget {
             ],
           ),
         ),
-        if (isVerified)
-          GestureDetector(
-            onTap: () => showVerificationInfoDialog(context, tier: tier),
-            child: Container(
-              margin: const EdgeInsets.only(left: 8),
-              padding: const EdgeInsets.symmetric(horizontal: 10, vertical: 5),
-              decoration: BoxDecoration(
-                color: AppColors.secondary,
-                borderRadius: BorderRadius.circular(999),
-              ),
-              child: Row(
-                mainAxisSize: MainAxisSize.min,
-                children: [
-                  const Icon(Icons.verified_user, size: 12, color: AppColors.textPrimary),
-                  const SizedBox(width: 4),
-                  Text(
-                    tier!.label,
-                    style: AppTextStyles.caption.copyWith(
-                      fontSize: 10,
-                      fontWeight: FontWeight.w800,
-                      color: AppColors.textPrimary,
-                    ),
-                  ),
-                ],
-              ),
-            ),
+        // Shown for every tier now, unverified included. Seeing your own
+        // unverified state in the same words used on other people's cards
+        // is what makes the same-tier pool rule read as symmetric rather
+        // than as something the app is quietly holding against you.
+        if (tier != null)
+          Padding(
+            padding: const EdgeInsets.only(left: 8),
+            child: TierChip(tier: tier!),
           ),
       ],
     );

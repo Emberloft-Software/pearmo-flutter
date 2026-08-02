@@ -16,5 +16,6 @@ export 'section_header.dart';
 export 'signed_avatar_display.dart';
 export 'status_pill.dart';
 export 'taste_match_card.dart';
+export 'tier_chip.dart';
 export 'verification_disclaimer.dart';
 export 'verify_to_unlock_dialog.dart';

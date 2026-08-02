@@ -20,6 +20,21 @@ final dailyMatchCardsProvider = FutureProvider.autoDispose<List<MatchCard>>((ref
   if (userId == null) return [];
 
   final matchesRepo = ref.watch(matchesRepositoryProvider);
+
+  // Generate before reading. This is what makes day 2 onwards work at all —
+  // `generate_daily_matches` has no scheduler behind it, so without a call
+  // here the user only ever sees the batch created at onboarding. The
+  // function's own no-op-while-unexpired guard keeps this cheap.
+  //
+  // Deliberately non-fatal: if generation fails (RPC missing because the
+  // SQL hasn't been applied yet, network blip), still show whatever batch
+  // already exists rather than turning the whole screen into an error.
+  try {
+    await matchesRepo.refreshMyMatches();
+  } catch (_) {
+    // Intentionally swallowed — see above.
+  }
+
   final matches = await matchesRepo.getTodaysMatches(userId);
 
   final cards = <MatchCard>[];
@@ -34,6 +49,18 @@ final dailyMatchCardsProvider = FutureProvider.autoDispose<List<MatchCard>>((ref
     }
   }
   return cards;
+});
+
+/// When the current batch expires — drives the "next matches in Xh" copy on
+/// the empty state. Null means no unexpired batch exists, in which case the
+/// next visit to the matches screen will generate one.
+final nextBatchExpiryProvider = FutureProvider.autoDispose<DateTime?>((ref) async {
+  final userId = ref.watch(currentUserIdProvider);
+  if (userId == null) return null;
+  // Depend on the cards provider so this is read *after* generation has had
+  // a chance to run, not racing it.
+  await ref.watch(dailyMatchCardsProvider.future);
+  return ref.watch(matchesRepositoryProvider).getCurrentBatchExpiry(userId);
 });
 
 /// Whether the user can send a new connection request right now (i.e. they

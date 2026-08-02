@@ -4,6 +4,7 @@ import '../../../core/theme/app_colors.dart';
 import '../../../core/theme/app_text_styles.dart';
 import '../../../providers/matches_providers.dart';
 import '../../../shared/avatars/avatar_catalog.dart';
+import '../../../shared/widgets/widgets.dart';
 
 /// One of today's curated candidates, shown as a tappable bento card on the
 /// matches screen. Always leads with the avatar — a photo is never shown
@@ -20,7 +21,6 @@ class MatchCardWidget extends StatelessWidget {
     final profile = card.profile;
     final character = AvatarCatalog.resolve(profile.avatarId);
     final percent = (card.match.score * 100).round().clamp(0, 100);
-    final isVerified = profile.verificationTier.label != 'Unverified';
 
     return Material(
       color: AppColors.surface,
@@ -74,11 +74,11 @@ class MatchCardWidget extends StatelessWidget {
                             overflow: TextOverflow.ellipsis,
                           ),
                         ),
-                        if (isVerified) ...[
-                          const SizedBox(width: 6),
-                          const Icon(Icons.verified,
-                              color: AppColors.primary, size: 17),
-                        ],
+                        const SizedBox(width: 6),
+                        // Shown for every tier, unverified included — see
+                        // TierChip's doc for why hiding it was the wrong
+                        // default.
+                        TierChip(tier: profile.verificationTier, compact: true),
                       ],
                     ),
                     const SizedBox(height: 3),

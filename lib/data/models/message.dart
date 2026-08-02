@@ -27,6 +27,14 @@ class Message {
   bool get isImage => contentType == 'image';
   bool get isVideo => contentType == 'video';
 
+  /// Written by the database, not by a participant — currently only the
+  /// verification-tier-change trigger (see
+  /// docs/matching-and-verification-tiers.md). Rendered as a centred
+  /// notice rather than a bubble: `sender_id` is set to whoever the event
+  /// is *about* (the column is NOT NULL and FKs to `users`), so bubbling it
+  /// would read as if that person had typed it.
+  bool get isSystem => contentType == 'system';
+
   factory Message.fromJson(Map<String, dynamic> json) {
     return Message(
       id: json['id'] as String,

@@ -2,8 +2,9 @@ import 'package:flutter/material.dart';
 import 'package:flutter_riverpod/flutter_riverpod.dart';
 import 'package:go_router/go_router.dart';
 
-import '../../../core/constants/app_constants.dart';
+import '../../../core/constants/enums.dart';
 import '../../../core/theme/app_colors.dart';
+import '../../../core/theme/app_text_styles.dart';
 import '../../../core/utils/error_mapper.dart';
 import '../../../data/models/connection.dart';
 import '../../../providers/auth_providers.dart';
@@ -22,6 +23,7 @@ class MatchesScreen extends ConsumerWidget {
     final cardsAsync = ref.watch(dailyMatchCardsProvider);
     final activeConnection = ref.watch(activeConnectionProvider).valueOrNull;
     final userId = ref.watch(currentUserIdProvider);
+    final myTier = ref.watch(myAppUserProvider).valueOrNull?.verificationTier;
 
     return Scaffold(
       appBar: AppBar(
@@ -29,6 +31,7 @@ class MatchesScreen extends ConsumerWidget {
       ),
       body: Column(
         children: [
+          if (myTier == VerificationTier.unverified) const _UnverifiedPoolBanner(),
           if (activeConnection != null && userId != null) ...[
             _CurrentConnectionCard(connection: activeConnection, userId: userId),
             const Padding(
@@ -51,13 +54,7 @@ class MatchesScreen extends ConsumerWidget {
                       children: [
                         SizedBox(
                           height: MediaQuery.of(context).size.height * 0.7,
-                          child: const EmptyState(
-                            icon: Icons.favorite_border,
-                            title: 'No new matches today',
-                            message:
-                                "${AppConstants.appName} curates a fresh set of matches each day. "
-                                'Check back tomorrow!',
-                          ),
+                          child: const _EmptyMatches(),
                         ),
                       ],
                     );
@@ -95,6 +92,107 @@ class MatchesScreen extends ConsumerWidget {
           ),
         ],
       ),
+    );
+  }
+}
+
+/// Explains *why* an unverified user is seeing these particular people,
+/// shown only to unverified users.
+///
+/// Copy is deliberately symmetric — "everyone here, including you" — rather
+/// than warning the viewer about the people on their cards. A one-sided
+/// warning would imply Pearmo has vouched for the viewer and not the
+/// viewee, which is false: both are in exactly the same unchecked state.
+///
+/// The CTA is framed as an unlock the user wants ("show your face"), not as
+/// a comparison against anyone else. Pressuring someone to submit identity
+/// documents because of another user's status is the line this copy stays
+/// on the right side of.
+class _UnverifiedPoolBanner extends StatelessWidget {
+  const _UnverifiedPoolBanner();
+
+  @override
+  Widget build(BuildContext context) {
+    return Container(
+      margin: const EdgeInsets.fromLTRB(20, 12, 20, 0),
+      padding: const EdgeInsets.all(14),
+      decoration: BoxDecoration(
+        color: AppColors.surfaceMuted,
+        borderRadius: BorderRadius.circular(16),
+        border: Border.all(color: AppColors.divider),
+      ),
+      child: Column(
+        crossAxisAlignment: CrossAxisAlignment.start,
+        children: [
+          Row(
+            children: [
+              const Icon(Icons.shield_outlined, size: 16, color: AppColors.textSecondary),
+              const SizedBox(width: 6),
+              Text(
+                "You're in the unverified pool",
+                style: AppTextStyles.caption.copyWith(
+                  fontWeight: FontWeight.w800,
+                  color: AppColors.textPrimary,
+                ),
+              ),
+            ],
+          ),
+          const SizedBox(height: 6),
+          Text(
+            "Everyone here — including you — has signed up but hasn't completed a selfie "
+            "check yet. Pearmo hasn't confirmed anyone's photo, age, or identity.",
+            style: AppTextStyles.caption,
+          ),
+          const SizedBox(height: 8),
+          Align(
+            alignment: Alignment.centerLeft,
+            child: TextButton(
+              style: TextButton.styleFrom(
+                padding: EdgeInsets.zero,
+                minimumSize: const Size(0, 32),
+                tapTargetSize: MaterialTapTargetSize.shrinkWrap,
+              ),
+              onPressed: () => context.push('/verification'),
+              child: const Text('Verify to show your face'),
+            ),
+          ),
+        ],
+      ),
+    );
+  }
+}
+
+/// Empty state that says when the next batch actually lands instead of a
+/// blanket "check back tomorrow" — which was wrong whenever the batch was
+/// generated at any hour other than midnight, and is a promise the app
+/// couldn't keep at all before `refresh_my_matches` existed.
+class _EmptyMatches extends ConsumerWidget {
+  const _EmptyMatches();
+
+  @override
+  Widget build(BuildContext context, WidgetRef ref) {
+    final expiry = ref.watch(nextBatchExpiryProvider).valueOrNull;
+
+    String message;
+    if (expiry == null) {
+      // No unexpired batch — either brand new, or the pool genuinely had
+      // nobody eligible. Honest about being early rather than implying a
+      // schedule we can't promise in a small beta.
+      message = "You're early — we'll show you people as they join. "
+          'Adding a voice intro and verifying make you easier to match.';
+    } else {
+      final remaining = expiry.difference(DateTime.now());
+      final hours = remaining.inHours;
+      final label = hours >= 1
+          ? '$hours hour${hours == 1 ? '' : 's'}'
+          : '${remaining.inMinutes.clamp(1, 59)} minutes';
+      message = "You've seen everyone in today's set. Your next matches arrive in about $label.";
+    }
+
+    return EmptyState(
+      icon: Icons.favorite_border,
+      title: 'No new matches right now',
+      message: message,
     );
   }
 }
