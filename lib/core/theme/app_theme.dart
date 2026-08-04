@@ -84,6 +84,15 @@ class AppTheme {
         filled: true,
         fillColor: AppColors.surfaceMuted,
         contentPadding: const EdgeInsets.symmetric(horizontal: 20, vertical: 16),
+        // Both default to a single line, which silently ellipsises anything
+        // that doesn't fit the field's width — the login screen's helper text
+        // was cut to "Your 10-digit mobile number, no need to t…" on narrower
+        // phones. Several validator messages are longer still (the E.164 one
+        // is 62 characters), so this is set at the theme rather than per
+        // field. A cap only allows wrapping; the field still grows only as
+        // far as the text actually needs.
+        helperMaxLines: 2,
+        errorMaxLines: 3,
         border: OutlineInputBorder(
           borderRadius: BorderRadius.circular(radiusMedium),
           borderSide: BorderSide.none,
