@@ -208,11 +208,16 @@ class _LivenessCheckScreenState extends State<LivenessCheckScreen> {
                             child: ErrorBanner(message: _error!),
                           )
                         : const LoadingIndicator())
-                    : ClipOval(
-                        child: SizedBox(
-                          width: 280,
-                          height: 280,
-                          child: CameraPreview(controller),
+                    // FittedBox so the preview scales down rather than
+                    // overflowing on a short screen, where the instruction
+                    // text and step dots leave less than 280px here.
+                    : FittedBox(
+                        child: ClipOval(
+                          child: SizedBox(
+                            width: 280,
+                            height: 280,
+                            child: CameraPreview(controller),
+                          ),
                         ),
                       ),
               ),

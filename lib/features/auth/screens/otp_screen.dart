@@ -103,8 +103,11 @@ class _OtpScreenState extends ConsumerState<OtpScreen> {
       appBar: AppBar(
         leading: BackButton(onPressed: () => context.pop()),
       ),
+      // Scrollable for the same reason as LoginScreen: the code field summons
+      // the keyboard, which leaves less height than this content needs on a
+      // short phone.
       body: SafeArea(
-        child: Padding(
+        child: SingleChildScrollView(
           padding: const EdgeInsets.all(24),
           child: Form(
             key: _formKey,

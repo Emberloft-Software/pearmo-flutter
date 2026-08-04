@@ -35,32 +35,40 @@ class _BlockedScreenState extends ConsumerState<BlockedScreen> {
   @override
   Widget build(BuildContext context) {
     return Scaffold(
+      // Scrollable: `banReason` is free text set by a moderator, so this
+      // screen's height isn't bounded by anything the app controls.
       body: SafeArea(
-        child: Padding(
-          padding: const EdgeInsets.all(24),
-          child: Center(
-            child: Column(
-              mainAxisAlignment: MainAxisAlignment.center,
-              children: [
-                const Icon(Icons.block, color: AppColors.danger, size: 48),
-                const SizedBox(height: 24),
-                Text('Account suspended', style: AppTextStyles.headline, textAlign: TextAlign.center),
-                const SizedBox(height: 12),
-                Text(
-                  widget.banReason?.trim().isNotEmpty == true
-                      ? widget.banReason!
-                      : "Your account has been suspended or deactivated. If you think this is a mistake, please contact support.",
-                  style: AppTextStyles.body,
-                  textAlign: TextAlign.center,
-                ),
-                const SizedBox(height: 32),
-                PearmoButton(
-                  label: 'Sign out',
-                  variant: PearmoButtonVariant.outline,
-                  isLoading: _isSigningOut,
-                  onPressed: _signOut,
-                ),
-              ],
+        child: LayoutBuilder(
+          builder: (context, constraints) => SingleChildScrollView(
+            padding: const EdgeInsets.all(24),
+            child: ConstrainedBox(
+              constraints: BoxConstraints(
+                minHeight: (constraints.maxHeight - 48).clamp(0.0, double.infinity),
+              ),
+              child: Column(
+                mainAxisAlignment: MainAxisAlignment.center,
+                children: [
+                  const Icon(Icons.block, color: AppColors.danger, size: 48),
+                  const SizedBox(height: 24),
+                  Text('Account suspended',
+                      style: AppTextStyles.headline, textAlign: TextAlign.center),
+                  const SizedBox(height: 12),
+                  Text(
+                    widget.banReason?.trim().isNotEmpty == true
+                        ? widget.banReason!
+                        : "Your account has been suspended or deactivated. If you think this is a mistake, please contact support.",
+                    style: AppTextStyles.body,
+                    textAlign: TextAlign.center,
+                  ),
+                  const SizedBox(height: 32),
+                  PearmoButton(
+                    label: 'Sign out',
+                    variant: PearmoButtonVariant.outline,
+                    isLoading: _isSigningOut,
+                    onPressed: _signOut,
+                  ),
+                ],
+              ),
             ),
           ),
         ),

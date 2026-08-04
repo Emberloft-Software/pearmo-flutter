@@ -41,24 +41,36 @@ class MatchesScreen extends ConsumerWidget {
             const _UnverifiedPoolBanner(),
 
           if (isConnected) ...[
-            _CurrentConnectionCard(
-              connection: activeConnection,
-              userId: userId,
-            ),
-            // The card list is deliberately not rendered here. While a
-            // connection is live, `enforce_single_active_connection` rejects
-            // any new one and `canSendRequestProvider` disables the request
-            // button — so every card on screen is unreachable. Showing
-            // people you cannot contact is worse than showing none, and it
-            // contradicts the one-connection-at-a-time idea the whole app
-            // is built around.
-            const Expanded(
-              child: EmptyState(
-                icon: Icons.favorite,
-                title: 'Matches are paused',
-                message:
-                    'Pearmo is one connection at a time. Your next set of '
-                    'matches arrives once this connection ends.',
+            // One scroll view for the card *and* the notice, rather than a
+            // fixed-height card above an `Expanded` notice. The connection
+            // card is ~340px tall and the unverified banner another ~140,
+            // which on a normal phone left the `Expanded` less height than
+            // `EmptyState`'s own content needs — so the notice overflowed the
+            // bottom by ~130px instead of the screen simply scrolling.
+            Expanded(
+              child: ListView(
+                children: [
+                  _CurrentConnectionCard(
+                    connection: activeConnection,
+                    userId: userId,
+                  ),
+                  const SizedBox(height: 12),
+                  // The card list is deliberately not rendered here. While a
+                  // connection is live, `enforce_single_active_connection`
+                  // rejects any new one and `canSendRequestProvider` disables
+                  // the request button — so every card on screen is
+                  // unreachable. Showing people you cannot contact is worse
+                  // than showing none, and it contradicts the
+                  // one-connection-at-a-time idea the whole app is built
+                  // around.
+                  const EmptyState(
+                    icon: Icons.favorite,
+                    title: 'Matches are paused',
+                    message:
+                        'Pearmo is one connection at a time. Your next set of '
+                        'matches arrives once this connection ends.',
+                  ),
+                ],
               ),
             ),
           ] else ...[
