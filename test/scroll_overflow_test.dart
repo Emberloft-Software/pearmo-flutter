@@ -1,4 +1,6 @@
-// TEMPORARY scratch verification - delete after running.
+// Regression tests for vertical overflow: screens that have to survive the
+// soft keyboard eating ~300px of height, and layouts where a fixed-height
+// sibling used to squeeze an `Expanded` below its content's minimum.
 import 'package:flutter/material.dart';
 import 'package:flutter_riverpod/flutter_riverpod.dart';
 import 'package:flutter_test/flutter_test.dart';

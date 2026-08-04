@@ -90,130 +90,141 @@ class _LoginScreenState extends ConsumerState<LoginScreen> {
   @override
   Widget build(BuildContext context) {
     return Scaffold(
+      // Scrollable, not a fixed Column with Spacers. Focusing the phone field
+      // opens the keyboard, which takes ~300px off this screen — more than
+      // the Spacers can give back — so everything past the fold was simply
+      // clipped, which is why parts of the copy went missing. The minHeight
+      // keeps the content vertically centred whenever it does fit.
       body: SafeArea(
-        child: Padding(
-          padding: const EdgeInsets.all(24),
-          child: Form(
-            key: _formKey,
-            child: Column(
-              crossAxisAlignment: CrossAxisAlignment.start,
-              children: [
-                const Spacer(),
-                // Two of the 3D characters on the stage gradient — the brand
-                // moment before any text.
-                Container(
-                  width: 108,
-                  height: 96,
-                  decoration: BoxDecoration(
-                    gradient: const LinearGradient(
-                      colors: AppColors.heroGradient,
-                      begin: Alignment.topRight,
-                      end: Alignment.bottomLeft,
+        child: LayoutBuilder(
+          builder: (context, constraints) => SingleChildScrollView(
+            padding: const EdgeInsets.all(24),
+            child: ConstrainedBox(
+              constraints: BoxConstraints(
+                minHeight: (constraints.maxHeight - 48).clamp(0.0, double.infinity),
+              ),
+              child: Form(
+                key: _formKey,
+                child: Column(
+                  crossAxisAlignment: CrossAxisAlignment.start,
+                  mainAxisAlignment: MainAxisAlignment.center,
+                  children: [
+                    // Two of the 3D characters on the stage gradient — the brand
+                    // moment before any text.
+                    Container(
+                      width: 108,
+                      height: 96,
+                      decoration: BoxDecoration(
+                        gradient: const LinearGradient(
+                          colors: AppColors.heroGradient,
+                          begin: Alignment.topRight,
+                          end: Alignment.bottomLeft,
+                        ),
+                        borderRadius: BorderRadius.circular(28),
+                      ),
+                      clipBehavior: Clip.antiAlias,
+                      child: Stack(
+                        children: [
+                          Positioned(
+                            left: -14,
+                            bottom: -6,
+                            width: 76,
+                            child: Image.asset(
+                              'assets/avatars/fox-f.png',
+                              errorBuilder: (_, _, _) => const SizedBox.shrink(),
+                            ),
+                          ),
+                          Positioned(
+                            right: -14,
+                            bottom: -6,
+                            width: 76,
+                            child: Image.asset(
+                              'assets/avatars/wolf-m.png',
+                              errorBuilder: (_, _, _) => const SizedBox.shrink(),
+                            ),
+                          ),
+                        ],
+                      ),
                     ),
-                    borderRadius: BorderRadius.circular(28),
-                  ),
-                  clipBehavior: Clip.antiAlias,
-                  child: Stack(
-                    children: [
-                      Positioned(
-                        left: -14,
-                        bottom: -6,
-                        width: 76,
-                        child: Image.asset(
-                          'assets/avatars/fox-f.png',
-                          errorBuilder: (_, _, _) => const SizedBox.shrink(),
+                    const SizedBox(height: 24),
+                    Text('Welcome to ${AppConstants.appName}', style: AppTextStyles.displayMedium),
+                    const SizedBox(height: 8),
+                    Text(
+                      'Curated matches, not endless swiping. Enter your phone number to get started.',
+                      style: AppTextStyles.body.copyWith(color: AppColors.textSecondary),
+                    ),
+                    const SizedBox(height: 32),
+                    TextFormField(
+                      controller: _phoneController,
+                      keyboardType: TextInputType.phone,
+                      autofillHints: const [AutofillHints.telephoneNumber],
+                      // Digits only: the country code is fixed and shown, so a
+                      // typed `+` can only ever be a mistake.
+                      //
+                      // We ask for 10 digits (`0771234567`) because that's how
+                      // Sri Lankans actually write their number — making them
+                      // drop the leading 0 to suit the displayed +94 just
+                      // invites mistyping. `normalizeSriLankanMobile` strips the
+                      // 0 if present and accepts 9 digits too.
+                      //
+                      // The cap is 11, not 10, so an autofilled or pasted
+                      // `94771234567` still normalises instead of being silently
+                      // truncated into an invalid number. The counter is hidden,
+                      // so the user only ever sees the "10 digits" ask.
+                      inputFormatters: [FilteringTextInputFormatter.digitsOnly],
+                      maxLength: 11,
+                      decoration: const InputDecoration(
+                        labelText: 'Mobile number',
+                        hintText: '0771234567',
+                        helperText: 'Your 10-digit mobile number, no need to type +94',
+                        counterText: '',
+                        // Fixed-width, self-centering box rather than a padded
+                        // Text with zero-size constraints — the latter let the
+                        // prefix and the input text share horizontal space and
+                        // overlap.
+                        //
+                        // Has to be `prefixIcon`, not `prefix`: Flutter only
+                        // renders `prefix` once the field is focused or has
+                        // text, and +94 needs to be visible before the user
+                        // taps in, otherwise they'll type it themselves.
+                        //
+                        // 🇱🇰 falls back to the letters "LK" on some older
+                        // Android builds, which still reads correctly here.
+                        prefixIcon: SizedBox(
+                          width: 78,
+                          child: Center(
+                            child: Text(
+                              '🇱🇰 +94',
+                              style: TextStyle(fontSize: 15, fontWeight: FontWeight.w600),
+                            ),
+                          ),
                         ),
+                        prefixIconConstraints: BoxConstraints(minWidth: 78, maxWidth: 78),
                       ),
-                      Positioned(
-                        right: -14,
-                        bottom: -6,
-                        width: 76,
-                        child: Image.asset(
-                          'assets/avatars/wolf-m.png',
-                          errorBuilder: (_, _, _) => const SizedBox.shrink(),
-                        ),
-                      ),
+                      validator: Validators.sriLankanMobile,
+                    ),
+                    if (_error != null) ...[
+                      const SizedBox(height: 12),
+                      ErrorBanner(message: _error!),
                     ],
-                  ),
-                ),
-                const SizedBox(height: 24),
-                Text('Welcome to ${AppConstants.appName}', style: AppTextStyles.displayMedium),
-                const SizedBox(height: 8),
-                Text(
-                  'Curated matches, not endless swiping. Enter your phone number to get started.',
-                  style: AppTextStyles.body.copyWith(color: AppColors.textSecondary),
-                ),
-                const SizedBox(height: 32),
-                TextFormField(
-                  controller: _phoneController,
-                  keyboardType: TextInputType.phone,
-                  autofillHints: const [AutofillHints.telephoneNumber],
-                  // Digits only: the country code is fixed and shown, so a
-                  // typed `+` can only ever be a mistake.
-                  //
-                  // We ask for 10 digits (`0771234567`) because that's how
-                  // Sri Lankans actually write their number — making them
-                  // drop the leading 0 to suit the displayed +94 just
-                  // invites mistyping. `normalizeSriLankanMobile` strips the
-                  // 0 if present and accepts 9 digits too.
-                  //
-                  // The cap is 11, not 10, so an autofilled or pasted
-                  // `94771234567` still normalises instead of being silently
-                  // truncated into an invalid number. The counter is hidden,
-                  // so the user only ever sees the "10 digits" ask.
-                  inputFormatters: [FilteringTextInputFormatter.digitsOnly],
-                  maxLength: 11,
-                  decoration: const InputDecoration(
-                    labelText: 'Mobile number',
-                    hintText: '0771234567',
-                    helperText: 'Your 10-digit mobile number, no need to type +94',
-                    counterText: '',
-                    // Fixed-width, self-centering box rather than a padded
-                    // Text with zero-size constraints — the latter let the
-                    // prefix and the input text share horizontal space and
-                    // overlap.
-                    //
-                    // Has to be `prefixIcon`, not `prefix`: Flutter only
-                    // renders `prefix` once the field is focused or has
-                    // text, and +94 needs to be visible before the user
-                    // taps in, otherwise they'll type it themselves.
-                    //
-                    // 🇱🇰 falls back to the letters "LK" on some older
-                    // Android builds, which still reads correctly here.
-                    prefixIcon: SizedBox(
-                      width: 78,
-                      child: Center(
-                        child: Text(
-                          '🇱🇰 +94',
-                          style: TextStyle(fontSize: 15, fontWeight: FontWeight.w600),
-                        ),
-                      ),
+                    const SizedBox(height: 24),
+                    PearmoButton(
+                      label: _cooldownRemaining > 0
+                          ? 'Send code in ${_cooldownRemaining}s'
+                          : 'Send code',
+                      isLoading: _isLoading,
+                      onPressed: _cooldownRemaining > 0 ? null : _sendOtp,
                     ),
-                    prefixIconConstraints: BoxConstraints(minWidth: 78, maxWidth: 78),
-                  ),
-                  validator: Validators.sriLankanMobile,
+                    const SizedBox(height: 16),
+                    Text(
+                      'By continuing you agree to keep the first conversations on Pearmo\'s platform '
+                      'and follow our community safety guidelines.',
+                      style: AppTextStyles.caption,
+                      textAlign: TextAlign.center,
+                    ),
+                  ],
                 ),
-                if (_error != null) ...[
-                  const SizedBox(height: 12),
-                  ErrorBanner(message: _error!),
-                ],
-                const SizedBox(height: 24),
-                PearmoButton(
-                  label: _cooldownRemaining > 0
-                      ? 'Send code in ${_cooldownRemaining}s'
-                      : 'Send code',
-                  isLoading: _isLoading,
-                  onPressed: _cooldownRemaining > 0 ? null : _sendOtp,
-                ),
-                const SizedBox(height: 16),
-                Text(
-                  'By continuing you agree to keep the first conversations on Pearmo\'s platform '
-                  'and follow our community safety guidelines.',
-                  style: AppTextStyles.caption,
-                  textAlign: TextAlign.center,
-                ),
-                const Spacer(),
-              ],
+              ),
             ),
           ),
         ),
