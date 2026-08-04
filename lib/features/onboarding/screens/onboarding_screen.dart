@@ -84,7 +84,7 @@ class _OnboardingScreenState extends ConsumerState<OnboardingScreen> {
         title: "Let's get to know you",
         subtitle:
             "A few quick questions help ${AppConstants.appName} curate matches who actually fit "
-            'how you think and live — no endless swiping.',
+            'how you think and live, with no endless swiping.',
         canContinue: true,
         content: const _WelcomeStep(),
       ),
@@ -130,7 +130,7 @@ class _OnboardingScreenState extends ConsumerState<OnboardingScreen> {
       for (final trait in PersonalityTrait.values)
         _StepDef(
           title: trait.label,
-          subtitle: 'Answer honestly — this is private and only used for matching.',
+          subtitle: 'Answer honestly. This is private and only used for matching.',
           canContinue: PersonalityQuestions.forTrait(trait)
               .every((q) => draft.personalityAnswers.containsKey(q.id)),
           content: _PersonalityTraitStep(trait: trait, draft: draft, controller: controller),
@@ -177,14 +177,14 @@ class _OnboardingScreenState extends ConsumerState<OnboardingScreen> {
       ),
       _StepDef(
         title: 'Add a voice intro',
-        subtitle: 'Optional — let your personality come through before any photos.',
+        subtitle: 'Optional: let your personality come through before any photos.',
         canContinue: true,
         content: AudioIntroRecorder(onRecorded: controller.setAudioIntroLocalPath),
       ),
       _StepDef(
         title: 'Where are you based?',
         subtitle:
-            "We only show matches your general area — never your exact location, for everyone's privacy and safety.",
+            "We only show matches your general area, never your exact location, for everyone's privacy and safety.",
         canContinue: draft.regionName != null,
         content: SingleChoiceList<String>(
           options: SriLankaRegions.provinces.map((r) => ChoiceOption(r, r)).toList(),
@@ -205,7 +205,7 @@ class _OnboardingScreenState extends ConsumerState<OnboardingScreen> {
       onBack: _step > 0 ? _goBack : null,
       onNext: _goNext,
       isLoading: _isSubmitting,
-      nextLabel: _step == _totalSteps - 1 ? "I'm ready — find my matches" : 'Continue',
+      nextLabel: _step == _totalSteps - 1 ? "I'm ready, find my matches" : 'Continue',
       child: Column(
         crossAxisAlignment: CrossAxisAlignment.start,
         children: [
@@ -252,7 +252,7 @@ class _WelcomeStep extends StatelessWidget {
           const SizedBox(height: 12),
           Text(
             "Your answers are private. They're used to find people who genuinely match your "
-            'personality and intentions — not to be shown off in a public bio.',
+            'personality and intentions, not to be shown off in a public bio.',
             style: AppTextStyles.body,
           ),
         ],
@@ -290,11 +290,15 @@ class _DateOfBirthStep extends StatelessWidget {
             children: [
               const Icon(Icons.cake_outlined, color: AppColors.primary),
               const SizedBox(width: 12),
-              Text(
-                dob == null
-                    ? 'Select date of birth'
-                    : '${dob.year}-${dob.month.toString().padLeft(2, '0')}-${dob.day.toString().padLeft(2, '0')}',
-                style: AppTextStyles.bodyMedium,
+              Expanded(
+                child: Text(
+                  dob == null
+                      ? 'Select date of birth'
+                      : '${dob.year}-${dob.month.toString().padLeft(2, '0')}-${dob.day.toString().padLeft(2, '0')}',
+                  maxLines: 1,
+                  overflow: TextOverflow.ellipsis,
+                  style: AppTextStyles.bodyMedium,
+                ),
               ),
             ],
           ),
@@ -351,7 +355,7 @@ class _AgeRangeStepState extends State<_AgeRangeStep> {
       crossAxisAlignment: CrossAxisAlignment.start,
       children: [
         Text(
-          '${_range.start.round()} – ${_range.end.round()}',
+          '${_range.start.round()} - ${_range.end.round()}',
           style: AppTextStyles.headline,
         ),
         RangeSlider(

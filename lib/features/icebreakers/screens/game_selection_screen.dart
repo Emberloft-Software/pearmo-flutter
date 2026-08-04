@@ -81,7 +81,7 @@ class _GameSelectionScreenState extends ConsumerState<GameSelectionScreen> {
         padding: const EdgeInsets.all(20),
         children: [
           Text(
-            'Break the ice with a quick game — finishing one together helps build a connection '
+            'Break the ice with a quick game. Finishing one together helps build a connection '
             'before chat fully opens up.',
             style: AppTextStyles.body,
           ),

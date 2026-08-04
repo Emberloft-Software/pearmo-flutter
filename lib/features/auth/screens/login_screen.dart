@@ -166,7 +166,7 @@ class _LoginScreenState extends ConsumerState<LoginScreen> {
                   decoration: const InputDecoration(
                     labelText: 'Mobile number',
                     hintText: '0771234567',
-                    helperText: 'Your 10-digit mobile number — no need to type +94',
+                    helperText: 'Your 10-digit mobile number, no need to type +94',
                     counterText: '',
                     // Fixed-width, self-centering box rather than a padded
                     // Text with zero-size constraints — the latter let the

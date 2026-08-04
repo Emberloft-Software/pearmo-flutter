@@ -65,7 +65,7 @@ class _ReportScreenState extends ConsumerState<ReportScreen> {
           ? const EmptyState(
               icon: Icons.check_circle_outline,
               title: 'Report submitted',
-              message: "Thanks for letting us know — our team will review this. You're not "
+              message: "Thanks for letting us know. Our team will review this. You're not "
                   'alone, and your safety matters to us.',
             )
           : ListView(

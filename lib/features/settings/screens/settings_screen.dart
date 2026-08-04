@@ -224,7 +224,7 @@ class _SettingsScreenState extends ConsumerState<SettingsScreen> {
       children: [
         const SectionHeader(
           title: 'Profile photo',
-          subtitle: 'Avatars are always shown first — add a real photo once you\'re verified.',
+          subtitle: 'Avatars are always shown first. Add a real photo once you\'re verified.',
         ),
         ListTile(
           contentPadding: EdgeInsets.zero,
@@ -261,7 +261,7 @@ class _SettingsScreenState extends ConsumerState<SettingsScreen> {
         const SizedBox(height: 16),
         const SectionHeader(
           title: 'Pause my profile',
-          subtitle: "Hide your profile from new matches without deleting anything — existing "
+          subtitle: 'Hide your profile from new matches without deleting anything. Existing '
               'chats stay open, and you can turn this back on any time.',
         ),
         SwitchListTile(
@@ -341,7 +341,7 @@ class _SettingsScreenState extends ConsumerState<SettingsScreen> {
         const SectionHeader(
           title: 'Danger zone',
           subtitle: 'Permanently deletes your photos, voice intro, and identity documents, and '
-              "hides your profile — this can't be undone. Your account can't be recovered "
+              "hides your profile. This can't be undone. Your account can't be recovered "
               'afterward, but you can always sign up again with a new account.',
         ),
         if (_deleteError != null) ...[

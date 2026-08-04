@@ -124,7 +124,7 @@ class _DrawTogetherGameState extends ConsumerState<DrawTogetherGame> {
       child: Column(
         children: [
           Text(
-            'Doodle something together — take turns adding to the canvas.',
+            'Doodle something together, taking turns adding to the canvas.',
             style: AppTextStyles.body,
           ),
           const SizedBox(height: 12),

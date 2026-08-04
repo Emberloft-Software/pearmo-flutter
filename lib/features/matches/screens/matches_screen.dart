@@ -163,18 +163,20 @@ class _UnverifiedPoolBanner extends StatelessWidget {
                 color: AppColors.textSecondary,
               ),
               const SizedBox(width: 6),
-              Text(
-                "You're in the unverified pool",
-                style: AppTextStyles.caption.copyWith(
-                  fontWeight: FontWeight.w800,
-                  color: AppColors.textPrimary,
+              Expanded(
+                child: Text(
+                  "You're in the unverified pool",
+                  style: AppTextStyles.caption.copyWith(
+                    fontWeight: FontWeight.w800,
+                    color: AppColors.textPrimary,
+                  ),
                 ),
               ),
             ],
           ),
           const SizedBox(height: 6),
           Text(
-            "Everyone here — including you — has signed up but hasn't completed a selfie "
+            "Everyone here, including you, has signed up but hasn't completed a selfie "
             "check yet. Pearmo hasn't confirmed anyone's photo, age, or identity.",
             style: AppTextStyles.caption,
           ),
@@ -224,7 +226,9 @@ class _NextBatchNote extends ConsumerWidget {
         children: [
           const Icon(Icons.schedule, size: 14, color: AppColors.textSecondary),
           const SizedBox(width: 6),
-          Text('New matches in about $label', style: AppTextStyles.caption),
+          Expanded(
+            child: Text('New matches in about $label', style: AppTextStyles.caption),
+          ),
         ],
       ),
     );
@@ -248,7 +252,7 @@ class _EmptyMatches extends ConsumerWidget {
       // nobody eligible. Honest about being early rather than implying a
       // schedule we can't promise in a small beta.
       message =
-          "You're early — we'll show you people as they join. "
+          "You're early, so we'll show you people as they join. "
           'Adding a voice intro and verifying make you easier to match.';
     } else {
       final remaining = expiry.difference(DateTime.now());

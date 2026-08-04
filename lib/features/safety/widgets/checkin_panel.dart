@@ -71,7 +71,7 @@ class _CheckinPanelState extends ConsumerState<CheckinPanel> {
       id: _alarmIdFor(checkin.id),
       dateTime: checkin.nextDeadline,
       title: 'Check-in time',
-      body: "Tap to confirm you're okay — this alarm is just for you, no one else is notified.",
+      body: "Tap to confirm you're okay. This alarm is just for you, no one else is notified.",
     );
   }
 
@@ -180,7 +180,7 @@ class _CheckinPanelState extends ConsumerState<CheckinPanel> {
               Expanded(
                 child: Text(
                   "This alarm only sounds on your own phone. Pearmo does not call, text, or notify "
-                  "anyone — including the contact below — automatically. If you don't check in, "
+                  "anyone automatically, including the contact below. If you don't check in, "
                   "your check-in is simply marked missed in the app.",
                   style: AppTextStyles.caption,
                 ),
@@ -221,11 +221,15 @@ class _CheckinPanelState extends ConsumerState<CheckinPanel> {
                     children: [
                       const Icon(Icons.event_outlined, color: AppColors.textSecondary),
                       const SizedBox(width: 12),
-                      Text(
-                        _scheduledFor == null
-                            ? 'Pick date & time'
-                            : DateFormat('EEE d MMM, HH:mm').format(_scheduledFor!),
-                        style: AppTextStyles.body,
+                      Expanded(
+                        child: Text(
+                          _scheduledFor == null
+                              ? 'Pick date & time'
+                              : DateFormat('EEE d MMM, HH:mm').format(_scheduledFor!),
+                          maxLines: 1,
+                          overflow: TextOverflow.ellipsis,
+                          style: AppTextStyles.body,
+                        ),
                       ),
                     ],
                   ),
@@ -236,12 +240,12 @@ class _CheckinPanelState extends ConsumerState<CheckinPanel> {
                 controller: _contactController,
                 keyboardType: TextInputType.phone,
                 decoration: const InputDecoration(
-                  hintText: 'Optional — a personal note of who you\'d call',
+                  hintText: 'Optional: a personal note of who you\'d call',
                 ),
               ),
               const SizedBox(height: 4),
               Text(
-                "For your own reference only — Pearmo never contacts this number.",
+                "For your own reference only. Pearmo never contacts this number.",
                 style: AppTextStyles.caption,
               ),
               const SizedBox(height: 12),

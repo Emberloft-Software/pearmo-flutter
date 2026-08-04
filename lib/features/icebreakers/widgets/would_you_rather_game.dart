@@ -109,7 +109,7 @@ class _WouldYouRatherGameState extends ConsumerState<WouldYouRatherGame> {
                 Text(
                   myAnswer == theirAnswer
                       ? 'You picked the same thing 🎉'
-                      : "You picked different things — that's interesting!",
+                      : "You picked different things. That's interesting!",
                   style: AppTextStyles.body,
                 ),
               ],

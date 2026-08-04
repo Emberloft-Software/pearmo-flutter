@@ -183,7 +183,7 @@ class _LivenessCheckScreenState extends State<LivenessCheckScreen> {
         _LivenessStep.centerFace => 'Center your face in the frame and look straight ahead.',
         _LivenessStep.blink => 'Now blink naturally.',
         _LivenessStep.turnHead => 'Slowly turn your head to one side.',
-        _LivenessStep.done => 'Got it — capturing your selfie...',
+        _LivenessStep.done => 'Got it, capturing your selfie...',
       };
 
   @override

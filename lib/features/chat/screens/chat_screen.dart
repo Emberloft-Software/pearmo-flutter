@@ -306,7 +306,7 @@ class _ChatScreenState extends ConsumerState<ChatScreen> {
                 const _NoticeBanner(
                   icon: Icons.info_outline,
                   message:
-                      'You\'re in limited chat — each of you can send up to '
+                      'You\'re in limited chat. Each of you can send up to '
                       '${AppConstants.limitedChatMessageCap} messages until you both unlock open chat.',
                 ),
               Expanded(

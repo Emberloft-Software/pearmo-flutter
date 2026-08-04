@@ -82,111 +82,144 @@ class HeroProfileCard extends StatelessWidget {
     );
 
     if (displayName != null) {
-      return Container(
-        height: 190,
-        decoration: decoration,
-        clipBehavior: Clip.antiAlias,
-        child: Stack(
-          children: [
-            // Lime glow behind the character, like the HTML hero.
-            Positioned(
-              right: -34,
-              bottom: -46,
-              child: Container(
-                width: 220,
-                height: 175,
-                decoration: BoxDecoration(
-                  shape: BoxShape.circle,
-                  gradient: RadialGradient(
-                    colors: [
-                      AppColors.secondary.withValues(alpha: 0.35),
-                      AppColors.secondary.withValues(alpha: 0),
-                    ],
-                  ),
-                ),
-              ),
-            ),
-            // Character fills the card's full height — no dead space above.
-            Positioned(
-              right: -22,
-              top: 6,
-              bottom: -8,
-              child: Image.asset(
-                character.assetPath,
-                fit: BoxFit.fitHeight,
-                alignment: Alignment.bottomRight,
-                errorBuilder: (_, _, _) => const SizedBox.shrink(),
-              ),
-            ),
-            // Kicker pinned to the top so the card has no empty band.
-            if (kicker != null)
-              Positioned(
-                left: 20,
-                top: 16,
-                child: Text(
-                  kicker!.toUpperCase(),
-                  style: AppTextStyles.label.copyWith(
-                    color: AppColors.secondary,
-                    fontSize: 10.5,
-                    letterSpacing: 2,
-                  ),
-                ),
-              ),
-            Positioned(
-              left: 20,
-              right: 168,
-              bottom: 18,
-              child: Column(
-                crossAxisAlignment: CrossAxisAlignment.start,
-                mainAxisSize: MainAxisSize.min,
-                children: [
-                  // Big line: age · gender.
-                  Text(
-                    title,
-                    maxLines: 2,
-                    overflow: TextOverflow.ellipsis,
-                    style: AppTextStyles.displayMedium.copyWith(
-                      color: Colors.white,
-                      fontSize: 30,
-                      height: 1.02,
+      // Both the character's width and the text column's width are derived
+      // from the actual card width rather than hard-coded. The art used to
+      // be sized off a fixed 190px card height (so its width was constant on
+      // every device) while the text column reserved a fixed 168px on the
+      // right — on a narrow phone that left the name block ~90px wide, which
+      // is what made this card look misaligned there but fine on a large
+      // phone. The height is a *minimum* now too, so the card grows instead
+      // of clipping when the system text scale is turned up.
+      return LayoutBuilder(
+        builder: (context, constraints) {
+          final cardWidth = constraints.maxWidth;
+          final artWidth = (cardWidth * 0.44).clamp(120.0, 210.0);
+          // Text stops just before the art starts, with a small gutter.
+          final textRightInset = (artWidth - 26).clamp(80.0, cardWidth * 0.5);
+
+          return Container(
+            decoration: decoration,
+            clipBehavior: Clip.antiAlias,
+            child: Stack(
+              children: [
+                // Lime glow behind the character, like the HTML hero.
+                Positioned(
+                  right: -34,
+                  bottom: -46,
+                  child: Container(
+                    width: 220,
+                    height: 175,
+                    decoration: BoxDecoration(
+                      shape: BoxShape.circle,
+                      gradient: RadialGradient(
+                        colors: [
+                          AppColors.secondary.withValues(alpha: 0.35),
+                          AppColors.secondary.withValues(alpha: 0),
+                        ],
+                      ),
                     ),
                   ),
-                  const SizedBox(height: 6),
-                  // Small line: the character/display name.
-                  Text(
-                    displayName!,
-                    overflow: TextOverflow.ellipsis,
-                    style: AppTextStyles.bodyMedium
-                        .copyWith(color: Colors.white.withValues(alpha: 0.85)),
+                ),
+                // Character fills the card's full height — no dead space
+                // above. `contain` (not `fitHeight`) so a tall card at a
+                // large text scale scales the art down to the reserved
+                // width instead of letting it grow under the name.
+                Positioned(
+                  right: -22,
+                  top: 6,
+                  bottom: -8,
+                  width: artWidth,
+                  child: Image.asset(
+                    character.assetPath,
+                    fit: BoxFit.contain,
+                    alignment: Alignment.bottomRight,
+                    errorBuilder: (_, _, _) => const SizedBox.shrink(),
                   ),
-                  if (subtitle != null) ...[
-                    const SizedBox(height: 3),
-                    Row(
+                ),
+                // Non-positioned child: this is what gives the Stack its
+                // height, so the card tracks its own content.
+                ConstrainedBox(
+                  constraints: const BoxConstraints(minHeight: 190),
+                  child: Padding(
+                    padding: EdgeInsets.fromLTRB(20, 16, textRightInset, 18),
+                    child: Column(
+                      crossAxisAlignment: CrossAxisAlignment.start,
+                      mainAxisAlignment: MainAxisAlignment.spaceBetween,
+                      mainAxisSize: MainAxisSize.min,
                       children: [
-                        Icon(Icons.place_outlined,
-                            size: 13, color: Colors.white.withValues(alpha: 0.65)),
-                        const SizedBox(width: 4),
-                        Flexible(
-                          child: Text(
-                            subtitle!,
+                        // Kicker pinned to the top so the card has no empty
+                        // band.
+                        if (kicker != null)
+                          Text(
+                            kicker!.toUpperCase(),
+                            maxLines: 1,
                             overflow: TextOverflow.ellipsis,
-                            style: AppTextStyles.caption
-                                .copyWith(color: Colors.white.withValues(alpha: 0.65)),
-                          ),
+                            style: AppTextStyles.label.copyWith(
+                              color: AppColors.secondary,
+                              fontSize: 10.5,
+                              letterSpacing: 2,
+                            ),
+                          )
+                        else
+                          const SizedBox.shrink(),
+                        Column(
+                          crossAxisAlignment: CrossAxisAlignment.start,
+                          mainAxisSize: MainAxisSize.min,
+                          children: [
+                            // Big line: age · gender.
+                            Text(
+                              title,
+                              maxLines: 2,
+                              overflow: TextOverflow.ellipsis,
+                              style: AppTextStyles.displayMedium.copyWith(
+                                color: Colors.white,
+                                fontSize: 30,
+                                height: 1.02,
+                              ),
+                            ),
+                            const SizedBox(height: 6),
+                            // Small line: the character/display name.
+                            Text(
+                              displayName!,
+                              maxLines: 1,
+                              overflow: TextOverflow.ellipsis,
+                              style: AppTextStyles.bodyMedium
+                                  .copyWith(color: Colors.white.withValues(alpha: 0.85)),
+                            ),
+                            if (subtitle != null) ...[
+                              const SizedBox(height: 3),
+                              Row(
+                                children: [
+                                  Icon(Icons.place_outlined,
+                                      size: 13, color: Colors.white.withValues(alpha: 0.65)),
+                                  const SizedBox(width: 4),
+                                  Flexible(
+                                    child: Text(
+                                      subtitle!,
+                                      maxLines: 1,
+                                      overflow: TextOverflow.ellipsis,
+                                      style: AppTextStyles.caption
+                                          .copyWith(color: Colors.white.withValues(alpha: 0.65)),
+                                    ),
+                                  ),
+                                ],
+                              ),
+                            ],
+                            // Voice-intro play button, below the location line.
+                            if (audioPath != null && audioPath!.isNotEmpty) ...[
+                              const SizedBox(height: 10),
+                              AudioIntroPlayer(storagePath: audioPath!, compact: true),
+                            ],
+                          ],
                         ),
                       ],
                     ),
-                  ],
-                  // Voice-intro play button, below the location line.
-                  if (audioPath != null && audioPath!.isNotEmpty) ...[
-                    const SizedBox(height: 10),
-                    AudioIntroPlayer(storagePath: audioPath!, compact: true),
-                  ],
-                ],
-              ),
+                  ),
+                ),
+              ],
             ),
-          ],
-        ),
+          );
+        },
       );
     }
 
@@ -279,11 +312,15 @@ class _HeroBadge extends StatelessWidget {
         children: [
           Icon(icon, size: 15, color: foreground),
           const SizedBox(width: 6),
-          Text(
-            label,
-            style: AppTextStyles.caption.copyWith(
-              color: foreground,
-              fontWeight: FontWeight.w700,
+          Flexible(
+            child: Text(
+              label,
+              maxLines: 1,
+              overflow: TextOverflow.ellipsis,
+              style: AppTextStyles.caption.copyWith(
+                color: foreground,
+                fontWeight: FontWeight.w700,
+              ),
             ),
           ),
         ],

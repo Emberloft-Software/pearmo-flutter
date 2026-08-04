@@ -45,7 +45,7 @@ class _PaymentsScreenState extends ConsumerState<PaymentsScreen> {
       }
     } catch (e) {
       setState(() => _error =
-          'Payments aren\'t available yet — please check back soon. (${ErrorMapper.map(e)})');
+          'Payments aren\'t available yet, please check back soon. (${ErrorMapper.map(e)})');
     } finally {
       if (mounted) setState(() => _isStartingCheckout = false);
     }

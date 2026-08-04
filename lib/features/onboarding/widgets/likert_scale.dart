@@ -74,8 +74,24 @@ class LikertQuestion extends StatelessWidget {
           Row(
             mainAxisAlignment: MainAxisAlignment.spaceBetween,
             children: [
-              Text(_labels.first, style: AppTextStyles.caption),
-              Text(_labels.last, style: AppTextStyles.caption),
+              Flexible(
+                child: Text(
+                  _labels.first,
+                  maxLines: 1,
+                  overflow: TextOverflow.ellipsis,
+                  style: AppTextStyles.caption,
+                ),
+              ),
+              const SizedBox(width: 8),
+              Flexible(
+                child: Text(
+                  _labels.last,
+                  maxLines: 1,
+                  overflow: TextOverflow.ellipsis,
+                  textAlign: TextAlign.end,
+                  style: AppTextStyles.caption,
+                ),
+              ),
             ],
           ),
         ],

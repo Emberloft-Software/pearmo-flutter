@@ -170,13 +170,15 @@ class _SelfieTierCardState extends ConsumerState<_SelfieTierCard> {
             children: [
               const Icon(Icons.face_retouching_natural, color: AppColors.secondaryDark),
               const SizedBox(width: 8),
-              Text('1. Verify you\'re real', style: AppTextStyles.title),
+              Expanded(
+                child: Text('1. Verify you\'re real', style: AppTextStyles.title),
+              ),
             ],
           ),
           const SizedBox(height: 8),
           Text(
             'A quick liveliness check (look straight, blink, turn your head) followed by a '
-            "selfie. Reviewed manually — shows matches you're a real person.",
+            "selfie. Reviewed manually, and shows matches you're a real person.",
             style: AppTextStyles.body,
           ),
           const SizedBox(height: 16),
@@ -205,7 +207,7 @@ class _SelfieTierCardState extends ConsumerState<_SelfieTierCard> {
             ],
             const SizedBox(height: 16),
             PearmoButton(
-              label: isPending ? 'Submitted — awaiting review' : 'Submit for review',
+              label: isPending ? 'Submitted, awaiting review' : 'Submit for review',
               icon: Icons.shield_outlined,
               isLoading: _isSubmitting,
               onPressed: (_isSubmitting || isPending) ? null : _submit,
@@ -308,7 +310,12 @@ class _IdTierCardState extends ConsumerState<_IdTierCard> {
                 color: unlocked ? AppColors.secondaryDark : AppColors.textSecondary,
               ),
               const SizedBox(width: 8),
-              Text('2. Verify your age (optional)', style: AppTextStyles.title),
+              // Expanded, not bare: at 18px this title is wider than the
+              // card's inner width on a 360dp phone, so it overflowed there
+              // at the default text scale.
+              Expanded(
+                child: Text('2. Verify your age (optional)', style: AppTextStyles.title),
+              ),
             ],
           ),
           const SizedBox(height: 8),
@@ -361,7 +368,7 @@ class _IdTierCardState extends ConsumerState<_IdTierCard> {
               ],
               const SizedBox(height: 16),
               PearmoButton(
-                label: isPending ? 'Submitted — awaiting review' : 'Submit for review',
+                label: isPending ? 'Submitted, awaiting review' : 'Submit for review',
                 icon: Icons.shield_outlined,
                 isLoading: _isSubmitting,
                 onPressed: (_isSubmitting || isPending) ? null : _submit,

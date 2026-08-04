@@ -57,12 +57,16 @@ class TierChip extends StatelessWidget {
             ),
             if (showLabel) ...[
               const SizedBox(width: 4),
-              Text(
-                tier.label,
-                style: AppTextStyles.caption.copyWith(
-                  fontSize: 10,
-                  fontWeight: FontWeight.w800,
-                  color: verified ? AppColors.textPrimary : AppColors.textSecondary,
+              Flexible(
+                child: Text(
+                  tier.label,
+                  maxLines: 1,
+                  overflow: TextOverflow.ellipsis,
+                  style: AppTextStyles.caption.copyWith(
+                    fontSize: 10,
+                    fontWeight: FontWeight.w800,
+                    color: verified ? AppColors.textPrimary : AppColors.textSecondary,
+                  ),
                 ),
               ),
             ],

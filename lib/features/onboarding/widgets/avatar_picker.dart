@@ -110,9 +110,14 @@ class _AvatarPickerState extends State<AvatarPicker> {
           Row(
             mainAxisAlignment: MainAxisAlignment.end,
             children: [
-              Text(
-                _showAll ? 'All characters' : 'Suggested for you',
-                style: AppTextStyles.caption,
+              Flexible(
+                child: Text(
+                  _showAll ? 'All characters' : 'Suggested for you',
+                  maxLines: 1,
+                  overflow: TextOverflow.ellipsis,
+                  textAlign: TextAlign.end,
+                  style: AppTextStyles.caption,
+                ),
               ),
               Switch(
                 value: _showAll,

@@ -77,8 +77,11 @@ class MatchCardWidget extends StatelessWidget {
                         const SizedBox(width: 6),
                         // Shown for every tier, unverified included — see
                         // TierChip's doc for why hiding it was the wrong
-                        // default.
-                        TierChip(tier: profile.verificationTier, compact: true),
+                        // default. Flexible so the "Unverified" pill (the
+                        // widest one) can't push this row past the card.
+                        Flexible(
+                          child: TierChip(tier: profile.verificationTier, compact: true),
+                        ),
                       ],
                     ),
                     const SizedBox(height: 3),

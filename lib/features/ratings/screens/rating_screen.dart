@@ -106,7 +106,7 @@ class _RatingScreenState extends ConsumerState<RatingScreen> {
         padding: const EdgeInsets.all(20),
         children: [
           Text(
-            "This is private and only used to improve your future matches — the other "
+            "This is private and only used to improve your future matches. The other "
             "person won't see your rating.",
             style: AppTextStyles.body,
           ),

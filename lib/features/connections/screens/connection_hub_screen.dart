@@ -104,7 +104,7 @@ class _ConnectionHubScreenState extends ConsumerState<ConnectionHubScreen> {
                     title: 'No active connection',
                     message:
                         'When you and a match both want to connect, your conversation starts '
-                        'here — one connection at a time, so you can focus on getting to know '
+                        'here, one connection at a time, so you can focus on getting to know '
                         'each other.',
                   );
                 }
@@ -115,7 +115,7 @@ class _ConnectionHubScreenState extends ConsumerState<ConnectionHubScreen> {
                   statusLabel: connection.status.label,
                   statusColor: statusColor,
                   caption: connection.status.canChat
-                      ? 'Chat is open — keep getting to know each other.'
+                      ? 'Chat is open. Keep getting to know each other.'
                       : 'Break the ice with a quick game before chat unlocks.',
                   onTap: () => context.push('/connection/${connection.id}'),
                 );

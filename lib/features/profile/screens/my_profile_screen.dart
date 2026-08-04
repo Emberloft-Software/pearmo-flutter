@@ -137,7 +137,7 @@ class _MyProfileScreenState extends ConsumerState<MyProfileScreen> {
               label: 'Looking for',
               child: AttributeChipList(labels: [
                 profile.relationshipIntent.label,
-                'Ages ${profile.seekingAgeMin}–${profile.seekingAgeMax}',
+                'Ages ${profile.seekingAgeMin}-${profile.seekingAgeMax}',
                 ...profile.seeking.map((e) => e.label),
               ]),
             ),
@@ -159,7 +159,7 @@ class _MyProfileScreenState extends ConsumerState<MyProfileScreen> {
                   _TraitRadar(profile: profile),
                   const SizedBox(height: 8),
                   Text(
-                    'Only you can see this — matches never see your trait scores.',
+                    'Only you can see this. Matches never see your trait scores.',
                     style: AppTextStyles.caption,
                     textAlign: TextAlign.center,
                   ),
@@ -440,11 +440,18 @@ class _SegmentedTabs extends StatelessWidget {
                         color: i == index ? AppColors.primaryDark : AppColors.textSecondary,
                       ),
                       const SizedBox(width: 6),
-                      Text(
-                        items[i].$2,
-                        style: AppTextStyles.caption.copyWith(
-                          fontWeight: FontWeight.w700,
-                          color: i == index ? AppColors.textPrimary : AppColors.textSecondary,
+                      // A third of a narrow screen is barely wider than
+                      // "Personality" at this weight, so the label has to be
+                      // allowed to shrink.
+                      Flexible(
+                        child: Text(
+                          items[i].$2,
+                          maxLines: 1,
+                          overflow: TextOverflow.ellipsis,
+                          style: AppTextStyles.caption.copyWith(
+                            fontWeight: FontWeight.w700,
+                            color: i == index ? AppColors.textPrimary : AppColors.textSecondary,
+                          ),
                         ),
                       ),
                     ],

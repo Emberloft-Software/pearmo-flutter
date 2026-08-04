@@ -11,7 +11,7 @@ import '../../core/theme/app_theme.dart';
 String verificationClaimFor(VerificationTier tier) => switch (tier) {
       VerificationTier.unverified => "This person hasn't completed any verification yet.",
       VerificationTier.selfieVerified =>
-        "We've confirmed a live selfie check — this is a real person. Their age and identity "
+        "We've confirmed a live selfie check, so this is a real person. Their age and identity "
             "haven't been separately confirmed.",
       VerificationTier.idVerified =>
         "We've confirmed a live selfie check, and that a submitted national ID matches their "
@@ -22,7 +22,7 @@ String verificationClaimFor(VerificationTier tier) => switch (tier) {
 /// Always-true regardless of tier — the part that actually matters legally.
 const String verificationSafetyDisclaimer =
     "Pearmo does not run criminal background checks on anyone. Verification confirms identity "
-    "details like the above — it is not a guarantee of anyone's safety, character, or "
+    "details like the above. It is not a guarantee of anyone's safety, character, or "
     "intentions. Always use your own judgement when meeting someone new.";
 
 /// Persistent inline disclaimer box — used on the verification screen itself,

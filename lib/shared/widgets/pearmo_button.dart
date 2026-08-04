@@ -43,7 +43,17 @@ class PearmoButton extends StatelessWidget {
             mainAxisAlignment: MainAxisAlignment.center,
             children: [
               if (icon != null) ...[Icon(icon, size: 20), const SizedBox(width: 8)],
-              Text(label),
+              // Flexible, not a bare Text: a long label ("Submitted, awaiting
+              // review") in a half-width button, or any label at a large
+              // system text scale, otherwise overflows this Row.
+              Flexible(
+                child: Text(
+                  label,
+                  maxLines: 1,
+                  overflow: TextOverflow.ellipsis,
+                  textAlign: TextAlign.center,
+                ),
+              ),
             ],
           );
 

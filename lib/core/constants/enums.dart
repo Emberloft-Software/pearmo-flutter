@@ -202,7 +202,7 @@ enum ConnectionStatus {
 
   String get label => switch (this) {
         ConnectionStatus.pending => 'Waiting for response',
-        ConnectionStatus.accepted => 'Accepted — break the ice!',
+        ConnectionStatus.accepted => 'Accepted, break the ice!',
         ConnectionStatus.iceBreaking => 'Breaking the ice',
         ConnectionStatus.limitedChat => 'Limited chat',
         ConnectionStatus.openChat => 'Open chat',

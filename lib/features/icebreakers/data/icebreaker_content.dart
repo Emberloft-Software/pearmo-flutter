@@ -135,7 +135,7 @@ class IcebreakerContent {
     "What's a movie or show you could rewatch forever?",
     "What's your love language?",
     "What's one thing on your bucket list?",
-    'Coffee or tea — and how do you take it?',
+    'Coffee or tea, and how do you take it?',
     "What's a tradition from your family you'd like to keep?",
     'How do you like to celebrate good news?',
     "What's something you're looking forward to right now?",

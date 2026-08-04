@@ -38,27 +38,27 @@ class _Copy {
         VerifyUnlockReason.profilePicture => const _Copy(
             title: 'Verify to add a picture',
             body: "Adding a real photo is only available once you've verified you're a real "
-                'person — a quick liveliness check plus a selfie, reviewed manually.',
+                'person: a quick liveliness check plus a selfie, reviewed manually.',
             actionable: true,
           ),
         VerifyUnlockReason.chatMediaSelf => const _Copy(
             title: 'Verify to share photos',
             body: 'Photos and videos can be shared once both of you have verified '
-                "you're real people — a quick liveliness check plus a selfie, reviewed "
+                "you're real people: a quick liveliness check plus a selfie, reviewed "
                 "manually. They've done theirs; yours isn't complete yet.",
             actionable: true,
           ),
         VerifyUnlockReason.chatMediaOther => const _Copy(
             title: 'Photo sharing is locked',
             body: 'Photos and videos unlock once both of you have completed the selfie '
-                "check. You've done yours — they haven't yet. Nothing for you to do here; "
+                "check. You've done yours, but they haven't yet. Nothing for you to do here; "
                 "it'll unlock on its own if they verify.",
             actionable: false,
           ),
         VerifyUnlockReason.chatMediaBoth => const _Copy(
             title: 'Verify to share photos',
             body: 'Photos and videos can be shared once both of you have verified '
-                "you're real people — a quick liveliness check plus a selfie, reviewed "
+                "you're real people: a quick liveliness check plus a selfie, reviewed "
                 'manually. Neither of you has completed it yet.',
             actionable: true,
           ),
