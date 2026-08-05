@@ -16,7 +16,7 @@
          notification instead on some devices/OS versions. -->
     <uses-permission android:name="android.permission.USE_FULL_SCREEN_INTENT"/>
     <application
-        android:label="pearmo"
+        android:label="Pearmo"
         android:name="${applicationName}"
         android:icon="@mipmap/ic_launcher">
         <activity

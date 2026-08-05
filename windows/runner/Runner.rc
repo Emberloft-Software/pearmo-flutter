@@ -90,12 +90,12 @@ BEGIN
         BLOCK "040904e4"
         BEGIN
             VALUE "CompanyName", "com.pearmo" "\0"
-            VALUE "FileDescription", "pearmo" "\0"
+            VALUE "FileDescription", "Pearmo" "\0"
             VALUE "FileVersion", VERSION_AS_STRING "\0"
             VALUE "InternalName", "pearmo" "\0"
             VALUE "LegalCopyright", "Copyright (C) 2026 com.pearmo. All rights reserved." "\0"
             VALUE "OriginalFilename", "pearmo.exe" "\0"
-            VALUE "ProductName", "pearmo" "\0"
+            VALUE "ProductName", "Pearmo" "\0"
             VALUE "ProductVersion", VERSION_AS_STRING "\0"
         END
     END

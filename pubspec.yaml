@@ -79,6 +79,29 @@ dev_dependencies:
   # rules and activating additional ones.
   flutter_lints: ^6.0.0
 
+  flutter_launcher_icons: ^0.14.3
+
+# App icon generation — run `dart run flutter_launcher_icons` after editing
+# assets/icon/*. Source SVGs mirror the pear mark in pearmo-website's icon.svg.
+flutter_launcher_icons:
+  image_path: "assets/icon/icon_square.png"
+  android: true
+  adaptive_icon_background: "#17131f"
+  adaptive_icon_foreground: "assets/icon/icon_foreground.png"
+  ios: true
+  remove_alpha_ios: true
+  macos:
+    generate: true
+    image_path: "assets/icon/icon_square.png"
+  windows:
+    generate: true
+    image_path: "assets/icon/icon_square.png"
+  web:
+    generate: true
+    image_path: "assets/icon/icon_square.png"
+    background_color: "#17131f"
+    theme_color: "#17131f"
+
 # For information on the generic Dart part of this file, see the
 # following page: https://dart.dev/tools/pub/pubspec
 
