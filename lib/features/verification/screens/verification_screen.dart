@@ -16,6 +16,15 @@ import '../../../providers/repository_providers.dart';
 import '../../../shared/widgets/widgets.dart';
 import '../widgets/liveness_check_screen.dart';
 
+/// Beta launch: tier 2 (NIC / age verification) is closed to new
+/// submissions and shows a "coming soon" card instead of the upload form.
+/// This is a **client-side lock only** — the `submit-verification` edge
+/// function, the `verification_submissions` table and the
+/// `id_verified` tier are all untouched, so flipping this back to `false`
+/// restores the full flow with no backend work. Anyone already
+/// `id_verified` (legacy submissions) still sees their verified state.
+const bool _idVerificationComingSoon = true;
+
 /// Two independently-submittable verification tiers:
 /// 1. Liveliness check + selfie — proves the user is a real person.
 /// 2. NIC front/back, on top of tier 1 — proves the displayed age is real.
@@ -241,7 +250,13 @@ class _IdTierCardState extends ConsumerState<_IdTierCard> {
   @override
   void initState() {
     super.initState();
-    _loadStatus();
+    // Nothing to fetch while the tier is closed — the card never renders a
+    // pending/rejected state in that mode.
+    if (_idVerificationComingSoon) {
+      _loadingStatus = false;
+    } else {
+      _loadStatus();
+    }
   }
 
   Future<void> _loadStatus() async {
@@ -298,6 +313,9 @@ class _IdTierCardState extends ConsumerState<_IdTierCard> {
         widget.currentTier == VerificationTier.paidVerified;
     final isPending = _lastSubmission?.status == 'pending';
     final isRejected = _lastSubmission?.status == 'rejected';
+    // Closed for beta — but never hide the verified state from someone who
+    // already went through the old flow.
+    final comingSoon = _idVerificationComingSoon && !alreadyVerified;
 
     return PearmoCard(
       child: Column(
@@ -306,8 +324,10 @@ class _IdTierCardState extends ConsumerState<_IdTierCard> {
           Row(
             children: [
               Icon(
-                unlocked ? Icons.badge_outlined : Icons.lock_outline,
-                color: unlocked ? AppColors.secondaryDark : AppColors.textSecondary,
+                (unlocked && !comingSoon) ? Icons.badge_outlined : Icons.lock_outline,
+                color: (unlocked && !comingSoon)
+                    ? AppColors.secondaryDark
+                    : AppColors.textSecondary,
               ),
               const SizedBox(width: 8),
               // Expanded, not bare: at 18px this title is wider than the
@@ -318,15 +338,27 @@ class _IdTierCardState extends ConsumerState<_IdTierCard> {
               ),
             ],
           ),
-          const SizedBox(height: 8),
-          Text(
-            unlocked
-                ? 'Add your National ID so we can manually confirm the age on your profile '
-                    'matches your document.'
-                : 'Complete step 1 (verify you\'re real) first to unlock this step.',
-            style: AppTextStyles.body,
-          ),
-          if (unlocked) ...[
+          if (comingSoon) ...[
+            const SizedBox(height: 10),
+            const _ComingSoonPill(),
+            const SizedBox(height: 10),
+            Text(
+              "Age verification with your National ID isn't open yet — we're still "
+              'finishing it off. It will appear here once it launches, and there\'s '
+              'nothing you need to do in the meantime.',
+              style: AppTextStyles.body,
+            ),
+          ] else ...[
+            const SizedBox(height: 8),
+            Text(
+              unlocked
+                  ? 'Add your National ID so we can manually confirm the age on your profile '
+                      'matches your document.'
+                  : 'Complete step 1 (verify you\'re real) first to unlock this step.',
+              style: AppTextStyles.body,
+            ),
+          ],
+          if (unlocked && !comingSoon) ...[
             const SizedBox(height: 16),
             if (alreadyVerified)
               Text('Already verified.', style: AppTextStyles.bodyMedium)
@@ -375,6 +407,39 @@ class _IdTierCardState extends ConsumerState<_IdTierCard> {
               ),
             ],
           ],
+        ],
+      ),
+    );
+  }
+}
+
+/// Neutral "not yet available" badge — deliberately muted rather than
+/// warning-coloured: an unbuilt step isn't a problem the user caused.
+class _ComingSoonPill extends StatelessWidget {
+  const _ComingSoonPill();
+
+  @override
+  Widget build(BuildContext context) {
+    return Container(
+      padding: const EdgeInsets.symmetric(horizontal: 10, vertical: 5),
+      decoration: BoxDecoration(
+        color: AppColors.surfaceMuted,
+        borderRadius: BorderRadius.circular(999),
+        border: Border.all(color: AppColors.divider),
+      ),
+      child: Row(
+        mainAxisSize: MainAxisSize.min,
+        children: [
+          const Icon(Icons.schedule, size: 13, color: AppColors.textSecondary),
+          const SizedBox(width: 5),
+          Text(
+            'Coming soon',
+            style: AppTextStyles.caption.copyWith(
+              fontSize: 11,
+              fontWeight: FontWeight.w800,
+              color: AppColors.textSecondary,
+            ),
+          ),
         ],
       ),
     );
