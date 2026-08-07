@@ -10,6 +10,7 @@ import '../data/repositories/matches_repository.dart';
 import '../data/repositories/messages_repository.dart';
 import '../data/repositories/payments_repository.dart';
 import '../data/repositories/profile_repository.dart';
+import '../data/repositories/push_token_repository.dart';
 import '../data/repositories/ratings_repository.dart';
 import '../data/repositories/reports_repository.dart';
 import '../data/repositories/storage_repository.dart';
@@ -70,4 +71,8 @@ final ratingsRepositoryProvider = Provider<RatingsRepository>((ref) {
 
 final paymentsRepositoryProvider = Provider<PaymentsRepository>((ref) {
   return PaymentsRepository(ref.watch(supabaseClientProvider));
+});
+
+final pushTokenRepositoryProvider = Provider<PushTokenRepository>((ref) {
+  return PushTokenRepository(ref.watch(supabaseClientProvider));
 });

@@ -1,0 +1,29 @@
+{
+  "project_info": {
+    "project_number": "1033363579058",
+    "project_id": "pearmo-ce752",
+    "storage_bucket": "pearmo-ce752.firebasestorage.app"
+  },
+  "client": [
+    {
+      "client_info": {
+        "mobilesdk_app_id": "1:1033363579058:android:181afd997b81d1217329ab",
+        "android_client_info": {
+          "package_name": "com.pearmo.pearmo"
+        }
+      },
+      "oauth_client": [],
+      "api_key": [
+        {
+          "current_key": "AIzaSyA3k03ODI61RoFqmaJUK4yzKVJmo_CBORU"
+        }
+      ],
+      "services": {
+        "appinvite_service": {
+          "other_platform_oauth_client": []
+        }
+      }
+    }
+  ],
+  "configuration_version": "1"
+}

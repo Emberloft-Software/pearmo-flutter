@@ -1,4 +1,11 @@
 <manifest xmlns:android="http://schemas.android.com/apk/res/android">
+    <!-- Needed for every network call this app makes (Supabase, FCM
+         registration) in a release build. Previously only declared in the
+         debug/profile manifest variants — found + fixed while wiring up
+         push notifications, since a missing INTERNET permission would
+         silently break FCM token registration (and everything else network-
+         related) in a release APK. -->
+    <uses-permission android:name="android.permission.INTERNET"/>
     <uses-permission android:name="android.permission.CAMERA"/>
     <!-- Required on Android 13+ (API 33) for local notification banners
          (flutter_local_notifications) — without this the runtime permission
@@ -46,6 +53,16 @@
         <meta-data
             android:name="flutterEmbedding"
             android:value="2" />
+        <!-- Channel/icon FCM falls back to for a background/terminated push
+             notification, when there's no Dart code running to pick one —
+             same channel id `NotificationService` already uses for
+             foreground notifications, so both paths look identical. -->
+        <meta-data
+            android:name="com.google.firebase.messaging.default_notification_channel_id"
+            android:value="pearmo_default" />
+        <meta-data
+            android:name="com.google.firebase.messaging.default_notification_icon"
+            android:resource="@mipmap/ic_launcher" />
     </application>
     <!-- Required to query activities that can process text, see:
          https://developer.android.com/training/package-visibility and

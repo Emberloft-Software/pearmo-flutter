@@ -1475,31 +1475,239 @@ tells you nothing about whether the HTTP request worked. Always verify via
 `net._http_response.status_code`, and disable JWT verification on any
 function invoked by a scheduler rather than a user.**
 
-**OPEN — Auth SMS rate limits, deferred pending team discussion
-(2026-08-02).** Every SMS the app sends is the phone OTP from
-`AuthRepository.sendOtp()` → `signInWithOtp()`, called from exactly two
-places ([login_screen.dart](lib/features/auth/screens/login_screen.dart)
-"Send code" and [otp_screen.dart](lib/features/auth/screens/otp_screen.dart)
+**RESOLVED 2026-08-05 (partially) — Auth SMS rate limits.** Every SMS the
+app sends is the phone OTP from `AuthRepository.sendOtp()` →
+`signInWithOtp()`, called from exactly two places
+([login_screen.dart](lib/features/auth/screens/login_screen.dart) "Send
+code" and [otp_screen.dart](lib/features/auth/screens/otp_screen.dart)
 "Resend"). Login and signup are the same code path, so one limit governs
-both. Current dashboard settings (Authentication → Rate Limits):
-- **Sending SMS messages: 150/hour** — 5× Supabase's default of 30, raised
-  by someone at some point. This is the hard ceiling on spend: worst case
-  3,600 messages/day. Recommended 15/hour for beta (360/day).
-- **Sign-ups and sign-ins: 30 per 5 min per IP** — caps how fast a *single
-  source* can drain the global SMS budget: 360 requests/hour from one IP is
-  enough to exhaust an hourly allowance in minutes and lock out real users.
-  Recommended 10.
+both. **No custom edge function is involved in sending OTP SMS at all** —
+confirmed by grepping `lib/` and `supabase/functions/` for any SMS/Text.lk
+reference: the three edge functions that exist (`delete-account`,
+`submit-verification`, `cleanup-verification-media`) don't touch SMS.
+Text.lk is wired in purely as Supabase Auth's configured phone SMS
+provider (Dashboard → Authentication → Providers → Phone), so every lever
+here is Dashboard-only, no app code change, no APK rebuild required.
+
+**This section previously said the live "Sending SMS messages" limit was
+150/hour — that was stale/wrong.** A dashboard screenshot on 2026-08-05
+showed it was already **30/hour** (someone had already tightened it at
+some point without updating this file). Current confirmed dashboard
+settings (Authentication → Rate Limits):
+- **Sending SMS messages: 30/hour** — left as-is. Already tighter than the
+  70/hour this file was about to recommend before the screenshot caught
+  the stale baseline; lowering it further risks blocking real users during
+  an unpredictable demo/marketing spike for no added abuse protection.
+- **Sign-ups and sign-ins: 10 per 5 min per IP** (changed 2026-08-05, was
+  30/5min = 360/hour) — this is the one that actually targets abuse without
+  risking legitimate traffic, since it's scoped per-IP: a viral spike comes
+  from many different IPs and sails through unaffected, while a single
+  script/bot hammering the endpoint from one IP gets throttled.
 - Email/anonymous/Web3 limits are irrelevant — the app uses phone OTP only
   (every `auth.users` row has no email) and never anonymous sign-in.
-- **"Enable IP address forwarding" must stay OFF.** It lets clients declare
-  their own IP, which is only safe behind a proxy you control; the app
-  talks to Supabase directly from devices, so enabling it would let anyone
-  claim a fresh IP per request and defeat every per-IP limit on that page.
+- **"Enable IP address forwarding" confirmed OFF, left untouched.** It lets
+  clients declare their own IP, which is only safe behind a proxy you
+  control; the app talks to Supabase directly from devices, so enabling it
+  would let anyone claim a fresh IP per request and defeat the per-IP limit
+  above.
 
-Note the project-wide (not per-user) scope: a low limit caps the bill but
-also means an attacker burning the allowance blocks legitimate sign-ins for
-the rest of that hour. A prepaid Text.lk balance is the stronger cap, since
-it can't be misconfigured. Client-side there is a 60s cooldown on the login
-send button, but the anon key ships in the app binary so the endpoint can
-be called directly — server-side limits are the only real control.
+**Still open / not done here:** a prepaid balance cap on the Text.lk
+account itself, which is the actual bounded-worst-case backstop (money, not
+a request-count that has to guess future traffic correctly) — this lives
+outside Supabase entirely, on Text.lk's own dashboard, and wasn't
+accessible from this session. Also still open: Supabase's native CAPTCHA
+protection toggle (Authentication → Settings) would be a stronger gate on
+`signInWithOtp` itself, but requires the client to pass a `captchaToken`
+(an hCaptcha/Turnstile widget on the login screen) — that's an app code
+change and would need a new APK build, so deliberately deferred while the
+current demo APK is in distribution. Client-side there is still just a 60s
+cooldown on the login send button (UX only — the anon key ships in the app
+binary, so the endpoint can be called directly, bypassing that cooldown;
+server-side limits above are the only real control).
 
+
+## Push notifications (2026-08-07)
+
+Replaced the local-only notification system (`flutter_local_notifications`
+firing off client-side `ref.listen`s on Supabase Realtime — only worked
+while the app process was alive) with real FCM push for the three events it
+covered: new chat message, new incoming connection request, new ice-breaker
+game invite. **Android is fully wired in this repo; iOS is not started**
+(no `GoogleService-Info.plist`/Apple APNs key supplied yet, and pushing an
+iOS Xcode capability change isn't possible from this Windows session
+regardless — needs a Mac).
+
+**Firebase project:** `pearmo-ce752` (Android app `com.pearmo.pearmo`).
+`android/app/google-services.json` is committed (normal for Flutter/Android
+Firebase apps — its API key isn't a secret, Firebase's actual security
+boundary is Auth + Firestore/Storage rules, neither of which this project
+uses). **The Firebase service-account JSON (`firebase-adminsdk-fbsvc@pearmo-ce752...`)
+is a real admin credential and was never committed** — it's Supabase
+Edge Function secret `FCM_SERVICE_ACCOUNT_JSON` only. It was pasted in
+plaintext into a chat session to hand it over, so **it should be rotated**
+(Firebase console → Project settings → Service accounts → Generate new
+private key, then delete the old `b5e2a18812cc...` key) — re-set the
+`FCM_SERVICE_ACCOUNT_JSON` secret to the new value afterward. Not yet done
+at time of writing.
+
+**Client (done, Android):**
+- `google-services.json` + the `com.google.gms.google-services` Gradle
+  plugin wired into [android/settings.gradle.kts](android/settings.gradle.kts)
+  / [android/app/build.gradle.kts](android/app/build.gradle.kts).
+  `firebase_core`/`firebase_messaging` added to `pubspec.yaml`.
+- **Bug found + fixed in the same pass, unrelated to push itself:** the
+  main [AndroidManifest.xml](android/app/src/main/AndroidManifest.xml) had
+  no `INTERNET` permission at all — only the debug/profile manifest
+  variants did. A release build would have had every network call
+  (Supabase, and now FCM token registration) silently fail. Added to the
+  main manifest.
+- [push_token_repository.dart](lib/data/repositories/push_token_repository.dart) —
+  upserts `{user_id, token, platform}` into a new `push_tokens` table,
+  `onConflict: 'token'` (so a device that logs into a different account
+  re-homes its token instead of creating a duplicate row).
+- [push_notification_listener.dart](lib/features/home/push_notification_listener.dart) —
+  replaces `NotificationWatcher` at the same mount point
+  ([home_shell.dart](lib/features/home/home_shell.dart)). On login: requests
+  notification permission, registers the FCM token, listens for
+  `onTokenRefresh`. Also listens to `FirebaseMessaging.onMessage`
+  (foreground-only — FCM delivers those silently on both platforms) and
+  shows a local banner via the existing `NotificationService`, suppressed
+  if `data.connection_id` matches `currentlyOpenChatConnectionIdProvider`
+  (same suppression the old watcher did, now driven by the push payload
+  instead of a Realtime row). Background/terminated delivery needs no Dart
+  code — the OS renders the FCM `notification` payload directly.
+- `main.dart` calls `Firebase.initializeApp()` and registers a (currently
+  empty) `FirebaseMessaging.onBackgroundMessage` handler, required to exist
+  even though it does nothing yet.
+- `NotificationWatcher` and the two stream providers that existed only for
+  it (`incomingRequestsStreamProvider`, `gameSessionsStreamProvider`) were
+  deleted outright rather than left dead. `NotificationService` itself
+  (the `flutter_local_notifications` wrapper) **was not removed** — it's
+  still used for the check-in alarm
+  ([checkin_panel.dart](lib/features/safety/widgets/checkin_panel.dart))
+  and for displaying push while foregrounded (above). The check-in alarm is
+  a scheduled on-device alarm, not a reaction to a Realtime event — push
+  doesn't replace it, don't reach for that later.
+
+**Server-side — new edge function, NOT YET DEPLOYED (brand new function,
+same standing lesson as `delete-account`: writing the file here doesn't
+deploy it):**
+[supabase/functions/send-push/index.ts](supabase/functions/send-push/index.ts).
+Auth via a shared `x-webhook-secret` header (function secret
+`PUSH_WEBHOOK_SECRET`) — no user session behind a Database Webhook call,
+same pattern as `cleanup-verification-media`'s `x-cron-secret`. Exchanges
+the Firebase service-account JSON for a short-lived OAuth2 token (cached
+per warm instance) via `jose`'s RS256 JWT signing, then calls FCM's HTTP v1
+send endpoint per registered device token. Deletes a `push_tokens` row if
+FCM reports it `UNREGISTERED`/`NOT_FOUND`/`INVALID_ARGUMENT`.
+
+**Not yet run — needed before any of this actually delivers a push:**
+
+1. **`push_tokens` table** (SQL editor):
+   ```sql
+   create table public.push_tokens (
+     id uuid primary key default gen_random_uuid(),
+     user_id uuid not null references public.users(id) on delete cascade,
+     token text not null unique,
+     platform text not null check (platform in ('android', 'ios')),
+     created_at timestamptz not null default now(),
+     updated_at timestamptz not null default now()
+   );
+   create index push_tokens_user_id_idx on public.push_tokens(user_id);
+   alter table public.push_tokens enable row level security;
+   create policy "push_tokens_select_own" on public.push_tokens
+     for select using (auth.uid() = user_id);
+   create policy "push_tokens_insert_own" on public.push_tokens
+     for insert with check (auth.uid() = user_id);
+   create policy "push_tokens_update_own" on public.push_tokens
+     for update using (auth.uid() = user_id) with check (auth.uid() = user_id);
+   create policy "push_tokens_delete_own" on public.push_tokens
+     for delete using (auth.uid() = user_id);
+   ```
+2. **Deploy `send-push`** (Supabase CLI `supabase functions deploy send-push`
+   or create it manually in Dashboard → Edge Functions first).
+3. **Set two function secrets** on `send-push`: `FCM_SERVICE_ACCOUNT_JSON`
+   (the full service-account JSON, ideally the *rotated* key, as one
+   string) and `PUSH_WEBHOOK_SECRET` (any random string — reused in step 5).
+4. **Turn off "Verify JWT with legacy secret"** for `send-push` (Dashboard →
+   Edge Functions → send-push → Settings) — a Database Webhook call has no
+   user JWT, only the `x-webhook-secret` header, same reasoning as
+   `cleanup-verification-media`'s toggle.
+5. **Wire the trigger — NOT via Dashboard → Database → Webhooks.** That UI
+   depends on an internal `supabase_functions` schema Supabase provisions
+   per-project, and on this project it's missing:
+   `Failed to create webhook: ... schema "supabase_functions" does not
+   exist` (confirmed 2026-08-07 trying to create the `messages` webhook).
+   This is a known Supabase-side bootstrap bug with no self-service SQL
+   fix — see
+   [supabase/supabase#20056](https://github.com/supabase/supabase/issues/20056),
+   where Supabase support told a reporter the same schema was simply
+   missing its functions on their project too. Rather than file a support
+   ticket and wait, skip that feature entirely and reuse the mechanism
+   that's already proven working in this project —
+   `cleanup-verification-media`'s cron job already calls `net.http_post`
+   (the `pg_net` extension) directly, so `pg_net` is confirmed installed
+   and enabled. A plain trigger calling it does exactly what a Database
+   Webhook would have, with the identical `{type, table, record}` JSON
+   shape `send-push`'s `WebhookPayload` already expects — no function code
+   changes needed:
+   ```sql
+   create or replace function public.notify_push()
+   returns trigger
+   language plpgsql
+   security definer
+   set search_path = public
+   as $$
+   begin
+     perform net.http_post(
+       url := 'https://akodhmnaykaifzxxvher.supabase.co/functions/v1/send-push',
+       headers := jsonb_build_object(
+         'Content-Type', 'application/json',
+         'x-webhook-secret', '<same value as PUSH_WEBHOOK_SECRET>'
+       ),
+       body := jsonb_build_object(
+         'type', 'INSERT',
+         'table', TG_TABLE_NAME,
+         'record', to_jsonb(NEW)
+       )
+     );
+     return NEW;
+   end;
+   $$;
+
+   create trigger messages_push_trigger
+     after insert on public.messages
+     for each row execute function public.notify_push();
+
+   create trigger connections_push_trigger
+     after insert on public.connections
+     for each row execute function public.notify_push();
+
+   create trigger ice_breaker_sessions_push_trigger
+     after insert on public.ice_breaker_sessions
+     for each row execute function public.notify_push();
+   ```
+   **Same plaintext-secret caveat as `cron.job.command`** (documented
+   above under "Project hygiene findings"): the secret literal sits in
+   `pg_proc`/`information_schema.routines` in plain text, readable by
+   anyone with SQL Editor access. Accepted for the same reason the cron
+   secret was — this project's threat model already treats SQL Editor
+   access as trusted (owner-only), and there's no parameterized-secret
+   mechanism available to a plain trigger function.
+6. **Rotate the Firebase service-account key** (see above — it was pasted
+   into a chat transcript) and update the `FCM_SERVICE_ACCOUNT_JSON` secret
+   to match.
+
+None of steps 1–6 have been confirmed run as of this entry. If Supabase
+support later fixes the missing `supabase_functions` schema and the
+Dashboard webhook feature starts working, the trigger-based approach above
+still works fine left in place — no need to migrate back to Dashboard
+webhooks, they'd just be redundant.
+
+**iOS: not started.** Needs `ios/Runner/GoogleServiceInfo.plist` from the
+Firebase console's iOS app registration, an APNs Auth Key from Apple
+Developer uploaded to Firebase Cloud Messaging settings, and enabling the
+"Push Notifications" + "Background Modes → Remote notifications"
+capabilities in Xcode (which also touches `Runner.entitlements` and the
+`.pbxproj` — not something to hand-edit blind without Xcode to verify it,
+and this session has no Mac to run it on regardless).

@@ -68,6 +68,12 @@ dependencies:
   path_provider: ^2.1.6
   url_launcher: ^6.3.1
 
+  # Push notifications (server-sent, works while the app is fully killed —
+  # see CLAUDE.md "Push notifications"). firebase_local_notifications still
+  # used for the check-in alarm and to display push while foregrounded.
+  firebase_core: ^3.15.0
+  firebase_messaging: ^15.2.5
+
 dev_dependencies:
   flutter_test:
     sdk: flutter

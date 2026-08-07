@@ -3,7 +3,7 @@ import 'package:flutter/material.dart';
 import '../connections/screens/connection_hub_screen.dart';
 import '../matches/screens/matches_screen.dart';
 import '../profile/screens/my_profile_screen.dart';
-import 'notification_watcher.dart';
+import 'push_notification_listener.dart';
 
 /// Bottom-nav shell for the three main tabs: today's matches, the
 /// connection hub, and the user's own profile.
@@ -25,7 +25,7 @@ class _HomeShellState extends State<HomeShell> {
 
   @override
   Widget build(BuildContext context) {
-    return NotificationWatcher(
+    return PushNotificationListener(
       child: Scaffold(
         body: IndexedStack(index: _index, children: _screens),
         bottomNavigationBar: BottomNavigationBar(
