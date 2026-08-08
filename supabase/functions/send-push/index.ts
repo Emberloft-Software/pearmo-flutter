@@ -47,6 +47,12 @@ interface PushTarget {
   body: string
   data: Record<string, string>
   userIds: string[]
+  /** Public URL to the other participant's avatar PNG, shown as the
+   *  notification's image (Android renders it as an expanded big-picture
+   *  notification automatically — no client code needed). Omitted when the
+   *  "who this is about" isn't resolvable (e.g. `ice_breaker_sessions`, no
+   *  `created_by` column) or the profile has no avatar set. */
+  imageUrl?: string
 }
 
 const GAME_LABELS: Record<string, string> = {
@@ -76,7 +82,7 @@ function buildFromEvent(payload: WebhookPayload): PushTarget | null {
     case 'connection_accepted':
       return {
         title: 'Request accepted!',
-        body: "They said yes — break the ice together to unlock chat.",
+        body: 'They said yes. Break the ice together to unlock chat.',
         data: { type: 'connection_accepted', connection_id: connectionId },
         userIds: [targetUserId],
       }
@@ -119,7 +125,7 @@ function buildFromEvent(payload: WebhookPayload): PushTarget | null {
       const label = CONSENT_LABELS[record.consent_type as string] ?? 'A shared unlock'
       return {
         title: 'New request',
-        body: `They'd like to turn on "${label}" — open the app to respond.`,
+        body: `They'd like to turn on "${label}". Open the app to respond.`,
         data: { type: 'consent_requested', connection_id: connectionId },
         userIds: [targetUserId],
       }
@@ -128,17 +134,33 @@ function buildFromEvent(payload: WebhookPayload): PushTarget | null {
       const label = CONSENT_LABELS[record.consent_type as string] ?? 'A shared unlock'
       return {
         title: `${label} unlocked`,
-        body: "You both agreed — it's unlocked now.",
+        body: "You both agreed, it's unlocked now.",
         data: { type: 'consent_granted', connection_id: connectionId },
         userIds: [targetUserId],
       }
     }
+    // Fired when the request is turned off after having actually been
+    // granted (both sides had agreed at some point). See
+    // `consent_declined` below for the "never got that far" case — the
+    // trigger tells these apart by checking whether both consent flags
+    // were ever true before this change.
     case 'consent_revoked': {
       const label = CONSENT_LABELS[record.consent_type as string] ?? 'A shared unlock'
       return {
         title: 'Consent update',
         body: `They turned off "${label}".`,
         data: { type: 'consent_revoked', connection_id: connectionId },
+        userIds: [targetUserId],
+      }
+    }
+    // Fired when a still-pending (never mutually granted) request is
+    // turned off — an explicit "no" to a request that was never accepted.
+    case 'consent_declined': {
+      const label = CONSENT_LABELS[record.consent_type as string] ?? 'A shared unlock'
+      return {
+        title: 'Request declined',
+        body: `They declined your request to turn on "${label}".`,
+        data: { type: 'consent_declined', connection_id: connectionId },
         userIds: [targetUserId],
       }
     }
@@ -193,6 +215,26 @@ async function connectionParticipants(
   return data as { initiator_id: string; receiver_id: string } | null
 }
 
+// Public bucket holding the 40 bundled avatar PNGs (`assets/avatars/` in the
+// Flutter app — `{key}-m.png` / `{key}-f.png`, matching `avatar_id` exactly)
+// uploaded once so FCM can fetch them for the notification's image. Not the
+// same as any of the app's other (private, per-user) storage buckets.
+const AVATAR_BUCKET_URL =
+  'https://akodhmnaykaifzxxvher.supabase.co/storage/v1/object/public/avatar-icons'
+
+async function avatarImageUrl(
+  supabase: ReturnType<typeof createClient>,
+  userId: string
+): Promise<string | undefined> {
+  const { data } = await supabase
+    .from('profiles')
+    .select('avatar_id')
+    .eq('user_id', userId)
+    .maybeSingle()
+  const avatarId = (data as { avatar_id: string | null } | null)?.avatar_id
+  return avatarId ? `${AVATAR_BUCKET_URL}/${avatarId}.png` : undefined
+}
+
 async function buildTarget(
   supabase: ReturnType<typeof createClient>,
   payload: WebhookPayload
@@ -200,9 +242,29 @@ async function buildTarget(
   const record = payload.record
 
   // Event-driven payloads (connection UPDATE, consent_records) already
-  // carry their recipient and a specific event label — no DB lookup needed.
+  // carry their recipient and a specific event label — no DB lookup needed
+  // for the copy itself, but the avatar to show (the *other* participant,
+  // not the recipient) still needs one.
   if (payload.target_user_id && payload.event) {
-    return buildFromEvent(payload)
+    const target = buildFromEvent(payload)
+    if (!target) return null
+
+    const targetUserId = payload.target_user_id
+    let otherUserId: string | null = null
+    if (payload.table === 'connections') {
+      const initiatorId = record.initiator_id as string
+      const receiverId = record.receiver_id as string
+      otherUserId = initiatorId === targetUserId ? receiverId : initiatorId
+    } else if (payload.table === 'consent_records') {
+      const participants = await connectionParticipants(supabase, record.connection_id as string)
+      if (participants) {
+        otherUserId = participants.initiator_id === targetUserId
+          ? participants.receiver_id
+          : participants.initiator_id
+      }
+    }
+    if (otherUserId) target.imageUrl = await avatarImageUrl(supabase, otherUserId)
+    return target
   }
 
   if (payload.table === 'messages') {
@@ -226,6 +288,7 @@ async function buildTarget(
       body,
       data: { type: 'message', connection_id: connectionId },
       userIds: [recipient],
+      imageUrl: await avatarImageUrl(supabase, senderId),
     }
   }
 
@@ -236,6 +299,7 @@ async function buildTarget(
       body: 'Someone wants to connect with you!',
       data: { type: 'connection_request', connection_id: record.id as string },
       userIds: [record.receiver_id as string],
+      imageUrl: await avatarImageUrl(supabase, record.initiator_id as string),
     }
   }
 
@@ -249,9 +313,10 @@ async function buildTarget(
       body: `Your connection wants to play ${gameLabel}!`,
       data: { type: 'game_invite', connection_id: connectionId },
       // No `created_by` column on ice_breaker_sessions (see CLAUDE.md), so
-      // there's no way to exclude whoever started it — both participants
-      // (including the creator) get notified, same accepted redundancy the
-      // old client-side watcher had.
+      // there's no way to exclude whoever started it (both participants,
+      // including the creator, get notified — same accepted redundancy the
+      // old client-side watcher had) or to know whose avatar to show —
+      // omitted rather than guessing.
       userIds: [participants.initiator_id, participants.receiver_id],
     }
   }
@@ -283,7 +348,11 @@ async function sendToUser(
         body: JSON.stringify({
           message: {
             token: row.token,
-            notification: { title: target.title, body: target.body },
+            notification: {
+              title: target.title,
+              body: target.body,
+              ...(target.imageUrl ? { image: target.imageUrl } : {}),
+            },
             data: target.data,
           },
         }),

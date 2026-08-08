@@ -17,6 +17,7 @@ import '../../../core/utils/error_mapper.dart';
 import '../../../data/models/message.dart';
 import '../../../providers/auth_providers.dart';
 import '../../../providers/connections_providers.dart';
+import '../../../providers/consent_providers.dart';
 import '../../../providers/matches_providers.dart';
 import '../../../providers/messages_providers.dart';
 import '../../../providers/notification_providers.dart';
@@ -271,12 +272,26 @@ class _ChatScreenState extends ConsumerState<ChatScreen> {
             return const EmptyState(icon: Icons.link_off, title: 'Connection not found');
           }
 
-          final canChat = connection.canChatNow;
+          // "Open chat" / "Share photos & videos" in Shared Unlocks used to
+          // be purely cosmetic — toggling them updated `consent_records`
+          // but nothing here ever checked that state, so revoking either
+          // one didn't actually re-lock anything. Both are now real,
+          // mutual, revocable-at-any-time gates on top of the existing
+          // requirements (status pipeline / verification tier) — fails
+          // closed while consents are still loading, same as the tier
+          // check below already did.
+          final consents = ref.watch(connectionConsentsProvider(widget.connectionId)).valueOrNull;
+          final chatUnlockGranted = consents != null &&
+              isConsentGranted(
+                  consents.active, widget.connectionId, ConsentType.chatUnlock.dbValue);
+          final mediaShareGranted = consents != null &&
+              isConsentGranted(
+                  consents.active, widget.connectionId, ConsentType.mediaShare.dbValue);
+
+          final canChat = connection.canChatNow && chatUnlockGranted;
 
           // Photo/video sharing requires BOTH participants at
-          // selfie_verified or higher. Before this, `_pickAndSendMedia` had
-          // no gate of any kind — not the sender's tier, not the
-          // recipient's, not even the `media_share` consent record.
+          // selfie_verified or higher AND mutual `media_share` consent.
           //
           // Fails closed on purpose: if either tier can't be resolved —
           // the other person paused their profile so `public_profiles`
@@ -293,7 +308,7 @@ class _ChatScreenState extends ConsumerState<ChatScreen> {
               ?.verificationTier;
           final iAmVerified = myTier?.isAtLeastSelfieVerified ?? false;
           final theyAreVerified = otherTier?.isAtLeastSelfieVerified ?? false;
-          final canShareMedia = iAmVerified && theyAreVerified;
+          final canShareMedia = iAmVerified && theyAreVerified && mediaShareGranted;
           final mediaLockReason = iAmVerified
               ? VerifyUnlockReason.chatMediaOther
               : theyAreVerified
@@ -328,6 +343,15 @@ class _ChatScreenState extends ConsumerState<ChatScreen> {
                           child: const Text('Play a game'),
                         )
                       : null,
+                )
+              else if (!chatUnlockGranted)
+                _NoticeBanner(
+                  icon: Icons.lock_outline,
+                  message: 'Chat is locked. Both of you need to agree to open it.',
+                  action: TextButton(
+                    onPressed: () => context.push('/connection/${widget.connectionId}'),
+                    child: const Text('Open chat request'),
+                  ),
                 ),
               if (connection.status == ConnectionStatus.limitedChat)
                 const _NoticeBanner(

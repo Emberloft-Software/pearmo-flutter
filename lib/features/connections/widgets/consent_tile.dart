@@ -7,7 +7,8 @@ import '../../../data/models/consent_record.dart';
 import '../../../shared/widgets/pearmo_card.dart';
 
 /// One row of the consent panel: shows the live [ConsentState] for [type]
-/// and a button to request/agree/revoke it.
+/// and a button (or, for an incoming request, an Agree/Decline pair) to
+/// act on it.
 class ConsentTile extends StatelessWidget {
   const ConsentTile({
     super.key,
@@ -15,19 +16,28 @@ class ConsentTile extends StatelessWidget {
     required this.state,
     required this.isLoading,
     required this.onTap,
+    this.onDecline,
   });
 
   final ConsentType type;
   final ConsentState state;
   final bool isLoading;
+
+  /// Primary action: Request / Cancel / Agree / Revoke, depending on
+  /// [state] — see [_buttonLabel].
   final VoidCallback onTap;
+
+  /// Only used (and only shown) when [state] is [ConsentState.needsYourResponse]
+  /// — an explicit "no" so the requester is told rather than left waiting
+  /// indefinitely.
+  final VoidCallback? onDecline;
 
   bool get _isUnlocked => state == ConsentState.granted;
 
   String get _caption => switch (state) {
         ConsentState.none => type.description,
-        ConsentState.waitingOnThem => "Requested — waiting for them to agree.",
-        ConsentState.needsYourResponse => "They'd like to turn this on — agree to unlock it.",
+        ConsentState.waitingOnThem => 'Requested. Waiting for them to agree.',
+        ConsentState.needsYourResponse => "They'd like to turn this on.",
         ConsentState.granted => 'Unlocked for you both',
         ConsentState.revokedByMe => 'You turned this off.',
         ConsentState.revokedByThem => 'They turned this off.',
@@ -103,7 +113,16 @@ class ConsentTile extends StatelessWidget {
               height: 20,
               child: CircularProgressIndicator(strokeWidth: 2, color: AppColors.primary),
             )
-          else
+          else if (state == ConsentState.needsYourResponse) ...[
+            TextButton(
+              onPressed: onDecline,
+              child: const Text('Decline'),
+            ),
+            TextButton(
+              onPressed: onTap,
+              child: const Text('Agree'),
+            ),
+          ] else
             TextButton(
               onPressed: onTap,
               child: Text(_buttonLabel),

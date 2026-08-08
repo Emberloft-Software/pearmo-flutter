@@ -1958,3 +1958,182 @@ create trigger consent_records_update_push_trigger
 
 None of this has been confirmed run. Same plaintext-secret caveat as the
 rest of this pipeline (documented under "Project hygiene findings").
+
+**Deployed 2026-08-08.** `push_tokens` table, the trigger SQL above, and
+the updated `send-push` function were all applied by the user — confirmed
+via a successful SQL Editor run and a redeployed function.
+
+## Shared Unlocks was cosmetic — didn't actually gate chat or media (2026-08-08)
+
+User-reported: after building the pause/consent-notification work above,
+locking "Open chat" or "Share photos & videos" again in Shared Unlocks
+didn't actually stop the other person from chatting/sharing. Root cause,
+confirmed by reading the code rather than guessing: `chat_screen.dart`'s
+`canChat` was derived **only** from `connection.status` (the
+`pending → accepted → ice_breaking → limited_chat → open_chat → ...`
+pipeline, which is what `messages` RLS actually checks), and `canShareMedia`
+was derived **only** from both participants' verification tier. Neither
+ever read `consent_records`/`active_consents` — the `chat_unlock`/
+`media_share` `ConsentType`s existed, rendered in the UI, updated the
+database via `update-consent`, and (as of the section above) sent
+notifications, but had **zero effect on whether chat or media sharing
+actually worked.** Toggling them was pure theater.
+
+**Confirmed desired behavior (from the user, verbatim scenario check):**
+ice-breaker games still happen first as before; chat stays locked until
+one person requests "Open chat" and the other explicitly agrees; **either
+person can re-lock it at any time**, which immediately closes chat for
+*both* (not just the locker) and notifies the other person; re-opening
+after a lock needs a fresh request + fresh agreement, not an automatic
+reopen. Same independent mutual-agreement model for "Share photos &
+videos".
+
+**Fix, in `chat_screen.dart`:** `canChat` is now
+`connection.canChatNow && chatUnlockGranted`, and `canShareMedia` is now
+`iAmVerified && theyAreVerified && mediaShareGranted`, reading
+`connectionConsentsProvider` (already built for the Shared Unlocks panel
+in the section above) directly in the chat screen for the first time.
+This is purely additive — AND'd onto the existing requirements, never
+replacing them — so it can only make sending *more* restricted than
+before, never grant something the old code wouldn't have; safe regardless
+of whatever `update-consent`'s actual internals turn out to be. Fails
+closed while consents are still loading, same pattern the tier check
+already used. A third notice-banner state was added between "ice-breaker
+not done" and "fully open": status is chat-eligible but `chat_unlock`
+isn't granted yet → "Chat is locked. Both of you need to agree to open
+it." with a button into the connection-detail screen's Shared Unlocks
+panel, where the actual request/agree happens.
+
+**New: explicit Decline, not just silent non-response.** Previously
+`ConsentTile` only had one button per state, so responding to someone
+else's request meant either tapping "Agree" or doing nothing. Added a
+second button (`onDecline`) shown only in the `needsYourResponse` state —
+calls `ConsentRepository.setConsent(consenting: false)` directly, skipping
+`ConsentDialog`'s granting/revoking confirmation copy since declining
+someone else's ask isn't "revoking my own grant" (same "no confirmation
+needed to say no" choice already made for connection-request decline).
+
+**New `consent_declined` push event, distinct from `consent_revoked`.**
+Both are an `is_active: true → false` transition on `consent_records`, so
+telling apart "they declined my still-pending request" from "they turned
+off something we'd both already agreed to" needs to know whether it was
+ever actually granted — not derivable from the current row alone.
+`notify_push_consent()`'s trigger now checks `OLD.user_a_consented`/
+`OLD.user_b_consented`: both true beforehand → `consent_revoked`
+("They turned off ..."); otherwise → `consent_declined`
+("They declined your request..."). Only the function body changed
+(`create or replace`, safe to re-run) — no trigger/table changes needed:
+
+```sql
+create or replace function public.notify_push_consent()
+returns trigger
+language plpgsql
+security definer
+set search_path = public
+as $$
+declare
+  v_conn record;
+  v_target uuid;
+  v_actor uuid;
+  v_event text;
+begin
+  select initiator_id, receiver_id into v_conn
+  from public.connections where id = NEW.connection_id;
+  if v_conn is null then return NEW; end if;
+
+  if TG_OP = 'INSERT' then
+    v_actor := NEW.requested_by;
+    v_event := 'consent_requested';
+  elsif NEW.is_active = true and NEW.user_a_consented = true and NEW.user_b_consented = true
+        and (OLD.user_a_consented = false or OLD.user_b_consented = false) then
+    v_event := 'consent_granted';
+  elsif NEW.is_active = false and OLD.is_active = true then
+    v_actor := NEW.revoked_by;
+    if OLD.user_a_consented = true and OLD.user_b_consented = true then
+      v_event := 'consent_revoked';
+    else
+      v_event := 'consent_declined';
+    end if;
+  else
+    return NEW;
+  end if;
+
+  if v_event = 'consent_granted' then
+    perform net.http_post(
+      url := 'https://akodhmnaykaifzxxvher.supabase.co/functions/v1/send-push',
+      headers := jsonb_build_object('Content-Type', 'application/json',
+        'x-webhook-secret', '<same value as PUSH_WEBHOOK_SECRET>'),
+      body := jsonb_build_object('type', 'UPDATE', 'table', 'consent_records',
+        'event', v_event, 'target_user_id', v_conn.initiator_id, 'record', to_jsonb(NEW))
+    );
+    perform net.http_post(
+      url := 'https://akodhmnaykaifzxxvher.supabase.co/functions/v1/send-push',
+      headers := jsonb_build_object('Content-Type', 'application/json',
+        'x-webhook-secret', '<same value as PUSH_WEBHOOK_SECRET>'),
+      body := jsonb_build_object('type', 'UPDATE', 'table', 'consent_records',
+        'event', v_event, 'target_user_id', v_conn.receiver_id, 'record', to_jsonb(NEW))
+    );
+    return NEW;
+  end if;
+
+  v_target := case when v_actor = v_conn.initiator_id
+                    then v_conn.receiver_id else v_conn.initiator_id end;
+
+  perform net.http_post(
+    url := 'https://akodhmnaykaifzxxvher.supabase.co/functions/v1/send-push',
+    headers := jsonb_build_object('Content-Type', 'application/json',
+      'x-webhook-secret', '<same value as PUSH_WEBHOOK_SECRET>'),
+    body := jsonb_build_object('type', TG_OP, 'table', 'consent_records',
+      'event', v_event, 'target_user_id', v_target, 'record', to_jsonb(NEW))
+  );
+  return NEW;
+end;
+$$;
+```
+
+**Removed em dashes from every notification title/body** (user's explicit
+request, notification copy only — code comments untouched) —
+`connection_accepted`, `consent_requested`, and `consent_granted` bodies in
+`send-push/index.ts` reworded with plain punctuation.
+
+**New: avatar image in push notifications.** Every `PushTarget` can now
+carry an `imageUrl` — the *other* participant's avatar PNG, resolved via a
+new `avatarImageUrl()` helper (`profiles.avatar_id` → a public URL) and
+passed as `notification.image` in the FCM payload. Android renders this as
+an automatic expanded/big-picture notification with **no client-side code
+change needed** — this only required editing the edge function. Wired into
+every event/table that has an unambiguous "who this is about": messages
+(sender), new connection request (initiator), and all the
+accept/decline/pause/resume/end/consent events (the other participant
+relative to `target_user_id`). Deliberately **not** wired for
+`ice_breaker_sessions` (no `created_by` column, so there's no single
+"who this is about" — see the existing note in that branch).
+
+**Requires one new thing not yet done: a public Storage bucket for the
+avatar PNGs.** The 40 files under `assets/avatars/` (`{key}-m.png` /
+`{key}-f.png`, exactly matching `profiles.avatar_id`) are bundled into the
+app binary, not hosted anywhere — FCM's `notification.image` needs a real
+public URL it can fetch server-side, which a bundled asset can't provide.
+**Not yet done:**
+1. Dashboard → Storage → create a new bucket named exactly `avatar-icons`,
+   marked **public**.
+2. Upload all 40 files from `assets/avatars/` into it, keeping their exact
+   filenames (no subfolder) — `avatarImageUrl()` builds
+   `.../avatar-icons/{avatar_id}.png` directly from the column value.
+
+Until that bucket exists, `avatarImageUrl()` still returns a URL, but it
+will 404 — FCM handles a broken image URL by just showing the notification
+without an image (confirmed behavior of the HTTP v1 API: a fetch failure
+on `notification.image` doesn't fail the whole send), so this is a
+soft-fail, not something that will break notifications in the meantime.
+
+**Still true from the section above:** none of this changes the fact that
+`chat_unlock`/`media_share` are UI-gating only. Actual server-side
+enforcement (RLS on `messages`, RLS on the `chat-media` storage bucket)
+still only checks `connections.status` and verification tier respectively
+— it has no idea `consent_records` exists. Someone bypassing the app
+entirely (e.g. hand-crafted Supabase client calls) could still send
+messages the moment status reaches `limited_chat`, regardless of whether
+`chat_unlock` was ever granted. Worth a real RLS-level fix later if that
+threat model matters; out of scope for this pass, which was about the
+in-app experience.

@@ -67,6 +67,29 @@ class _ConnectionDetailScreenState extends ConsumerState<ConnectionDetailScreen>
     }
   }
 
+  /// Explicit "no" to someone else's request — distinct from cancelling my
+  /// own pending request or revoking something already unlocked, so it
+  /// skips [ConsentDialog]'s granting/revoking framing (same "no
+  /// confirmation needed to say no" pattern as declining a connection
+  /// request in `connection_hub_screen.dart`).
+  Future<void> _declineConsent(ConsentType type) async {
+    setState(() {
+      _consentInFlight = type;
+      _error = null;
+    });
+    try {
+      await ref.read(consentRepositoryProvider).setConsent(
+            connectionId: widget.connectionId,
+            type: type,
+            consenting: false,
+          );
+    } catch (e) {
+      setState(() => _error = ErrorMapper.map(e));
+    } finally {
+      if (mounted) setState(() => _consentInFlight = null);
+    }
+  }
+
   Future<void> _endConnection(String userId) async {
     final confirmed = await showDialog<bool>(
       context: context,
@@ -359,6 +382,7 @@ class _ConnectionDetailScreenState extends ConsumerState<ConnectionDetailScreen>
                       state: state,
                       isLoading: _consentInFlight == type,
                       onTap: () => _toggleConsent(type, state),
+                      onDecline: () => _declineConsent(type),
                     ),
                   );
                 })
