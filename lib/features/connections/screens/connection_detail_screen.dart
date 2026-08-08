@@ -33,7 +33,6 @@ class ConnectionDetailScreen extends ConsumerStatefulWidget {
 class _ConnectionDetailScreenState extends ConsumerState<ConnectionDetailScreen> {
   ConsentType? _consentInFlight;
   bool _isEnding = false;
-  bool _isTogglingPause = false;
   String? _error;
 
   /// What the primary button does in each state — drives both the
@@ -145,39 +144,6 @@ class _ConnectionDetailScreenState extends ConsumerState<ConnectionDetailScreen>
     }
   }
 
-  Future<void> _pause(String userId) async {
-    setState(() {
-      _isTogglingPause = true;
-      _error = null;
-    });
-    try {
-      await ref.read(connectionsRepositoryProvider).pauseConnection(
-            connectionId: widget.connectionId,
-            pausedBy: userId,
-          );
-    } catch (e) {
-      setState(() => _error = ErrorMapper.map(e));
-    } finally {
-      if (mounted) setState(() => _isTogglingPause = false);
-    }
-  }
-
-  Future<void> _resume() async {
-    setState(() {
-      _isTogglingPause = true;
-      _error = null;
-    });
-    try {
-      await ref.read(connectionsRepositoryProvider).resumeConnection(
-            connectionId: widget.connectionId,
-          );
-    } catch (e) {
-      setState(() => _error = ErrorMapper.map(e));
-    } finally {
-      if (mounted) setState(() => _isTogglingPause = false);
-    }
-  }
-
   @override
   Widget build(BuildContext context) {
     final connectionAsync = ref.watch(connectionStreamProvider(widget.connectionId));
@@ -256,10 +222,8 @@ class _ConnectionDetailScreenState extends ConsumerState<ConnectionDetailScreen>
                         Text('The ${character.name}', style: AppTextStyles.caption),
                         const SizedBox(height: 8),
                         StatusPill(
-                          label: connection.isPaused ? 'Paused' : connection.status.label,
-                          color: connection.isPaused
-                              ? AppColors.textSecondary
-                              : StatusPill.colorFor(connection.status.dbValue),
+                          label: connection.status.label,
+                          color: StatusPill.colorFor(connection.status.dbValue),
                         ),
                       ],
                     ),
@@ -408,44 +372,6 @@ class _ConnectionDetailScreenState extends ConsumerState<ConnectionDetailScreen>
         ],
         if (connection.status != ConnectionStatus.ended) ...[
           const SizedBox(height: 24),
-          if (connection.isPaused)
-            connection.pausedBy == userId
-                ? PearmoButton(
-                    label: 'Resume chat',
-                    variant: PearmoButtonVariant.outline,
-                    icon: Icons.play_arrow_outlined,
-                    isLoading: _isTogglingPause,
-                    onPressed: _isTogglingPause ? null : _resume,
-                  )
-                : Container(
-                    width: double.infinity,
-                    padding: const EdgeInsets.all(14),
-                    decoration: BoxDecoration(
-                      color: AppColors.surfaceMuted,
-                      borderRadius: BorderRadius.circular(16),
-                    ),
-                    child: Row(
-                      children: [
-                        const Icon(Icons.pause_circle_outline, color: AppColors.textSecondary),
-                        const SizedBox(width: 10),
-                        Expanded(
-                          child: Text(
-                            'The other person paused this chat. Only they can resume it.',
-                            style: AppTextStyles.caption,
-                          ),
-                        ),
-                      ],
-                    ),
-                  )
-          else
-            PearmoButton(
-              label: 'Pause chat',
-              variant: PearmoButtonVariant.outline,
-              icon: Icons.pause_outlined,
-              isLoading: _isTogglingPause,
-              onPressed: _isTogglingPause ? null : () => _pause(userId),
-            ),
-          const SizedBox(height: 12),
           PearmoButton(
             label: 'End connection',
             variant: PearmoButtonVariant.danger,

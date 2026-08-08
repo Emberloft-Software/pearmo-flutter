@@ -115,29 +115,4 @@ class ConnectionsRepository {
     }).eq('id', connectionId);
   }
 
-  /// Reversible pause — unlike [endConnection], the status/progress
-  /// (`limited_chat`, `open_chat`, etc.) is left untouched, only sending is
-  /// blocked (see `Connection.canChatNow`) until [resumeConnection]. Only
-  /// the person who paused can resume — enforced client-side (the UI hides
-  /// the Resume button from the other participant), not by RLS, since the
-  /// existing `connections` UPDATE policy already allows either participant
-  /// to write any column.
-  Future<void> pauseConnection({
-    required String connectionId,
-    required String pausedBy,
-  }) async {
-    await _client.from('connections').update({
-      'is_paused': true,
-      'paused_by': pausedBy,
-      'paused_at': DateTime.now().toIso8601String(),
-    }).eq('id', connectionId);
-  }
-
-  Future<void> resumeConnection({required String connectionId}) async {
-    await _client.from('connections').update({
-      'is_paused': false,
-      'paused_by': null,
-      'paused_at': null,
-    }).eq('id', connectionId);
-  }
 }

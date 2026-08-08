@@ -2236,6 +2236,90 @@ strictly looser than the one it replaces: participants may pause/resume
 and end, but still cannot escalate `status` to `open_chat`/
 `media_unlocked` etc. **Confirmed run 2026-08-08.**
 
+## `send-push` reported `sent: true` for undelivered pushes (2026-08-08)
+
+Push notifications weren't arriving on device, but `net._http_response`
+showed a clean run of `200 {"sent":true,"recipients":1}` for every event.
+**That response was meaningless as evidence of delivery** — the same
+"outer layer reports success while the inner one silently fails" shape as
+the `cron.job_run_details` trap already documented under "Project hygiene
+findings", one level further down:
+
+- `recipients` was `target.userIds.length` — the number of users we
+  *intended* to notify. If `push_tokens` holds no row for that user, the
+  per-token loop body simply never runs and it still reports `1`.
+- FCM's own reply was discarded. `if (!res.ok)` only pruned dead tokens;
+  it never recorded the failure, and the handler returned `sent: true`
+  unconditionally afterwards.
+
+So that log line was equally consistent with delivered, no-device-
+registered, and every-single-send-rejected. Fixed by having `sendToUser`
+return `{tokens, delivered, errors}` and the handler aggregate it, so the
+response now reads e.g.
+`{"event":"consent_requested","recipients":1,"tokens":1,"delivered":1}`
+or `{...,"tokens":0,"delivered":0}` (nobody registered) or
+`{...,"errors":["UNREGISTERED: ..."]}` (FCM refused). **`delivered` is the
+only field that means a push actually left for a device.** Requires a
+redeploy of `send-push` to take effect; root cause of the missing
+notifications is still unidentified at time of writing, pending that
+redeploy plus a `select ... from public.push_tokens` check.
+
+## Pause removed again, same day it was built (2026-08-08)
+
+The "pause chat" feature added earlier this session (its own section
+above) was **deleted**, at the user's decision, after they pointed out
+that the connection detail screen now had two different ways to stop
+chatting. They were right, and the overlap was mine: pause came from an
+early "pause or whatever they decide" answer, the consent lock came from
+the later, more precise locking spec, and the two were never reconciled.
+
+The two models genuinely conflicted:
+- **Pause** — unilateral, self-reversible. Only the pauser could resume;
+  the other participant just waited.
+- **Revoking `chat_unlock`** — mutual. Either side locks it, it closes for
+  both, and reopening needs a fresh request *and* a fresh agreement.
+
+The second is what the user actually specified, and it fully covers the
+"I want this to stop" case. A concrete bug confirmed the redundancy was
+real rather than cosmetic: the Pause button rendered for any
+non-`ended` connection, so it was offered even when chat had never been
+unlocked, where pausing means nothing.
+
+Removed: `Connection.isPaused`/`pausedBy`/`pausedAt`/`canChatNow`,
+`ConnectionsRepository.pauseConnection()`/`resumeConnection()`, the
+pause/resume UI in `connection_detail_screen.dart`, the pause banner and
+resume action in `chat_screen.dart`, the paused branch of
+`connection_hub_screen.dart`'s card, and the
+`connection_paused`/`connection_resumed` events in `send-push`.
+`chat_screen.dart`'s gate went back to
+`connection.status.canChat && chatUnlockGranted`. Verified no `is_paused`
+/`isPaused`/`canChatNow` references remain anywhere in `lib/`.
+
+**Database leftovers, deliberately not dropped:** `connections.is_paused`
+/`paused_by`/`paused_at` and the pause branches inside `notify_push()`
+still exist. They're inert (nothing writes those columns now, so the
+branches never fire) and dropping columns is the one irreversible move in
+this whole cleanup, so it isn't worth doing while the feature could
+plausibly come back. If it never does, the tidy-up is:
+```sql
+alter table public.connections
+  drop column if exists is_paused,
+  drop column if exists paused_by,
+  drop column if exists paused_at;
+```
+and then removing the two `is_paused` branches from `notify_push()`
+(they'd otherwise reference dropped columns and break every
+`connections` UPDATE — **drop the columns and fix the function in the
+same transaction, or the function first**).
+
+**Kept, and still correct:** the `connections_status_guard` trigger and
+relaxed UPDATE policy from the section above. Those were introduced to
+unblock pause, but they're independently right — the old
+`with check (status = 'ended')` policy was blocking any future
+non-status client write too, and the trigger enforces the actual intent
+(clients may only move status to `ended`) more precisely than the policy
+ever did.
+
 ## `update-consent` replaced by a `set_consent` Postgres RPC (2026-08-08)
 
 **Symptom:** requesting an unlock worked, but the second participant

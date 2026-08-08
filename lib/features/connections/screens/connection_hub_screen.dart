@@ -131,18 +131,13 @@ class _ConnectionHubScreenState extends ConsumerState<ConnectionHubScreen> {
                 }
                 final statusColor = StatusPill.colorFor(connection.status.dbValue);
                 final otherUserId = userId != null ? connection.otherUserId(userId) : null;
-                final caption = connection.isPaused
-                    ? (connection.pausedBy == userId
-                        ? 'You paused this chat. Resume it whenever you\'re ready.'
-                        : 'The other person paused this chat for now.')
-                    : connection.status.canChat
-                        ? 'Chat is open. Keep getting to know each other.'
-                        : 'Break the ice with a quick game before chat unlocks.';
                 return _ActiveConnectionCard(
                   otherUserId: otherUserId,
-                  statusLabel: connection.isPaused ? 'Paused' : connection.status.label,
-                  statusColor: connection.isPaused ? AppColors.textSecondary : statusColor,
-                  caption: caption,
+                  statusLabel: connection.status.label,
+                  statusColor: statusColor,
+                  caption: connection.status.canChat
+                      ? 'Chat is open. Keep getting to know each other.'
+                      : 'Break the ice with a quick game before chat unlocks.',
                   onTap: () => context.push('/connection/${connection.id}'),
                 );
               },

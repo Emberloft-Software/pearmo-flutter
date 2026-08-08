@@ -107,20 +107,10 @@ function buildFromEvent(payload: WebhookPayload): PushTarget | null {
         data: { type: 'connection_ended', connection_id: connectionId },
         userIds: [targetUserId],
       }
-    case 'connection_paused':
-      return {
-        title: 'Chat paused',
-        body: 'The other person paused this chat for now.',
-        data: { type: 'connection_paused', connection_id: connectionId },
-        userIds: [targetUserId],
-      }
-    case 'connection_resumed':
-      return {
-        title: 'Chat resumed',
-        body: 'The chat you paused has been resumed.',
-        data: { type: 'connection_resumed', connection_id: connectionId },
-        userIds: [targetUserId],
-      }
+    // NOTE: `connection_paused`/`connection_resumed` were removed 2026-08-08
+    // along with the pause feature itself — locking chat is now done by
+    // revoking the `chat_unlock` consent, which reports through the
+    // `consent_revoked` event below. See CLAUDE.md.
     case 'consent_requested': {
       const label = CONSENT_LABELS[record.consent_type as string] ?? 'A shared unlock'
       return {
@@ -324,17 +314,27 @@ async function buildTarget(
   return null
 }
 
+/** Per-user outcome, aggregated into the HTTP response so a failed send is
+ *  visible in `net._http_response.content` instead of silently discarded. */
+interface SendResult {
+  tokens: number
+  delivered: number
+  errors: string[]
+}
+
 async function sendToUser(
   supabase: ReturnType<typeof createClient>,
   accessToken: string,
   projectId: string,
   userId: string,
   target: PushTarget
-) {
+): Promise<SendResult> {
   const { data: tokens } = await supabase
     .from('push_tokens')
     .select('id, token')
     .eq('user_id', userId)
+
+  const result: SendResult = { tokens: (tokens ?? []).length, delivered: 0, errors: [] }
 
   for (const row of tokens ?? []) {
     const res = await fetch(
@@ -359,16 +359,28 @@ async function sendToUser(
       }
     )
 
-    if (!res.ok) {
-      const error = await res.json().catch(() => null)
-      const status = error?.error?.status
-      // Token no longer valid (app uninstalled, token rotated without a
-      // fresh upsert reaching us, etc.) — drop it rather than retry forever.
-      if (status === 'UNREGISTERED' || status === 'NOT_FOUND' || status === 'INVALID_ARGUMENT') {
-        await supabase.from('push_tokens').delete().eq('id', row.id)
-      }
+    if (res.ok) {
+      result.delivered++
+      continue
+    }
+
+    // Surface the failure rather than swallowing it. Previously this branch
+    // only pruned dead tokens and the handler still returned `sent: true`,
+    // so a 100%-rejected send was indistinguishable from a delivered one in
+    // `net._http_response` — the same "outer layer reports success while the
+    // inner one fails" trap as `cron.job_run_details` (see CLAUDE.md).
+    const error = await res.json().catch(() => null)
+    const status = error?.error?.status ?? `HTTP_${res.status}`
+    result.errors.push(`${status}: ${error?.error?.message ?? 'unknown'}`)
+
+    // Token no longer valid (app uninstalled, token rotated without a
+    // fresh upsert reaching us, etc.) — drop it rather than retry forever.
+    if (status === 'UNREGISTERED' || status === 'NOT_FOUND' || status === 'INVALID_ARGUMENT') {
+      await supabase.from('push_tokens').delete().eq('id', row.id)
     }
   }
+
+  return result
 }
 
 Deno.serve(async (req) => {
@@ -401,11 +413,29 @@ Deno.serve(async (req) => {
   const serviceAccount = JSON.parse(Deno.env.get('FCM_SERVICE_ACCOUNT_JSON')!)
   const accessToken = await getAccessToken()
 
+  let tokens = 0
+  let delivered = 0
+  const errors: string[] = []
   for (const userId of target.userIds) {
-    await sendToUser(supabase, accessToken, serviceAccount.project_id, userId, target)
+    const result = await sendToUser(
+      supabase, accessToken, serviceAccount.project_id, userId, target)
+    tokens += result.tokens
+    delivered += result.delivered
+    errors.push(...result.errors)
   }
 
-  return new Response(JSON.stringify({ sent: true, recipients: target.userIds.length }), {
-    headers: { 'Content-Type': 'application/json' },
-  })
+  // `delivered` is the only field that means a push actually left for a
+  // device. `tokens: 0` means nobody has registered one (the app never
+  // reached `push_tokens`), which is a different problem from FCM refusing
+  // the send — `errors` distinguishes them.
+  return new Response(
+    JSON.stringify({
+      event: payload.event ?? payload.table,
+      recipients: target.userIds.length,
+      tokens,
+      delivered,
+      ...(errors.length ? { errors } : {}),
+    }),
+    { headers: { 'Content-Type': 'application/json' } }
+  )
 })
