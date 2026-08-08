@@ -78,6 +78,7 @@ class _CandidateDetailScreenState extends ConsumerState<CandidateDetailScreen> {
           );
       ref.invalidate(dailyMatchCardsProvider);
       ref.invalidate(activeConnectionProvider);
+      ref.invalidate(outgoingPendingRequestProvider);
       if (mounted) {
         Navigator.of(context).pop();
         ScaffoldMessenger.of(context).showSnackBar(

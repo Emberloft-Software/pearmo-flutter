@@ -6,9 +6,11 @@ import '../../core/theme/app_text_styles.dart';
 import 'pearmo_button.dart';
 
 /// Confirmation dialog shown before requesting or revoking a consent-gated
-/// unlock (chat, media, calls, location, gift address). Surfacing this as
-/// its own dialog keeps the "send an alert to both parties" promise visible
-/// and consistent everywhere it's used.
+/// unlock (chat, media, calls, location, gift address). Copy deliberately
+/// only promises what's actually true today — the change is visible to the
+/// other participant live in the app (see `ConsentTile`'s per-state
+/// copy) — not a push notification, since no event currently pushes on a
+/// `consent_records` change (see CLAUDE.md "Push notifications").
 class ConsentDialog extends StatelessWidget {
   const ConsentDialog({super.key, required this.type, required this.granting});
 
@@ -46,8 +48,8 @@ class ConsentDialog extends StatelessWidget {
                 Expanded(
                   child: Text(
                     granting
-                        ? 'The other person will get a notification asking if they\'re okay with this too. It only unlocks once you both agree.'
-                        : 'The other person will be notified that you\'ve turned this off.',
+                        ? "They'll see your request the next time they open this connection, and it unlocks the moment you both agree."
+                        : "They'll see that you've turned this off the next time they open this connection.",
                     style: AppTextStyles.caption,
                   ),
                 ),

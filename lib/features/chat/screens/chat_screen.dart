@@ -48,6 +48,7 @@ class _ChatScreenState extends ConsumerState<ChatScreen> {
   final _controller = TextEditingController();
   final _scrollController = ScrollController();
   bool _isSending = false;
+  bool _isResumingChat = false;
   String? _error;
 
   // Typing indicator — pure Realtime Broadcast (see
@@ -116,6 +117,19 @@ class _ChatScreenState extends ConsumerState<ChatScreen> {
     }
     _lastTypingSentAt = now;
     _typingChannel?.sendBroadcastMessage(event: 'typing', payload: {'user_id': userId});
+  }
+
+  Future<void> _resumeChat() async {
+    setState(() => _isResumingChat = true);
+    try {
+      await ref.read(connectionsRepositoryProvider).resumeConnection(
+            connectionId: widget.connectionId,
+          );
+    } catch (e) {
+      setState(() => _error = ErrorMapper.map(e));
+    } finally {
+      if (mounted) setState(() => _isResumingChat = false);
+    }
   }
 
   Future<void> _send(String userId) async {
@@ -257,7 +271,7 @@ class _ChatScreenState extends ConsumerState<ChatScreen> {
             return const EmptyState(icon: Icons.link_off, title: 'Connection not found');
           }
 
-          final canChat = connection.status.canChat;
+          final canChat = connection.canChatNow;
 
           // Photo/video sharing requires BOTH participants at
           // selfie_verified or higher. Before this, `_pickAndSendMedia` had
@@ -288,7 +302,20 @@ class _ChatScreenState extends ConsumerState<ChatScreen> {
 
           return Column(
             children: [
-              if (!canChat)
+              if (connection.isPaused)
+                _NoticeBanner(
+                  icon: Icons.pause_circle_outline,
+                  message: connection.pausedBy == userId
+                      ? 'You paused this chat. Resume it whenever you\'re ready.'
+                      : 'The other person paused this chat. Only they can resume it.',
+                  action: connection.pausedBy == userId
+                      ? TextButton(
+                          onPressed: _isResumingChat ? null : _resumeChat,
+                          child: const Text('Resume'),
+                        )
+                      : null,
+                )
+              else if (!connection.status.canChat)
                 _NoticeBanner(
                   icon: Icons.extension_outlined,
                   message: connection.status == ConnectionStatus.ended

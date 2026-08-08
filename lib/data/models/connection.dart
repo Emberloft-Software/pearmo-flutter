@@ -11,6 +11,9 @@ class Connection {
   final DateTime? endedAt;
   final String? endedBy;
   final EndReason? endReason;
+  final bool isPaused;
+  final String? pausedBy;
+  final DateTime? pausedAt;
 
   const Connection({
     required this.id,
@@ -21,6 +24,9 @@ class Connection {
     this.endedAt,
     this.endedBy,
     this.endReason,
+    this.isPaused = false,
+    this.pausedBy,
+    this.pausedAt,
   });
 
   /// Returns the other participant's user id given the current user's id.
@@ -28,6 +34,11 @@ class Connection {
       initiatorId == currentUserId ? receiverId : initiatorId;
 
   bool get isActive => status != ConnectionStatus.ended && status != ConnectionStatus.pending;
+
+  /// Whether messages can be sent right now — the status allows it AND
+  /// neither side has paused. Reading history is still allowed while
+  /// paused (same read-only treatment as `ended`); only sending is blocked.
+  bool get canChatNow => status.canChat && !isPaused;
 
   factory Connection.fromJson(Map<String, dynamic> json) {
     return Connection(
@@ -40,6 +51,9 @@ class Connection {
       endedBy: json['ended_by'] as String?,
       endReason:
           json['end_reason'] != null ? EndReason.fromDb(json['end_reason'] as String) : null,
+      isPaused: json['is_paused'] as bool? ?? false,
+      pausedBy: json['paused_by'] as String?,
+      pausedAt: json['paused_at'] != null ? DateTime.parse(json['paused_at'] as String) : null,
     );
   }
 }

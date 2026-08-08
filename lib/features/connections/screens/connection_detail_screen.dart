@@ -7,6 +7,7 @@ import '../../../core/theme/app_colors.dart';
 import '../../../core/theme/app_text_styles.dart';
 import '../../../core/utils/error_mapper.dart';
 import '../../../data/models/connection.dart';
+import '../../../data/models/consent_record.dart';
 import '../../../providers/auth_providers.dart';
 import '../../../providers/connections_providers.dart';
 import '../../../providers/consent_providers.dart';
@@ -32,10 +33,20 @@ class ConnectionDetailScreen extends ConsumerStatefulWidget {
 class _ConnectionDetailScreenState extends ConsumerState<ConnectionDetailScreen> {
   ConsentType? _consentInFlight;
   bool _isEnding = false;
+  bool _isTogglingPause = false;
   String? _error;
 
-  Future<void> _toggleConsent(ConsentType type, bool currentlyGranted) async {
-    final granting = !currentlyGranted;
+  /// Whether tapping the button for [state] should call `setConsent` with
+  /// `consenting: true` (request/agree) or `false` (cancel my own pending
+  /// request, or revoke an unlocked one).
+  bool _isGrantingAction(ConsentState state) => switch (state) {
+        ConsentState.granted => false,
+        ConsentState.waitingOnThem => false,
+        _ => true,
+      };
+
+  Future<void> _toggleConsent(ConsentType type, ConsentState state) async {
+    final granting = _isGrantingAction(state);
     final confirmed = await ConsentDialog.show(context, type: type, granting: granting);
     if (!confirmed) return;
 
@@ -100,6 +111,39 @@ class _ConnectionDetailScreenState extends ConsumerState<ConnectionDetailScreen>
     }
   }
 
+  Future<void> _pause(String userId) async {
+    setState(() {
+      _isTogglingPause = true;
+      _error = null;
+    });
+    try {
+      await ref.read(connectionsRepositoryProvider).pauseConnection(
+            connectionId: widget.connectionId,
+            pausedBy: userId,
+          );
+    } catch (e) {
+      setState(() => _error = ErrorMapper.map(e));
+    } finally {
+      if (mounted) setState(() => _isTogglingPause = false);
+    }
+  }
+
+  Future<void> _resume() async {
+    setState(() {
+      _isTogglingPause = true;
+      _error = null;
+    });
+    try {
+      await ref.read(connectionsRepositoryProvider).resumeConnection(
+            connectionId: widget.connectionId,
+          );
+    } catch (e) {
+      setState(() => _error = ErrorMapper.map(e));
+    } finally {
+      if (mounted) setState(() => _isTogglingPause = false);
+    }
+  }
+
   @override
   Widget build(BuildContext context) {
     final connectionAsync = ref.watch(connectionStreamProvider(widget.connectionId));
@@ -144,7 +188,7 @@ class _ConnectionDetailScreenState extends ConsumerState<ConnectionDetailScreen>
   Widget _buildBody(BuildContext context, Connection connection, String userId) {
     final otherUserId = connection.otherUserId(userId);
     final profileAsync = ref.watch(candidateProfileProvider(otherUserId));
-    final consentsAsync = ref.watch(activeConsentsProvider(widget.connectionId));
+    final consentsAsync = ref.watch(connectionConsentsProvider(widget.connectionId));
 
     return ListView(
       padding: const EdgeInsets.all(20),
@@ -178,8 +222,10 @@ class _ConnectionDetailScreenState extends ConsumerState<ConnectionDetailScreen>
                         Text('The ${character.name}', style: AppTextStyles.caption),
                         const SizedBox(height: 8),
                         StatusPill(
-                          label: connection.status.label,
-                          color: StatusPill.colorFor(connection.status.dbValue),
+                          label: connection.isPaused ? 'Paused' : connection.status.label,
+                          color: connection.isPaused
+                              ? AppColors.textSecondary
+                              : StatusPill.colorFor(connection.status.dbValue),
                         ),
                       ],
                     ),
@@ -299,14 +345,20 @@ class _ConnectionDetailScreenState extends ConsumerState<ConnectionDetailScreen>
           data: (consents) => Column(
             children: ConsentType.values
                 .map((type) {
-                  final granted = isConsentGranted(consents, widget.connectionId, type.dbValue);
+                  final granted =
+                      isConsentGranted(consents.active, widget.connectionId, type.dbValue);
+                  final state = resolveConsentState(
+                    currentUserId: userId,
+                    isGranted: granted,
+                    record: consents.recordFor(type.dbValue),
+                  );
                   return Padding(
                     padding: const EdgeInsets.only(bottom: 12),
                     child: ConsentTile(
                       type: type,
-                      isGranted: granted,
+                      state: state,
                       isLoading: _consentInFlight == type,
-                      onTap: () => _toggleConsent(type, granted),
+                      onTap: () => _toggleConsent(type, state),
                     ),
                   );
                 })
@@ -321,6 +373,44 @@ class _ConnectionDetailScreenState extends ConsumerState<ConnectionDetailScreen>
         ],
         if (connection.status != ConnectionStatus.ended) ...[
           const SizedBox(height: 24),
+          if (connection.isPaused)
+            connection.pausedBy == userId
+                ? PearmoButton(
+                    label: 'Resume chat',
+                    variant: PearmoButtonVariant.outline,
+                    icon: Icons.play_arrow_outlined,
+                    isLoading: _isTogglingPause,
+                    onPressed: _isTogglingPause ? null : _resume,
+                  )
+                : Container(
+                    width: double.infinity,
+                    padding: const EdgeInsets.all(14),
+                    decoration: BoxDecoration(
+                      color: AppColors.surfaceMuted,
+                      borderRadius: BorderRadius.circular(16),
+                    ),
+                    child: Row(
+                      children: [
+                        const Icon(Icons.pause_circle_outline, color: AppColors.textSecondary),
+                        const SizedBox(width: 10),
+                        Expanded(
+                          child: Text(
+                            'The other person paused this chat. Only they can resume it.',
+                            style: AppTextStyles.caption,
+                          ),
+                        ),
+                      ],
+                    ),
+                  )
+          else
+            PearmoButton(
+              label: 'Pause chat',
+              variant: PearmoButtonVariant.outline,
+              icon: Icons.pause_outlined,
+              isLoading: _isTogglingPause,
+              onPressed: _isTogglingPause ? null : () => _pause(userId),
+            ),
+          const SizedBox(height: 12),
           PearmoButton(
             label: 'End connection',
             variant: PearmoButtonVariant.danger,

@@ -36,6 +36,21 @@ class ConnectionsRepository {
     return (rows as List).map((e) => Connection.fromJson(e as Map<String, dynamic>)).toList();
   }
 
+  /// A request this user sent that's still awaiting the other person's
+  /// response — `getActiveConnection` deliberately excludes `pending` rows,
+  /// so without this a sent request has no visible state at all until it's
+  /// accepted or declined.
+  Future<Connection?> getOutgoingPendingRequest(String userId) async {
+    final row = await _client
+        .from('connections')
+        .select()
+        .eq('initiator_id', userId)
+        .eq('status', 'pending')
+        .maybeSingle();
+    if (row == null) return null;
+    return Connection.fromJson(row);
+  }
+
   Stream<Connection?> watchConnection(String connectionId) {
     return _client
         .from('connections')
@@ -97,6 +112,32 @@ class ConnectionsRepository {
       'ended_at': DateTime.now().toIso8601String(),
       'ended_by': endedBy,
       'end_reason': reason.dbValue,
+    }).eq('id', connectionId);
+  }
+
+  /// Reversible pause — unlike [endConnection], the status/progress
+  /// (`limited_chat`, `open_chat`, etc.) is left untouched, only sending is
+  /// blocked (see `Connection.canChatNow`) until [resumeConnection]. Only
+  /// the person who paused can resume — enforced client-side (the UI hides
+  /// the Resume button from the other participant), not by RLS, since the
+  /// existing `connections` UPDATE policy already allows either participant
+  /// to write any column.
+  Future<void> pauseConnection({
+    required String connectionId,
+    required String pausedBy,
+  }) async {
+    await _client.from('connections').update({
+      'is_paused': true,
+      'paused_by': pausedBy,
+      'paused_at': DateTime.now().toIso8601String(),
+    }).eq('id', connectionId);
+  }
+
+  Future<void> resumeConnection({required String connectionId}) async {
+    await _client.from('connections').update({
+      'is_paused': false,
+      'paused_by': null,
+      'paused_at': null,
     }).eq('id', connectionId);
   }
 }

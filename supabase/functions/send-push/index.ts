@@ -1,16 +1,28 @@
 // supabase/functions/send-push/index.ts
 //
-// Sends a real FCM push for the three events the old client-side
-// `NotificationWatcher` used to fake with Supabase Realtime: a new chat
-// message, a new incoming connection request, and a new ice-breaker game
-// session. See CLAUDE.md "Push notifications".
+// Sends a real FCM push for chat/connection/consent events. Originally
+// covered only the three events the old client-side `NotificationWatcher`
+// used to fake with Supabase Realtime (new chat message, new incoming
+// connection request, new ice-breaker game session) — extended to also
+// cover connection responses (accept/decline), pause/resume, end, and
+// chat/media consent changes (request/grant/revoke). See CLAUDE.md "Push
+// notifications" and the connection-notifications follow-up section.
 //
-// Not called by the app — invoked by three Supabase Database Webhooks
-// (Dashboard → Database → Webhooks), one per table, each configured for
-// INSERT only and POSTing here with a shared secret header (there's no user
-// session behind a webhook call, same reasoning as `cleanup-verification-
-// media`'s `x-cron-secret`). Database Webhooks send the row as-is in
-// `{type, table, record}` — see the `WebhookPayload` shape below.
+// Not called by the app — invoked by plain Postgres triggers calling
+// `net.http_post` (see the trigger SQL handed to the user; Database
+// Webhooks aren't usable on this project, see CLAUDE.md), POSTing here with
+// a shared secret header (there's no user session behind a trigger-driven
+// call, same reasoning as `cleanup-verification-media`'s `x-cron-secret`).
+//
+// Two payload shapes:
+// - Table-native (`messages`, `connections` INSERT, `ice_breaker_sessions`):
+//   `{type, table, record}` — `buildTarget` derives the recipient(s) and
+//   copy itself, same as originally built.
+// - Event-driven (connection UPDATE, consent_records INSERT/UPDATE): the
+//   trigger already has the relational context (participant ids, who acted)
+//   that would otherwise need a second query here, so it computes
+//   `target_user_id` and a specific `event` label in SQL and passes them
+//   directly — `buildFromEvent` just picks the copy for that `event`.
 //
 // FCM's HTTP v1 API (unlike the deprecated legacy API) needs a short-lived
 // OAuth2 access token, not a static server key — obtained here by signing a
@@ -24,6 +36,10 @@ interface WebhookPayload {
   type: 'INSERT' | 'UPDATE' | 'DELETE'
   table: string
   record: Record<string, unknown>
+  old_record?: Record<string, unknown>
+  /** Event-driven payloads only — see file header. */
+  event?: string
+  target_user_id?: string
 }
 
 interface PushTarget {
@@ -38,6 +54,97 @@ const GAME_LABELS: Record<string, string> = {
   draw_together: 'Draw Together',
   trivia: 'Trivia',
   prompts: '20 Questions',
+}
+
+// Mirrors ConsentType.label in lib/core/constants/enums.dart — keep in sync
+// if that changes.
+const CONSENT_LABELS: Record<string, string> = {
+  chat_unlock: 'Open chat',
+  media_share: 'Share photos & videos',
+}
+
+/**
+ * Copy for event-driven payloads (see file header) — the trigger already
+ * resolved `target_user_id`, so this only picks title/body/data.
+ */
+function buildFromEvent(payload: WebhookPayload): PushTarget | null {
+  const record = payload.record
+  const targetUserId = payload.target_user_id!
+  const connectionId = (record.connection_id as string) ?? (record.id as string)
+
+  switch (payload.event) {
+    case 'connection_accepted':
+      return {
+        title: 'Request accepted!',
+        body: "They said yes — break the ice together to unlock chat.",
+        data: { type: 'connection_accepted', connection_id: connectionId },
+        userIds: [targetUserId],
+      }
+    // ASSUMPTION, not confirmed against `respond-to-connection`'s actual
+    // source (not visible from this repo — see CLAUDE.md's standing rule on
+    // guessing edge function behavior): a decline is inferred as a
+    // `pending -> ended` transition that never passed through `accepted`.
+    // If `respond-to-connection` instead sets some other status on decline,
+    // this event never fires — verify against a real decline before
+    // relying on it.
+    case 'connection_declined':
+      return {
+        title: 'Connection update',
+        body: "Your connection request wasn't accepted this time.",
+        data: { type: 'connection_declined', connection_id: connectionId },
+        userIds: [targetUserId],
+      }
+    case 'connection_ended':
+      return {
+        title: 'Connection ended',
+        body: 'Your connection has ended.',
+        data: { type: 'connection_ended', connection_id: connectionId },
+        userIds: [targetUserId],
+      }
+    case 'connection_paused':
+      return {
+        title: 'Chat paused',
+        body: 'The other person paused this chat for now.',
+        data: { type: 'connection_paused', connection_id: connectionId },
+        userIds: [targetUserId],
+      }
+    case 'connection_resumed':
+      return {
+        title: 'Chat resumed',
+        body: 'The chat you paused has been resumed.',
+        data: { type: 'connection_resumed', connection_id: connectionId },
+        userIds: [targetUserId],
+      }
+    case 'consent_requested': {
+      const label = CONSENT_LABELS[record.consent_type as string] ?? 'A shared unlock'
+      return {
+        title: 'New request',
+        body: `They'd like to turn on "${label}" — open the app to respond.`,
+        data: { type: 'consent_requested', connection_id: connectionId },
+        userIds: [targetUserId],
+      }
+    }
+    case 'consent_granted': {
+      const label = CONSENT_LABELS[record.consent_type as string] ?? 'A shared unlock'
+      return {
+        title: `${label} unlocked`,
+        body: "You both agreed — it's unlocked now.",
+        data: { type: 'consent_granted', connection_id: connectionId },
+        userIds: [targetUserId],
+      }
+    }
+    case 'consent_revoked': {
+      const label = CONSENT_LABELS[record.consent_type as string] ?? 'A shared unlock'
+      return {
+        title: 'Consent update',
+        body: `They turned off "${label}".`,
+        data: { type: 'consent_revoked', connection_id: connectionId },
+        userIds: [targetUserId],
+      }
+    }
+    default:
+      return null
+  }
 }
 
 let cachedAccessToken: { token: string; expiresAt: number } | null = null
@@ -91,6 +198,12 @@ async function buildTarget(
   payload: WebhookPayload
 ): Promise<PushTarget | null> {
   const record = payload.record
+
+  // Event-driven payloads (connection UPDATE, consent_records) already
+  // carry their recipient and a specific event label — no DB lookup needed.
+  if (payload.target_user_id && payload.event) {
+    return buildFromEvent(payload)
+  }
 
   if (payload.table === 'messages') {
     const connectionId = record.connection_id as string
@@ -196,8 +309,14 @@ Deno.serve(async (req) => {
   }
 
   const payload = (await req.json()) as WebhookPayload
-  if (payload.type !== 'INSERT') {
-    return new Response(JSON.stringify({ skipped: 'not an insert' }), { status: 200 })
+  // Event-driven UPDATE payloads (connection responses/pause/end, consent
+  // changes) are handled below via `target_user_id`/`event`. Every other
+  // UPDATE (and any DELETE) is still a no-op, same as before — table-native
+  // handling in `buildTarget` only exists for INSERTs.
+  if (payload.type !== 'INSERT' && !(payload.type === 'UPDATE' && payload.target_user_id)) {
+    return new Response(JSON.stringify({ skipped: `not handled: ${payload.type}` }), {
+      status: 200,
+    })
   }
 
   const supabase = createClient(

@@ -3,18 +3,37 @@ import 'package:flutter_riverpod/flutter_riverpod.dart';
 import '../data/models/consent_record.dart';
 import 'repository_providers.dart';
 
-/// Active (both-sides-granted) consents for a connection. Re-fetches every
-/// time `consent_records` changes via realtime, since `active_consents`
-/// itself is a read-only view that can't be streamed.
-final activeConsentsProvider =
-    StreamProvider.autoDispose.family<List<ActiveConsent>, String>((ref, connectionId) async* {
+/// Active consents + the raw records for a connection, bundled together so
+/// both can be derived from a single `consent_records` realtime
+/// subscription instead of two independent ones watching the same table.
+class ConnectionConsents {
+  final List<ActiveConsent> active;
+  final List<ConsentRecord> records;
+
+  const ConnectionConsents({required this.active, required this.records});
+
+  ConsentRecord? recordFor(String dbType) =>
+      records.where((r) => r.consentType.dbValue == dbType).firstOrNull;
+}
+
+/// Re-fetches both `active_consents` (the both-agreed view) and the raw
+/// `consent_records` rows every time `consent_records` changes via
+/// realtime — `active_consents` itself is a read-only view that can't be
+/// streamed directly.
+final connectionConsentsProvider =
+    StreamProvider.autoDispose.family<ConnectionConsents, String>((ref, connectionId) async* {
   final consentRepo = ref.watch(consentRepositoryProvider);
 
-  // Emit once immediately, then again whenever consent_records changes.
-  yield await consentRepo.getActiveConsents(connectionId);
+  Future<ConnectionConsents> fetch() async {
+    final active = await consentRepo.getActiveConsents(connectionId);
+    final records = await consentRepo.getConsentRecords(connectionId);
+    return ConnectionConsents(active: active, records: records);
+  }
+
+  yield await fetch();
 
   await for (final _ in consentRepo.watchConsentRecords(connectionId)) {
-    yield await consentRepo.getActiveConsents(connectionId);
+    yield await fetch();
   }
 });
 

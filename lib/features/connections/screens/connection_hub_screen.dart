@@ -48,6 +48,7 @@ class _ConnectionHubScreenState extends ConsumerState<ConnectionHubScreen> {
   Widget build(BuildContext context) {
     final activeAsync = ref.watch(activeConnectionProvider);
     final incomingAsync = ref.watch(incomingRequestsProvider);
+    final outgoingAsync = ref.watch(outgoingPendingRequestProvider);
     final userId = ref.watch(currentUserIdProvider);
 
     return Scaffold(
@@ -57,6 +58,7 @@ class _ConnectionHubScreenState extends ConsumerState<ConnectionHubScreen> {
         onRefresh: () async {
           ref.invalidate(activeConnectionProvider);
           ref.invalidate(incomingRequestsProvider);
+          ref.invalidate(outgoingPendingRequestProvider);
         },
         child: ListView(
           physics: const AlwaysScrollableScrollPhysics(),
@@ -99,24 +101,48 @@ class _ConnectionHubScreenState extends ConsumerState<ConnectionHubScreen> {
             activeAsync.when(
               data: (connection) {
                 if (connection == null) {
-                  return const EmptyState(
-                    icon: Icons.favorite_border,
-                    title: 'No active connection',
-                    message:
-                        'When you and a match both want to connect, your conversation starts '
-                        'here, one connection at a time, so you can focus on getting to know '
-                        'each other.',
+                  // No active connection yet — but a sent request might
+                  // still be awaiting a response, which `activeConnection`
+                  // deliberately excludes (see `getActiveConnection`). Show
+                  // that instead of a plain "nothing here" empty state.
+                  return outgoingAsync.when(
+                    data: (outgoing) {
+                      if (outgoing == null) {
+                        return const EmptyState(
+                          icon: Icons.favorite_border,
+                          title: 'No active connection',
+                          message:
+                              'When you and a match both want to connect, your conversation starts '
+                              'here, one connection at a time, so you can focus on getting to know '
+                              'each other.',
+                        );
+                      }
+                      return _ActiveConnectionCard(
+                        otherUserId: outgoing.receiverId,
+                        statusLabel: 'Waiting for response',
+                        statusColor: StatusPill.colorFor('pending'),
+                        caption: "Request sent. We'll let you know as soon as they respond.",
+                        onTap: null,
+                      );
+                    },
+                    loading: () => const LoadingIndicator(),
+                    error: (error, _) => ErrorBanner(message: ErrorMapper.map(error)),
                   );
                 }
                 final statusColor = StatusPill.colorFor(connection.status.dbValue);
                 final otherUserId = userId != null ? connection.otherUserId(userId) : null;
+                final caption = connection.isPaused
+                    ? (connection.pausedBy == userId
+                        ? 'You paused this chat. Resume it whenever you\'re ready.'
+                        : 'The other person paused this chat for now.')
+                    : connection.status.canChat
+                        ? 'Chat is open. Keep getting to know each other.'
+                        : 'Break the ice with a quick game before chat unlocks.';
                 return _ActiveConnectionCard(
                   otherUserId: otherUserId,
-                  statusLabel: connection.status.label,
-                  statusColor: statusColor,
-                  caption: connection.status.canChat
-                      ? 'Chat is open. Keep getting to know each other.'
-                      : 'Break the ice with a quick game before chat unlocks.',
+                  statusLabel: connection.isPaused ? 'Paused' : connection.status.label,
+                  statusColor: connection.isPaused ? AppColors.textSecondary : statusColor,
+                  caption: caption,
                   onTap: () => context.push('/connection/${connection.id}'),
                 );
               },
@@ -147,7 +173,7 @@ class _ActiveConnectionCard extends ConsumerWidget {
   final String statusLabel;
   final Color statusColor;
   final String caption;
-  final VoidCallback onTap;
+  final VoidCallback? onTap;
 
   @override
   Widget build(BuildContext context, WidgetRef ref) {
@@ -185,7 +211,7 @@ class _ActiveConnectionCard extends ConsumerWidget {
                   ],
                 ),
               ),
-              const Icon(Icons.chevron_right, color: AppColors.textSecondary),
+              if (onTap != null) const Icon(Icons.chevron_right, color: AppColors.textSecondary),
             ],
           ),
         ),
