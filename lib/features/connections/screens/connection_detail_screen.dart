@@ -36,18 +36,23 @@ class _ConnectionDetailScreenState extends ConsumerState<ConnectionDetailScreen>
   bool _isTogglingPause = false;
   String? _error;
 
-  /// Whether tapping the button for [state] should call `setConsent` with
-  /// `consenting: true` (request/agree) or `false` (cancel my own pending
-  /// request, or revoke an unlocked one).
-  bool _isGrantingAction(ConsentState state) => switch (state) {
-        ConsentState.granted => false,
-        ConsentState.waitingOnThem => false,
-        _ => true,
+  /// What the primary button does in each state — drives both the
+  /// `setConsent` flag and which confirmation copy [ConsentDialog] shows.
+  ConsentIntent _intentFor(ConsentState state) => switch (state) {
+        // Already unlocked: the button turns it back off for both of us.
+        ConsentState.granted => ConsentIntent.revoke,
+        // My own request is pending: the button cancels it.
+        ConsentState.waitingOnThem => ConsentIntent.revoke,
+        // They asked: the button agrees.
+        ConsentState.needsYourResponse => ConsentIntent.agree,
+        // Nothing pending (never asked, or previously turned off): ask.
+        _ => ConsentIntent.request,
       };
 
   Future<void> _toggleConsent(ConsentType type, ConsentState state) async {
-    final granting = _isGrantingAction(state);
-    final confirmed = await ConsentDialog.show(context, type: type, granting: granting);
+    final intent = _intentFor(state);
+    final granting = intent != ConsentIntent.revoke;
+    final confirmed = await ConsentDialog.show(context, type: type, intent: intent);
     if (!confirmed) return;
 
     setState(() {
@@ -60,6 +65,11 @@ class _ConnectionDetailScreenState extends ConsumerState<ConnectionDetailScreen>
             type: type,
             consenting: granting,
           );
+      // Don't wait on the realtime stream to reflect our own write — if
+      // `consent_records` realtime is ever slow or dropped, the button
+      // would otherwise sit on its old label and the action would look
+      // like it did nothing.
+      ref.invalidate(connectionConsentsProvider(widget.connectionId));
     } catch (e) {
       setState(() => _error = ErrorMapper.map(e));
     } finally {
@@ -83,6 +93,7 @@ class _ConnectionDetailScreenState extends ConsumerState<ConnectionDetailScreen>
             type: type,
             consenting: false,
           );
+      ref.invalidate(connectionConsentsProvider(widget.connectionId));
     } catch (e) {
       setState(() => _error = ErrorMapper.map(e));
     } finally {

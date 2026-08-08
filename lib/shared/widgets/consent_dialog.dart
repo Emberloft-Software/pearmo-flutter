@@ -5,29 +5,59 @@ import '../../core/theme/app_colors.dart';
 import '../../core/theme/app_text_styles.dart';
 import 'pearmo_button.dart';
 
-/// Confirmation dialog shown before requesting or revoking a consent-gated
-/// unlock (chat, media, calls, location, gift address). Copy deliberately
-/// only promises what's actually true today — the change is visible to the
-/// other participant live in the app (see `ConsentTile`'s per-state
-/// copy) — not a push notification, since no event currently pushes on a
-/// `consent_records` change (see CLAUDE.md "Push notifications").
+/// What the user is about to do, so the dialog can use accurate copy —
+/// "send a request", "agree to theirs", and "turn it off again" are three
+/// different actions that all used to share one granting/revoking bool.
+enum ConsentIntent { request, agree, revoke }
+
+/// Confirmation dialog shown before requesting, agreeing to, or revoking a
+/// consent-gated unlock. Both participants are pushed a notification for
+/// each of these (see `send-push`'s `consent_*` events), and the change is
+/// also reflected live in the other person's Shared Unlocks panel.
 class ConsentDialog extends StatelessWidget {
-  const ConsentDialog({super.key, required this.type, required this.granting});
+  const ConsentDialog({super.key, required this.type, required this.intent});
 
   final ConsentType type;
-  final bool granting;
+  final ConsentIntent intent;
 
-  static Future<bool> show(BuildContext context, {required ConsentType type, required bool granting}) {
+  static Future<bool> show(
+    BuildContext context, {
+    required ConsentType type,
+    required ConsentIntent intent,
+  }) {
     return showDialog<bool>(
       context: context,
-      builder: (_) => ConsentDialog(type: type, granting: granting),
+      builder: (_) => ConsentDialog(type: type, intent: intent),
     ).then((value) => value ?? false);
   }
+
+  bool get granting => intent != ConsentIntent.revoke;
+
+  String get _title => switch (intent) {
+        ConsentIntent.request => 'Request "${type.label}"?',
+        ConsentIntent.agree => 'Agree to "${type.label}"?',
+        ConsentIntent.revoke => 'Turn off "${type.label}"?',
+      };
+
+  String get _note => switch (intent) {
+        ConsentIntent.request =>
+          "They'll get a notification asking if they agree, and this unlocks the moment they do.",
+        ConsentIntent.agree =>
+          "This unlocks it for both of you right away, and they'll be notified. Either of you can turn it off again at any time.",
+        ConsentIntent.revoke =>
+          "This locks it again for both of you straight away, and they'll be notified. Re-opening it later needs a fresh request.",
+      };
+
+  String get _actionLabel => switch (intent) {
+        ConsentIntent.request => 'Send request',
+        ConsentIntent.agree => 'Agree',
+        ConsentIntent.revoke => 'Turn off',
+      };
 
   @override
   Widget build(BuildContext context) {
     return AlertDialog(
-      title: Text(granting ? 'Unlock "${type.label}"?' : 'Revoke "${type.label}"?'),
+      title: Text(_title),
       content: Column(
         mainAxisSize: MainAxisSize.min,
         crossAxisAlignment: CrossAxisAlignment.start,
@@ -45,14 +75,7 @@ class ConsentDialog extends StatelessWidget {
               children: [
                 const Icon(Icons.notifications_active_outlined, size: 20, color: AppColors.secondaryDark),
                 const SizedBox(width: 8),
-                Expanded(
-                  child: Text(
-                    granting
-                        ? "They'll see your request the next time they open this connection, and it unlocks the moment you both agree."
-                        : "They'll see that you've turned this off the next time they open this connection.",
-                    style: AppTextStyles.caption,
-                  ),
-                ),
+                Expanded(child: Text(_note, style: AppTextStyles.caption)),
               ],
             ),
           ),
@@ -66,7 +89,7 @@ class ConsentDialog extends StatelessWidget {
           onPressed: () => Navigator.of(context).pop(false),
         ),
         PearmoButton(
-          label: granting ? 'Send request' : 'Revoke',
+          label: _actionLabel,
           variant: granting ? PearmoButtonVariant.primary : PearmoButtonVariant.danger,
           expand: false,
           onPressed: () => Navigator.of(context).pop(true),

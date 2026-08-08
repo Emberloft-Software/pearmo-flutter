@@ -2127,6 +2127,50 @@ without an image (confirmed behavior of the HTTP v1 API: a fetch failure
 on `notification.image` doesn't fail the whole send), so this is a
 soft-fail, not something that will break notifications in the meantime.
 
+**Bug found + fixed same day: the "Open chat" request appeared to do
+nothing.** Introduced by the `resolveConsentState()` helper added earlier
+this session, which branched on `consent_records.is_active` to tell a
+pending request from a revoked one. **That column's meaning on a pending
+row was never verified** — this file's own `active_consents` entry only
+says it "presumably reads off `consent_records.is_active` plus both
+`_consented` flags." If `update-consent` writes `is_active = false` until
+*both* sides agree (rather than `true` on creation), then every pending
+request fell into the `!isActive && revokedBy == null` branch and resolved
+to `ConsentState.none` — so the requester's tile snapped straight back to
+"Request" (looking like the tap did nothing) and, worse, **the other
+participant never saw an incoming request at all**, making the unlock
+unreachable by design.
+
+Fixed by removing `is_active` from the derivation entirely. `ConsentRecord`
+now also maps `requested_at`/`revoked_at`, and a new `isRevoked` getter
+decides revoked-ness from the `revoked_*` columns alone (`revoked_by`/
+`revoked_at` are unambiguous — only a revoke or decline ever sets them),
+comparing `requested_at > revoked_at` to catch a re-request that reuses
+the same row without clearing `revoked_at`. Any row that exists, isn't
+mutually granted, and isn't revoked is treated as a live request, with
+`requested_by` deciding which side is waiting. **This works correctly
+under either `is_active` semantic**, so it doesn't need the edge function's
+source to be confirmed first. Worth still running
+`select consent_type, is_active, requested_by, requested_at, revoked_by,
+revoked_at, user_a_consented, user_b_consented from public.consent_records
+where connection_id = '<id>';` right after a request to record what
+`update-consent` actually writes, since several other assumptions in this
+file hang off it.
+
+Two smaller fixes in the same pass:
+- **No refresh after your own consent write.** `_toggleConsent` relied
+  entirely on the `consent_records` realtime stream to re-render, so any
+  dropped/slow realtime event left the button on its old label — the same
+  "nothing happened" symptom from a different cause. Both write paths now
+  `ref.invalidate(connectionConsentsProvider(...))` on success.
+- **`ConsentDialog` had one granting/revoking bool for three different
+  actions.** Agreeing to someone else's request showed "They'll see your
+  request..." and a "Send request" button. Replaced with a
+  `ConsentIntent` enum (`request`/`agree`/`revoke`) driving title, body and
+  button label separately; copy also updated to state that the other person
+  *is* notified, which became true once the `consent_*` push events above
+  were deployed.
+
 **Still true from the section above:** none of this changes the fact that
 `chat_unlock`/`media_share` are UI-gating only. Actual server-side
 enforcement (RLS on `messages`, RLS on the `chat-media` storage bucket)
