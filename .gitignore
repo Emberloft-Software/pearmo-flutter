@@ -59,3 +59,9 @@ env.download
 
 # Local design/reference docs, not part of the app
 /documents/
+
+# Generated avatar notification icons — 8.5MB of output that
+# tools/build_avatar_icons.py recreates from assets/avatars/ in one command.
+# They live in the public `avatar-icons` Storage bucket, not in the repo.
+/tools/avatar-icons-out/
+__pycache__/

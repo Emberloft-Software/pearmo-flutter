@@ -16,11 +16,13 @@ class NotificationService {
   bool _initialized = false;
   int _nextId = 0;
 
-  /// Called when the user taps a notification this service displayed, with
-  /// the `payload` string passed to [show]. Set by
-  /// `PushNotificationListener`, which turns it into navigation — without
-  /// it, tapping a foreground banner did nothing at all.
-  void Function(String payload)? onTap;
+  /// Called with the route string passed as a notification's `payload` when
+  /// the user taps one of the banners this class displays (i.e. a push that
+  /// arrived while the app was foregrounded). Pushes shown by the OS while
+  /// the app is backgrounded/terminated don't come through here at all —
+  /// those are handled by `FirebaseMessaging.onMessageOpenedApp` /
+  /// `getInitialMessage` in `PushNotificationListener`.
+  void Function(String route)? onNotificationTapped;
 
   Future<void> init() async {
     if (_initialized) return;
@@ -38,8 +40,8 @@ class NotificationService {
     await _plugin.initialize(
       const InitializationSettings(android: androidInit, iOS: iosInit),
       onDidReceiveNotificationResponse: (response) {
-        final payload = response.payload;
-        if (payload != null && payload.isNotEmpty) onTap?.call(payload);
+        final route = response.payload;
+        if (route != null && route.isNotEmpty) onNotificationTapped?.call(route);
       },
     );
 
@@ -51,13 +53,13 @@ class NotificationService {
         ?.requestPermissions(alert: true, badge: true, sound: true);
   }
 
-  /// [payload] is handed back to [onTap] if the user taps this notification —
-  /// used to carry the FCM `data` map so a tap can navigate to the right
-  /// screen.
+  /// [route] is carried as the notification's payload and handed back to
+  /// [onNotificationTapped] when tapped, so a foregrounded push opens the
+  /// same screen its backgrounded equivalent would.
   Future<void> show({
     required String title,
     required String body,
-    String? payload,
+    String? route,
   }) async {
     const androidDetails = AndroidNotificationDetails(
       'pearmo_default',
@@ -74,7 +76,7 @@ class NotificationService {
     // every time would make each new notification silently replace the
     // last one instead of stacking.
     _nextId = (_nextId + 1) % 100;
-    await _plugin.show(_nextId, title, body, details, payload: payload);
+    await _plugin.show(_nextId, title, body, details, payload: route);
   }
 
   /// Schedules a loud, high-priority local alarm for a check-in deadline.

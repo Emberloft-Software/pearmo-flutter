@@ -1,4 +1,3 @@
-import 'dart:convert';
 import 'dart:io';
 
 import 'package:firebase_messaging/firebase_messaging.dart';
@@ -10,7 +9,6 @@ import '../../core/notifications/notification_destination.dart';
 import '../../core/notifications/notification_service.dart';
 import '../../core/router/app_router.dart';
 import '../../providers/auth_providers.dart';
-import '../../providers/home_tab_provider.dart';
 import '../../providers/notification_providers.dart';
 import '../../providers/repository_providers.dart';
 
@@ -54,56 +52,33 @@ class _PushNotificationListenerState extends ConsumerState<PushNotificationListe
 
     FirebaseMessaging.onMessage.listen(_handleForegroundMessage);
 
-    // Tap handling, all three entry points. Without these a tap just opened
-    // the app on whatever screen it was already showing.
-    //
-    // 1. App backgrounded, user taps the tray notification.
-    FirebaseMessaging.onMessageOpenedApp.listen((message) => _openFor(message.data));
-
-    // 2. App was fully terminated and launched *by* the tap. Safe to consume
-    //    here rather than in `main()`: this widget only mounts inside
-    //    `HomeShell`, so the session is restored and the router is already
-    //    settled on `/home` by now.
+    // Tapping a push opens the screen it's about. Three separate entry
+    // points, because the OS delivers the tap differently depending on
+    // where the app was:
+    //  - backgrounded, OS-rendered banner -> onMessageOpenedApp
+    //  - terminated, OS-rendered banner   -> getInitialMessage (once, on
+    //    the launch that the notification caused)
+    //  - foregrounded, banner rendered by NotificationService itself ->
+    //    its own payload callback, wired below
+    FirebaseMessaging.onMessageOpenedApp.listen(_handleNotificationTap);
     FirebaseMessaging.instance.getInitialMessage().then((message) {
-      if (message != null) _openFor(message.data);
+      if (message != null) _handleNotificationTap(message);
     });
-
-    // 3. App in the foreground — FCM delivers silently, so `_handleForeground
-    //    Message` re-shows it locally; this routes taps on that local banner.
-    NotificationService.instance.onTap = (payload) {
-      try {
-        final decoded = jsonDecode(payload);
-        if (decoded is Map) _openFor(Map<String, dynamic>.from(decoded));
-      } catch (_) {
-        // Malformed payload: opening the app with no navigation is the right
-        // fallback, and never worth crashing over.
-      }
-    };
+    NotificationService.instance.onNotificationTapped = _navigateTo;
   }
 
-  @override
-  void dispose() {
-    // Don't leave a closure pointing at this (disposed) State behind.
-    if (NotificationService.instance.onTap != null) {
-      NotificationService.instance.onTap = null;
-    }
-    super.dispose();
+  void _handleNotificationTap(RemoteMessage message) {
+    _navigateTo(routeForPushData(message.data));
   }
 
-  /// Navigates to wherever [data] points, if anywhere.
-  void _openFor(Map<String, dynamic> data) {
-    if (!mounted) return;
-    final destination = destinationFor(data);
-    if (destination == null) return;
-
-    final tab = destination.homeTab;
-    if (tab != null) ref.read(homeTabIndexProvider.notifier).state = tab;
-
-    // `/home` is the shell this widget already lives in — selecting the tab
-    // above is the whole navigation in that case.
-    if (destination.route != '/home') {
-      ref.read(routerProvider).push(destination.route);
-    }
+  void _navigateTo(String? route) {
+    if (route == null || !mounted) return;
+    // Deferred a frame: a tap from the terminated state resolves before the
+    // router has finished its initial redirect (splash -> home), and pushing
+    // during that would be dropped.
+    SchedulerBinding.instance.addPostFrameCallback((_) {
+      if (mounted) ref.read(routerProvider).push(route);
+    });
   }
 
   Future<void> _register(String userId) async {
@@ -139,9 +114,7 @@ class _PushNotificationListenerState extends ConsumerState<PushNotificationListe
     NotificationService.instance.show(
       title: notification.title ?? 'Pearmo',
       body: notification.body ?? '',
-      // Carried through so a tap on this locally-shown banner navigates the
-      // same way a tray notification does.
-      payload: jsonEncode(message.data),
+      route: routeForPushData(message.data),
     );
   }
 

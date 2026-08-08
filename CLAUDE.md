@@ -2236,66 +2236,6 @@ strictly looser than the one it replaces: participants may pause/resume
 and end, but still cannot escalate `status` to `open_chat`/
 `media_unlocked` etc. **Confirmed run 2026-08-08.**
 
-## Notification tap navigation (deep linking) + avatar image reality (2026-08-08)
-
-**Tapping a notification did nothing** beyond opening the app wherever it
-already was. Confirmed by grep: none of the three tap entry points were
-handled anywhere — `FirebaseMessaging.onMessageOpenedApp` (tapped while
-backgrounded), `FirebaseMessaging.instance.getInitialMessage()` (tapped
-while terminated, launching the app), or `flutter_local_notifications`'
-`onDidReceiveNotificationResponse` (tapped while foregrounded, where
-`PushNotificationListener` re-shows the push locally). All three are now
-wired in `PushNotificationListener`.
-
-Routing lives in
-[notification_destination.dart](lib/core/notifications/notification_destination.dart):
-`destinationFor(data)` maps the `{type, connection_id}` map `send-push`
-already attaches to every push onto a route. `message` → that chat,
-`game_invite` → that connection's games screen, `connection_request` →
-the Connections tab (Accept/Decline live on the hub, *not* the detail
-screen), everything connection- or consent-scoped → `/connection/:id`
-(where the Shared Unlocks panel is). Unknown/future types return null and
-just open the app rather than throwing.
-
-Two supporting changes this needed:
-- **`NotificationService.show()` gained a `payload`, plus an `onTap`
-  callback** wired to the plugin's `onDidReceiveNotificationResponse`.
-  Neither existed, which is why foreground-shown banners were untappable
-  in principle, not just unrouted. `PushNotificationListener` JSON-encodes
-  the FCM `data` map into it and clears `onTap` in `dispose()` so a
-  disposed State isn't retained.
-- **`HomeShell`'s selected tab moved from local `setState` to
-  [homeTabIndexProvider](lib/providers/home_tab_provider.dart)** (with a
-  `HomeTab` constants class), since a deep link has to be able to select
-  the Connections tab from outside the widget. `HomeShell` became a
-  `ConsumerWidget`.
-
-**`connection_declined` now deliberately sends no push.** It had a case in
-`buildFromEvent`, which contradicted the user's explicit earlier decision
-that a declined *connection request* is a silent removal (mainstream
-dating-app behaviour) — as opposed to `consent_declined`, which they did
-want announced. The case was removed so it falls through to
-`default: return null`. The trigger still emits the event; it's dropped in
-the function rather than in SQL to keep "what gets announced" in one
-readable place. This also retires the unverified `pending -> ended`
-assumption that was flagged here earlier, since nothing depends on it now.
-
-**Avatar images: expectation correction.** FCM's `notification.image`
-renders on Android as a **big-picture (expanded banner) image**, not the
-small circular sender thumbnail people picture from WhatsApp. That
-circular slot is Android's `largeIcon`, and **FCM's HTTP v1 API has no
-field for it** — there is no server-side way to set it. Getting it would
-require switching to data-only messages and building each notification in
-Dart with `flutter_local_notifications`
-(`largeIcon: FilePathAndroidBitmap(...)` after downloading the PNG),
-which trades away the main advantage of the current design: OS-rendered
-notifications arrive without the app process being involved at all.
-**User chose to keep reliability** — especially relevant since both test
-devices are Xiaomi/MIUI, where waking an app for a data-only message is
-exactly what gets killed. So the big-picture image stays and the
-`avatar-icons` bucket (still not created, see the section above) remains
-the only outstanding piece for images to appear.
-
 ## `send-push` reported `sent: true` for undelivered pushes (2026-08-08)
 
 Push notifications weren't arriving on device, but `net._http_response`
@@ -2323,6 +2263,56 @@ only field that means a push actually left for a device.** Requires a
 redeploy of `send-push` to take effect; root cause of the missing
 notifications is still unidentified at time of writing, pending that
 redeploy plus a `select ... from public.push_tokens` check.
+
+## Notification tap-to-navigate + avatar icon backgrounds (2026-08-08)
+
+**Tapping a push now opens the screen it's about.** Previously every
+notification just brought the app up wherever it was left. Added
+`routeForPushData()`
+([notification_destination.dart](lib/core/notifications/notification_destination.dart)),
+which maps the `data.type`/`data.connection_id` that `send-push` already
+sends onto a route: `message` → `/connection/:id/chat`, `game_invite` →
+`/connection/:id/games`, `connection_request` → `/home` (the hub tab, since
+accept/decline lives there and the detail screen has no such UI — routing
+to the detail screen would be a dead end), everything else →
+`/connection/:id`.
+
+Three separate entry points are needed because the OS delivers the tap
+differently depending on where the app was, and missing any one of them
+leaves a class of taps doing nothing:
+- backgrounded, OS-rendered banner → `FirebaseMessaging.onMessageOpenedApp`
+- terminated → `FirebaseMessaging.getInitialMessage()` (fires once, on the
+  launch the notification caused)
+- foregrounded → the banner is rendered by `NotificationService` itself, so
+  it needed a `payload`/`onDidReceiveNotificationResponse` round trip;
+  `show()` gained a `route` parameter that becomes the payload.
+
+The navigation is deferred one frame (`addPostFrameCallback`) — a tap from
+the terminated state resolves before the router has finished its initial
+`/splash` → `/home` redirect, and pushing during that is dropped.
+
+**Avatar icon backgrounds — scripted, not hand-edited.** The 40 files in
+`assets/avatars/` are transparent PNGs, which is correct for the app
+(`AvatarDisplay` paints them on a gradient circle at render time) but wrong
+for push: FCM's `notification.image` is fetched and drawn by the OS with
+none of our styling, so a transparent avatar lands on the notification
+shade's own background and reads as a floating cut-out.
+[tools/build_avatar_icons.py](tools/build_avatar_icons.py) bakes the same
+`AvatarCatalog.stageGradient` (magenta → primary) behind each one and
+writes `tools/avatar-icons-out/`, preserving filenames exactly because
+`send-push` builds the URL straight from `profiles.avatar_id`
+(`fox-m` → `.../avatar-icons/fox-m.png`). Re-run it whenever
+`assets/avatars/` changes; upload the output to the public `avatar-icons`
+bucket. Requires Pillow.
+
+**Worth knowing about `notification.image` on Android:** Firebase's Android
+SDK downloads it and uses it as *both* the large icon (collapsed view) and
+the big picture (expanded), so this one field is enough to get an avatar
+thumbnail — no client-side notification building, and therefore no need to
+switch to data-only messages (which would be less reliable on the Xiaomi
+devices being tested on). If the image URL 404s, FCM does **not** fail the
+send; the notification just arrives without an image, so a missing bucket
+degrades quietly rather than breaking delivery.
 
 ## Pause removed again, same day it was built (2026-08-08)
 

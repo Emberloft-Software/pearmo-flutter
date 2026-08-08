@@ -86,14 +86,20 @@ function buildFromEvent(payload: WebhookPayload): PushTarget | null {
         data: { type: 'connection_accepted', connection_id: connectionId },
         userIds: [targetUserId],
       }
-    // `connection_declined` deliberately has NO case and therefore sends
-    // nothing (falls through to `default: return null`). A declined
-    // connection request is a *silent removal* by explicit product
-    // decision — mainstream dating-app behaviour, and the user chose it
-    // over an explicit rejection notice. The trigger still emits the event;
-    // dropping it here rather than in SQL keeps the "what gets announced"
-    // decision in one readable place. Note this is the opposite of
-    // `consent_declined` below, which the user *did* want announced.
+    // ASSUMPTION, not confirmed against `respond-to-connection`'s actual
+    // source (not visible from this repo — see CLAUDE.md's standing rule on
+    // guessing edge function behavior): a decline is inferred as a
+    // `pending -> ended` transition that never passed through `accepted`.
+    // If `respond-to-connection` instead sets some other status on decline,
+    // this event never fires — verify against a real decline before
+    // relying on it.
+    case 'connection_declined':
+      return {
+        title: 'Connection update',
+        body: "Your connection request wasn't accepted this time.",
+        data: { type: 'connection_declined', connection_id: connectionId },
+        userIds: [targetUserId],
+      }
     case 'connection_ended':
       return {
         title: 'Connection ended',

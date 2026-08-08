@@ -1,7 +1,5 @@
 import 'package:flutter/material.dart';
-import 'package:flutter_riverpod/flutter_riverpod.dart';
 
-import '../../providers/home_tab_provider.dart';
 import '../connections/screens/connection_hub_screen.dart';
 import '../matches/screens/matches_screen.dart';
 import '../profile/screens/my_profile_screen.dart';
@@ -9,11 +7,15 @@ import 'push_notification_listener.dart';
 
 /// Bottom-nav shell for the three main tabs: today's matches, the
 /// connection hub, and the user's own profile.
-///
-/// The selected tab lives in [homeTabIndexProvider] rather than local state
-/// so a notification tap can switch to it (see `destinationFor`).
-class HomeShell extends ConsumerWidget {
+class HomeShell extends StatefulWidget {
   const HomeShell({super.key});
+
+  @override
+  State<HomeShell> createState() => _HomeShellState();
+}
+
+class _HomeShellState extends State<HomeShell> {
+  int _index = 0;
 
   static const _screens = [
     MatchesScreen(),
@@ -22,15 +24,13 @@ class HomeShell extends ConsumerWidget {
   ];
 
   @override
-  Widget build(BuildContext context, WidgetRef ref) {
-    final index = ref.watch(homeTabIndexProvider);
-
+  Widget build(BuildContext context) {
     return PushNotificationListener(
       child: Scaffold(
-        body: IndexedStack(index: index, children: _screens),
+        body: IndexedStack(index: _index, children: _screens),
         bottomNavigationBar: BottomNavigationBar(
-          currentIndex: index,
-          onTap: (next) => ref.read(homeTabIndexProvider.notifier).state = next,
+          currentIndex: _index,
+          onTap: (index) => setState(() => _index = index),
           items: const [
             BottomNavigationBarItem(
               icon: Icon(Icons.favorite_outline),
