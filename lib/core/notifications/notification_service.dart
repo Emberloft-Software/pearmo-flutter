@@ -16,6 +16,12 @@ class NotificationService {
   bool _initialized = false;
   int _nextId = 0;
 
+  /// Called when the user taps a notification this service displayed, with
+  /// the `payload` string passed to [show]. Set by
+  /// `PushNotificationListener`, which turns it into navigation — without
+  /// it, tapping a foreground banner did nothing at all.
+  void Function(String payload)? onTap;
+
   Future<void> init() async {
     if (_initialized) return;
     _initialized = true;
@@ -31,6 +37,10 @@ class NotificationService {
     const iosInit = DarwinInitializationSettings();
     await _plugin.initialize(
       const InitializationSettings(android: androidInit, iOS: iosInit),
+      onDidReceiveNotificationResponse: (response) {
+        final payload = response.payload;
+        if (payload != null && payload.isNotEmpty) onTap?.call(payload);
+      },
     );
 
     await _plugin
@@ -41,7 +51,14 @@ class NotificationService {
         ?.requestPermissions(alert: true, badge: true, sound: true);
   }
 
-  Future<void> show({required String title, required String body}) async {
+  /// [payload] is handed back to [onTap] if the user taps this notification —
+  /// used to carry the FCM `data` map so a tap can navigate to the right
+  /// screen.
+  Future<void> show({
+    required String title,
+    required String body,
+    String? payload,
+  }) async {
     const androidDetails = AndroidNotificationDetails(
       'pearmo_default',
       'Pearmo',
@@ -57,7 +74,7 @@ class NotificationService {
     // every time would make each new notification silently replace the
     // last one instead of stacking.
     _nextId = (_nextId + 1) % 100;
-    await _plugin.show(_nextId, title, body, details);
+    await _plugin.show(_nextId, title, body, details, payload: payload);
   }
 
   /// Schedules a loud, high-priority local alarm for a check-in deadline.

@@ -1,3 +1,4 @@
+import 'dart:convert';
 import 'dart:io';
 
 import 'package:firebase_messaging/firebase_messaging.dart';
@@ -5,8 +6,11 @@ import 'package:flutter/material.dart';
 import 'package:flutter/scheduler.dart';
 import 'package:flutter_riverpod/flutter_riverpod.dart';
 
+import '../../core/notifications/notification_destination.dart';
 import '../../core/notifications/notification_service.dart';
+import '../../core/router/app_router.dart';
 import '../../providers/auth_providers.dart';
+import '../../providers/home_tab_provider.dart';
 import '../../providers/notification_providers.dart';
 import '../../providers/repository_providers.dart';
 
@@ -49,6 +53,57 @@ class _PushNotificationListenerState extends ConsumerState<PushNotificationListe
     });
 
     FirebaseMessaging.onMessage.listen(_handleForegroundMessage);
+
+    // Tap handling, all three entry points. Without these a tap just opened
+    // the app on whatever screen it was already showing.
+    //
+    // 1. App backgrounded, user taps the tray notification.
+    FirebaseMessaging.onMessageOpenedApp.listen((message) => _openFor(message.data));
+
+    // 2. App was fully terminated and launched *by* the tap. Safe to consume
+    //    here rather than in `main()`: this widget only mounts inside
+    //    `HomeShell`, so the session is restored and the router is already
+    //    settled on `/home` by now.
+    FirebaseMessaging.instance.getInitialMessage().then((message) {
+      if (message != null) _openFor(message.data);
+    });
+
+    // 3. App in the foreground — FCM delivers silently, so `_handleForeground
+    //    Message` re-shows it locally; this routes taps on that local banner.
+    NotificationService.instance.onTap = (payload) {
+      try {
+        final decoded = jsonDecode(payload);
+        if (decoded is Map) _openFor(Map<String, dynamic>.from(decoded));
+      } catch (_) {
+        // Malformed payload: opening the app with no navigation is the right
+        // fallback, and never worth crashing over.
+      }
+    };
+  }
+
+  @override
+  void dispose() {
+    // Don't leave a closure pointing at this (disposed) State behind.
+    if (NotificationService.instance.onTap != null) {
+      NotificationService.instance.onTap = null;
+    }
+    super.dispose();
+  }
+
+  /// Navigates to wherever [data] points, if anywhere.
+  void _openFor(Map<String, dynamic> data) {
+    if (!mounted) return;
+    final destination = destinationFor(data);
+    if (destination == null) return;
+
+    final tab = destination.homeTab;
+    if (tab != null) ref.read(homeTabIndexProvider.notifier).state = tab;
+
+    // `/home` is the shell this widget already lives in — selecting the tab
+    // above is the whole navigation in that case.
+    if (destination.route != '/home') {
+      ref.read(routerProvider).push(destination.route);
+    }
   }
 
   Future<void> _register(String userId) async {
@@ -84,6 +139,9 @@ class _PushNotificationListenerState extends ConsumerState<PushNotificationListe
     NotificationService.instance.show(
       title: notification.title ?? 'Pearmo',
       body: notification.body ?? '',
+      // Carried through so a tap on this locally-shown banner navigates the
+      // same way a tray notification does.
+      payload: jsonEncode(message.data),
     );
   }
 
