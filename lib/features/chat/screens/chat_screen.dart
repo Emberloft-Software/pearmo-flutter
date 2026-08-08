@@ -76,8 +76,9 @@ class _ChatScreenState extends ConsumerState<ChatScreen> {
     _controller.addListener(_onComposerChanged);
 
     // Lets the app-wide notification watcher (see HomeShell) suppress a
-    // "new message" alert for the conversation already on screen.
-    Future.microtask(() {
+    // "new message" alert for the conversation already on screen. Deferred
+    // for the same reason as the clear in `dispose()` below.
+    Future(() {
       if (mounted) _openChatController.state = widget.connectionId;
     });
 
@@ -105,11 +106,25 @@ class _ChatScreenState extends ConsumerState<ChatScreen> {
     _typingClearTimer?.cancel();
     final channel = _typingChannel;
     if (channel != null) _supabaseClient.removeChannel(channel);
-    // Only clear if we're still the one "on top" — avoids a stale clear if
-    // another ChatScreen instance already took over.
-    if (_openChatController.state == widget.connectionId) {
-      _openChatController.state = null;
-    }
+
+    // Deferred with `Future(...)`, not run inline: `dispose()` executes
+    // inside `BuildOwner.finalizeTree`, where Riverpod refuses any provider
+    // write ("Tried to modify a provider while the widget tree was
+    // building"). The controller is captured in `initState` and outlives
+    // this widget (plain, non-autoDispose `StateProvider`), so it's safe to
+    // touch after unmount — `mounted` guards the app-shutdown case where
+    // the whole container is already gone.
+    //
+    // Getting this wrong doesn't just log noise: the marker stays set, and
+    // `PushNotificationListener` then suppresses this connection's message
+    // notifications for the rest of the session.
+    final controller = _openChatController;
+    final connectionId = widget.connectionId;
+    Future(() {
+      if (!controller.mounted) return;
+      if (controller.state == connectionId) controller.state = null;
+    });
+
     super.dispose();
   }
 

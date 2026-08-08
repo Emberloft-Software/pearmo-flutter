@@ -2171,6 +2171,126 @@ Two smaller fixes in the same pass:
   *is* notified, which became true once the `consent_*` push events above
   were deployed.
 
+**CORRECTION to the "Full schema confirmed" section above: the
+`connections` UPDATE policy is no longer permissive.** That section says
+"either participant can write any column, including `status`, to any
+value." That stopped being true at some point — confirmed via `pg_policies`
+2026-08-08, the live policy is:
+
+```
+connections_update_participant | UPDATE | PERMISSIVE
+  qual:       (initiator_id = auth.uid()) OR (receiver_id = auth.uid())
+  with_check: (status = 'ended'::connection_status)
+```
+
+i.e. the restrictive policy drafted in the 2026-07-01 section (recorded
+there as "handed to the user, not yet run") **was in fact run.** Any
+client-side `UPDATE` on `connections` must leave `status = 'ended'`, so
+`endConnection()` works but **`pauseConnection()`/`resumeConnection()` are
+rejected with `42501`** ("You don't have permission to do that" via
+`ErrorMapper`) — they change `is_paused` while leaving status alone.
+
+Fix requires a trigger, not a policy edit: RLS `WITH CHECK` only sees the
+NEW row, so "status is `ended` **or unchanged**" can't be expressed there.
+A `BEFORE UPDATE` trigger can compare `OLD`/`NEW`. Deliberately **not**
+`SECURITY DEFINER` — the guard distinguishes callers by `current_user`
+(`authenticated` for app users, `service_role` for edge functions), and
+`SECURITY DEFINER` would rewrite `current_user` to the owner and exempt
+everyone. Service-role callers stay exempt so `respond-to-connection` can
+still drive the real status pipeline:
+
+```sql
+drop policy if exists connections_update_participant on public.connections;
+create policy connections_update_participant on public.connections
+  for update
+  using (initiator_id = auth.uid() or receiver_id = auth.uid())
+  with check (initiator_id = auth.uid() or receiver_id = auth.uid());
+
+create or replace function public.enforce_connection_status_change()
+returns trigger
+language plpgsql
+as $$
+begin
+  -- Edge functions (service_role) own the status pipeline; the SQL editor
+  -- (postgres) needs to stay unblocked too. Only real app sessions are
+  -- restricted.
+  if current_user <> 'authenticated' then
+    return NEW;
+  end if;
+  if NEW.status is distinct from OLD.status and NEW.status <> 'ended' then
+    raise exception 'Connection status can only be changed to ended from the app'
+      using errcode = '42501';
+  end if;
+  return NEW;
+end;
+$$;
+
+drop trigger if exists connections_status_guard on public.connections;
+create trigger connections_status_guard
+  before update on public.connections
+  for each row execute function public.enforce_connection_status_change();
+```
+
+Net effect is strictly tighter than the original permissive policy and
+strictly looser than the one it replaces: participants may pause/resume
+and end, but still cannot escalate `status` to `open_chat`/
+`media_unlocked` etc. **Confirmed run 2026-08-08.**
+
+## `update-consent` replaced by a `set_consent` Postgres RPC (2026-08-08)
+
+**Symptom:** requesting an unlock worked, but the second participant
+tapping Agree did nothing on either device.
+
+**Diagnosis, from real rows (theory-first guess was wrong — worth
+remembering).** The initial theory was that `update-consent` mapped both
+participants onto the same `user_a_consented` column. **Disproved by the
+data:** on one connection, `chat_unlock` had `requested_by = 7bd38f8c…`
+with `user_b_consented = true`, while `media_share` had
+`requested_by = 9bb878ac…` with `user_a_consented = true` — two different
+users, two different columns, so the a/b mapping was correct all along.
+
+The real finding was narrower: after the second participant tapped Agree,
+the row was **completely untouched** — not overwritten, not errored into a
+partial state. `requested_by` still pointed at the original requester and
+the second flag was still `false`. So `update-consent` implemented the
+*request* path but its *respond* path either no-op'd on an existing active
+row or was never built. Since
+`active_consents.is_granted = is_active AND user_a_consented AND
+user_b_consented` (confirmed via `pg_get_viewdef` — the view is readable
+even though the edge function isn't), no unlock in the app was ever
+reachable.
+
+**Decision (user's call): replace it rather than keep debugging it.**
+Consent is the app's core safety mechanism and it was the one piece
+neither side of this repo could read — every bug in it cost a full
+diagnose-guess-redeploy round trip. It now lives in
+`public.set_consent(p_connection_id uuid, p_consent_type text,
+p_consenting boolean)`, `SECURITY DEFINER` with its own participant check
+(so it can write the row while `consent_records` RLS stays as-is), and
+`ConsentRepository.setConsent` calls it via `.rpc(...)`.
+`SupabaseConfig.fnUpdateConsent` is now `@Deprecated` and uncalled; the
+edge function itself is left deployed but unused.
+
+Conventions the function makes explicit, which were previously guesses:
+- **`user_a` = `connections.initiator_id`, `user_b` = `receiver_id`.**
+  Matches what the existing rows already contained, so no backfill needed.
+- **Declining, cancelling, and revoking all clear *both* flags** and set
+  `revoked_by`/`revoked_at`, so re-opening always needs a fresh request
+  plus a fresh agreement — never an automatic re-grant. This is what makes
+  the user's "either person can re-lock at any time, and re-opening needs
+  asking again" requirement actually hold.
+- **Re-requesting after a revoke resets the row** (new `requested_by`,
+  only the re-requester's flag set, `revoked_*` cleared) rather than
+  inserting a duplicate — `consent_records` is one row per
+  `(connection_id, consent_type)`.
+- Agreeing only ever sets the caller's *own* flag; the other participant's
+  is left untouched. That's precisely the path the edge function missed.
+
+The `notify_push_consent` trigger is unaffected and still fires on these
+writes — its `consent_revoked` vs `consent_declined` split reads
+`OLD.user_a_consented`/`OLD.user_b_consented`, which are still populated
+correctly before the update.
+
 **Two more found on-device (real run log, not analysis):**
 - **`RenderFlex overflowed by 49 pixels`** in the new `ConsentTile` — the
   Agree + Decline pair left too little width for the label row, and

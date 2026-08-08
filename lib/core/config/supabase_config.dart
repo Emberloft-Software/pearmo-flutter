@@ -24,6 +24,12 @@ class SupabaseConfig {
   static const String fnAnalyseProfile = 'analyse-profile';
   static const String fnSendConnectionRequest = 'send-connection-request';
   static const String fnRespondToConnection = 'respond-to-connection';
+
+  /// Superseded 2026-08-08 by the `set_consent` Postgres function (see
+  /// [ConsentRepository.setConsent]) after its respond-to-a-request path
+  /// was found to silently no-op. Kept only so the name isn't lost; nothing
+  /// in the app calls it.
+  @Deprecated('Use the set_consent RPC instead. See CLAUDE.md.')
   static const String fnUpdateConsent = 'update-consent';
   static const String fnSubmitVerification = 'submit-verification';
   static const String fnDateCheckin = 'date-checkin';
