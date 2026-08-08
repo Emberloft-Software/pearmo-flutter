@@ -2171,6 +2171,32 @@ Two smaller fixes in the same pass:
   *is* notified, which became true once the `consent_*` push events above
   were deployed.
 
+**Two more found on-device (real run log, not analysis):**
+- **`RenderFlex overflowed by 49 pixels`** in the new `ConsentTile` — the
+  Agree + Decline pair left too little width for the label row, and
+  "Share photos & videos" doesn't fit in the remainder on a 480px-wide
+  device. Restructured: the tile is a `Column`, the two response buttons
+  get their own right-aligned row underneath instead of competing with the
+  text, and the label is `Flexible` + `TextOverflow.ellipsis`. Single-button
+  states are unchanged (button stays inline).
+- **`Bad state: Cannot use "ref" after the widget was disposed`**, thrown
+  on every exit from `ChatScreen` — **pre-existing, not from this session's
+  work**, but with a real consequence: `dispose()` read
+  `currentlyOpenChatConnectionIdProvider` through `ref`, which throws, so
+  the "this chat is open" marker was **never cleared**. Once you'd opened a
+  conversation, its push notifications stayed suppressed
+  (`PushNotificationListener` checks that provider) for the rest of the
+  app session. Fixed by capturing the `StateController` in `initState` and
+  using it directly in `dispose` — the standard Riverpod pattern for
+  touching provider state during teardown.
+
+**Migration note:** connections that were already chatting before this
+change have no `chat_unlock` consent row, so they now show "Chat is
+locked" until one side requests and the other agrees. That's the intended
+design (locked by default, mutual agreement to open), not a regression —
+but it does mean existing test connections need one request+agree cycle
+before chat works again.
+
 **Still true from the section above:** none of this changes the fact that
 `chat_unlock`/`media_share` are UI-gating only. Actual server-side
 enforcement (RLS on `messages`, RLS on the `chat-media` storage bucket)

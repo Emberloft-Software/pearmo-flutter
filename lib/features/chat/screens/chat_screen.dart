@@ -55,6 +55,14 @@ class _ChatScreenState extends ConsumerState<ChatScreen> {
   // Typing indicator — pure Realtime Broadcast (see
   // MessagesRepository.typingChannel), nothing persisted to any table.
   late final SupabaseClient _supabaseClient;
+
+  /// Captured in [initState] rather than read from `ref` in [dispose] —
+  /// touching `ref` during disposal throws "Cannot use ref after the widget
+  /// was disposed", which meant the "which chat is open" marker was never
+  /// cleared on the way out, and message notifications for that connection
+  /// stayed suppressed for the rest of the session.
+  late final StateController<String?> _openChatController;
+
   RealtimeChannel? _typingChannel;
   Timer? _typingClearTimer;
   DateTime? _lastTypingSentAt;
@@ -64,14 +72,13 @@ class _ChatScreenState extends ConsumerState<ChatScreen> {
   void initState() {
     super.initState();
     _supabaseClient = ref.read(supabaseClientProvider);
+    _openChatController = ref.read(currentlyOpenChatConnectionIdProvider.notifier);
     _controller.addListener(_onComposerChanged);
 
     // Lets the app-wide notification watcher (see HomeShell) suppress a
     // "new message" alert for the conversation already on screen.
     Future.microtask(() {
-      if (mounted) {
-        ref.read(currentlyOpenChatConnectionIdProvider.notifier).state = widget.connectionId;
-      }
+      if (mounted) _openChatController.state = widget.connectionId;
     });
 
     final myUserId = ref.read(currentUserIdProvider);
@@ -100,8 +107,8 @@ class _ChatScreenState extends ConsumerState<ChatScreen> {
     if (channel != null) _supabaseClient.removeChannel(channel);
     // Only clear if we're still the one "on top" — avoids a stale clear if
     // another ChatScreen instance already took over.
-    if (ref.read(currentlyOpenChatConnectionIdProvider) == widget.connectionId) {
-      ref.read(currentlyOpenChatConnectionIdProvider.notifier).state = null;
+    if (_openChatController.state == widget.connectionId) {
+      _openChatController.state = null;
     }
     super.dispose();
   }
@@ -127,7 +134,7 @@ class _ChatScreenState extends ConsumerState<ChatScreen> {
             connectionId: widget.connectionId,
           );
     } catch (e) {
-      setState(() => _error = ErrorMapper.map(e));
+      if (mounted) setState(() => _error = ErrorMapper.map(e));
     } finally {
       if (mounted) setState(() => _isResumingChat = false);
     }
