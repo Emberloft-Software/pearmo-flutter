@@ -1711,3 +1711,250 @@ Developer uploaded to Firebase Cloud Messaging settings, and enabling the
 capabilities in Xcode (which also touches `Runner.entitlements` and the
 `.pbxproj` — not something to hand-edit blind without Xcode to verify it,
 and this session has no Mac to run it on regardless).
+
+## Connection request/response, pause, and consent state + notifications (2026-08-08)
+
+User-reported gap: sending a connection request had no visible "waiting"
+state, decline/accept never notified the sender, ending/pausing a chat
+never notified the other participant, and toggling photo/video consent
+(`ConsentDialog`) claimed "the other person will get a notification" when
+nothing anywhere actually sent one. Audited the full connection/consent/
+chat flow (see git history of this file for the raw agent report) and
+found: `send-push` (still undeployed — see "Push notifications" above)
+only ever fires on `connections` INSERT (a new pending request), explicitly
+skips every UPDATE — so accept/decline/end were never going to notify
+anyone even once deployed; there was no "pause" feature at all, only
+irreversible `endConnection`; consent state only had two visual states
+(granted vs not), unable to distinguish "nobody asked" from "I asked,
+waiting" from "they turned it off."
+
+**Client-side, done (`flutter analyze` clean):**
+- `Connection` gained `isPaused`/`pausedBy`/`pausedAt` + a `canChatNow`
+  getter (`status.canChat && !isPaused`) — pause is orthogonal to the
+  status pipeline (freezes sending only, doesn't move/reset progress),
+  unlike `endConnection`.
+- `ConnectionsRepository.pauseConnection()`/`resumeConnection()` — direct
+  client `UPDATE`s, same pattern as the pre-existing `endConnection` (the
+  `connections` UPDATE RLS policy already permits either participant to
+  write any column — see the "Full schema confirmed" section above — so no
+  RLS change was needed for these two columns to work). **By design, only
+  the person who paused can resume** — enforced client-side only (the
+  Resume button is hidden from the other participant in both
+  `connection_detail_screen.dart` and `chat_screen.dart`), not by RLS.
+- `ConnectionsRepository.getOutgoingPendingRequest()` +
+  `outgoingPendingRequestProvider` — `getActiveConnection` deliberately
+  excludes `pending` rows, so a sent request previously had zero visible
+  state until accepted. `connection_hub_screen.dart` now shows a "Waiting
+  for response" card in that gap.
+- New `ConsentRecord` model (raw `consent_records` row) +
+  `resolveConsentState()` in
+  [consent_record.dart](lib/data/models/consent_record.dart) — a 6-state
+  enum (`none`/`waitingOnThem`/`needsYourResponse`/`granted`/
+  `revokedByMe`/`revokedByThem`) derived from `active_consents.is_granted`
+  plus `consent_records.requested_by`/`is_active`/`revoked_by`. **Sidesteps
+  the documented `user_a`/`user_b` mapping ambiguity entirely** — those two
+  boolean columns are never read; `requested_by`/`revoked_by` are real
+  user ids, directly comparable against the current user's id, which is
+  enough to derive all 6 states. `connectionConsentsProvider` replaces the
+  old `activeConsentsProvider`, fetching both `active_consents` and raw
+  `consent_records` off one shared realtime subscription (the old
+  `activeConsentsProvider` would otherwise become two independent
+  subscriptions to the same table once records were needed too).
+  `ConsentTile` now renders distinct copy/button label per state (e.g.
+  "Cancel" while waiting on your own request vs "Agree" when responding to
+  theirs) instead of a flat granted/not-granted toggle.
+- `ConsentDialog`'s copy no longer promises a notification that doesn't
+  exist — now describes what's actually true today (visible to the other
+  participant next time they open the connection).
+
+**Server-side — SQL not yet run, code not yet deployed:**
+
+`send-push`'s `WebhookPayload`
+([supabase/functions/send-push/index.ts](supabase/functions/send-push/index.ts))
+gained `event`/`target_user_id`/`old_record` fields. When a trigger
+supplies `target_user_id` + `event`, `buildFromEvent()` picks copy for it
+directly — no DB lookup needed, since the trigger already has the
+relational context (a join is easy in SQL, awkward to redo in the function
+for every event). The three original INSERT-only paths (`messages`,
+`connections` new-request, `ice_breaker_sessions`) are untouched. New
+events: `connection_accepted`/`connection_declined`/`connection_ended`/
+`connection_paused`/`connection_resumed`/`consent_requested`/
+`consent_granted`/`consent_revoked`.
+
+**Flagged, not verified:** `connection_declined` is inferred as a
+`pending -> ended` transition that never passed through `accepted` — this
+is a guess, not read from `respond-to-connection`'s source (still not
+visible from this repo). If a real decline doesn't actually produce that
+exact transition, this notification silently never fires. Confirm with a
+real decline (`select status from connections where id = '<test row>'`
+right after declining) before trusting it.
+
+This entire section is additive to the still-undeployed pipeline described
+above — none of it does anything until `send-push` is actually deployed
+(step 2 in the "Push notifications" section). SQL to run, in order:
+
+```sql
+-- 1. Pause columns (client code above already assumes these exist)
+alter table public.connections
+  add column if not exists is_paused boolean not null default false,
+  add column if not exists paused_by uuid references public.users(id),
+  add column if not exists paused_at timestamptz;
+
+-- 2. Replace notify_push() to also handle connections UPDATE
+--    (accept/decline/pause/resume/end). Falls through to the original
+--    INSERT-only body — unchanged — for every other case.
+create or replace function public.notify_push()
+returns trigger
+language plpgsql
+security definer
+set search_path = public
+as $$
+declare
+  v_target uuid;
+  v_event text;
+begin
+  if TG_TABLE_NAME = 'connections' and TG_OP = 'UPDATE' then
+    if NEW.status = 'accepted' and OLD.status = 'pending' then
+      v_target := NEW.initiator_id;
+      v_event := 'connection_accepted';
+    elsif NEW.status = 'ended' and OLD.status = 'pending' then
+      -- ASSUMPTION, unconfirmed — see CLAUDE.md note above.
+      v_target := NEW.initiator_id;
+      v_event := 'connection_declined';
+    elsif NEW.status = 'ended' and OLD.status <> 'ended' then
+      v_target := case when NEW.ended_by = NEW.initiator_id
+                        then NEW.receiver_id else NEW.initiator_id end;
+      v_event := 'connection_ended';
+    elsif NEW.is_paused = true and OLD.is_paused = false then
+      v_target := case when NEW.paused_by = NEW.initiator_id
+                        then NEW.receiver_id else NEW.initiator_id end;
+      v_event := 'connection_paused';
+    elsif NEW.is_paused = false and OLD.is_paused = true then
+      v_target := case when OLD.paused_by = NEW.initiator_id
+                        then NEW.receiver_id else NEW.initiator_id end;
+      v_event := 'connection_resumed';
+    else
+      return NEW; -- no notification-worthy change
+    end if;
+
+    perform net.http_post(
+      url := 'https://akodhmnaykaifzxxvher.supabase.co/functions/v1/send-push',
+      headers := jsonb_build_object(
+        'Content-Type', 'application/json',
+        'x-webhook-secret', '<same value as PUSH_WEBHOOK_SECRET>'
+      ),
+      body := jsonb_build_object(
+        'type', 'UPDATE', 'table', 'connections', 'event', v_event,
+        'target_user_id', v_target, 'record', to_jsonb(NEW), 'old_record', to_jsonb(OLD)
+      )
+    );
+    return NEW;
+  end if;
+
+  -- Original behavior, unchanged.
+  perform net.http_post(
+    url := 'https://akodhmnaykaifzxxvher.supabase.co/functions/v1/send-push',
+    headers := jsonb_build_object(
+      'Content-Type', 'application/json',
+      'x-webhook-secret', '<same value as PUSH_WEBHOOK_SECRET>'
+    ),
+    body := jsonb_build_object('type', 'INSERT', 'table', TG_TABLE_NAME, 'record', to_jsonb(NEW))
+  );
+  return NEW;
+end;
+$$;
+
+-- Re-run the 3 existing INSERT triggers if not already applied (unchanged):
+create trigger messages_push_trigger
+  after insert on public.messages
+  for each row execute function public.notify_push();
+
+create trigger connections_push_trigger
+  after insert on public.connections
+  for each row execute function public.notify_push();
+
+create trigger ice_breaker_sessions_push_trigger
+  after insert on public.ice_breaker_sessions
+  for each row execute function public.notify_push();
+
+-- New: connections UPDATE trigger (accept/decline/pause/resume/end)
+create trigger connections_update_push_trigger
+  after update on public.connections
+  for each row execute function public.notify_push();
+
+-- 3. consent_records needs its own function — it requires a join to
+--    connections to find both participant ids, which `notify_push()`
+--    doesn't have.
+create or replace function public.notify_push_consent()
+returns trigger
+language plpgsql
+security definer
+set search_path = public
+as $$
+declare
+  v_conn record;
+  v_target uuid;
+  v_actor uuid;
+  v_event text;
+begin
+  select initiator_id, receiver_id into v_conn
+  from public.connections where id = NEW.connection_id;
+  if v_conn is null then return NEW; end if;
+
+  if TG_OP = 'INSERT' then
+    v_actor := NEW.requested_by;
+    v_event := 'consent_requested';
+  elsif NEW.is_active = true and NEW.user_a_consented = true and NEW.user_b_consented = true
+        and (OLD.user_a_consented = false or OLD.user_b_consented = false) then
+    v_event := 'consent_granted';
+  elsif NEW.is_active = false and OLD.is_active = true then
+    v_actor := NEW.revoked_by;
+    v_event := 'consent_revoked';
+  else
+    return NEW;
+  end if;
+
+  if v_event = 'consent_granted' then
+    -- both participants get notified; no single "actor" to exclude
+    perform net.http_post(
+      url := 'https://akodhmnaykaifzxxvher.supabase.co/functions/v1/send-push',
+      headers := jsonb_build_object('Content-Type', 'application/json',
+        'x-webhook-secret', '<same value as PUSH_WEBHOOK_SECRET>'),
+      body := jsonb_build_object('type', 'UPDATE', 'table', 'consent_records',
+        'event', v_event, 'target_user_id', v_conn.initiator_id, 'record', to_jsonb(NEW))
+    );
+    perform net.http_post(
+      url := 'https://akodhmnaykaifzxxvher.supabase.co/functions/v1/send-push',
+      headers := jsonb_build_object('Content-Type', 'application/json',
+        'x-webhook-secret', '<same value as PUSH_WEBHOOK_SECRET>'),
+      body := jsonb_build_object('type', 'UPDATE', 'table', 'consent_records',
+        'event', v_event, 'target_user_id', v_conn.receiver_id, 'record', to_jsonb(NEW))
+    );
+    return NEW;
+  end if;
+
+  v_target := case when v_actor = v_conn.initiator_id
+                    then v_conn.receiver_id else v_conn.initiator_id end;
+
+  perform net.http_post(
+    url := 'https://akodhmnaykaifzxxvher.supabase.co/functions/v1/send-push',
+    headers := jsonb_build_object('Content-Type', 'application/json',
+      'x-webhook-secret', '<same value as PUSH_WEBHOOK_SECRET>'),
+    body := jsonb_build_object('type', TG_OP, 'table', 'consent_records',
+      'event', v_event, 'target_user_id', v_target, 'record', to_jsonb(NEW))
+  );
+  return NEW;
+end;
+$$;
+
+create trigger consent_records_insert_push_trigger
+  after insert on public.consent_records
+  for each row execute function public.notify_push_consent();
+
+create trigger consent_records_update_push_trigger
+  after update on public.consent_records
+  for each row execute function public.notify_push_consent();
+```
+
+None of this has been confirmed run. Same plaintext-secret caveat as the
+rest of this pipeline (documented under "Project hygiene findings").
