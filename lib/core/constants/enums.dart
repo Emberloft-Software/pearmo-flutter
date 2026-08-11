@@ -211,12 +211,22 @@ enum ConnectionStatus {
         ConnectionStatus.ended => 'Ended',
       };
 
-  /// Whether messages can be sent at all while in this status.
-  bool get canChat =>
-      this == ConnectionStatus.limitedChat ||
-      this == ConnectionStatus.openChat ||
-      this == ConnectionStatus.mediaUnlocked ||
-      this == ConnectionStatus.datePlanned;
+  /// Whether messages can be sent at all in this status, ignoring consent —
+  /// mirrors the status half of the `messages_insert_participant` RLS
+  /// policy exactly (`status <> 'pending' AND status <> 'ended'`).
+  ///
+  /// Until 2026-08-11 this only covered `limitedChat`/`openChat`/
+  /// `mediaUnlocked`/`datePlanned` — i.e. chat required actually reaching
+  /// `limited_chat`, which in turn required completing the ice-breaker
+  /// stage. That transition turned out to never be implemented anywhere
+  /// (no function/trigger in the database ever writes `limited_chat`), so
+  /// connections got permanently stuck at `ice_breaking` even with mutual
+  /// `chat_unlock` consent granted. Per the user's explicit decision, mutual
+  /// consent (see `chat_screen.dart`'s `canChat`, which ANDs this with
+  /// `chatUnlockGranted`) is now the real chat gate, not a specific
+  /// pipeline stage — this only rules out a request that hasn't been
+  /// accepted yet, or a connection that's over. See CLAUDE.md.
+  bool get canChat => this != ConnectionStatus.pending && this != ConnectionStatus.ended;
 
   static ConnectionStatus fromDb(String value) => ConnectionStatus.values
       .firstWhere((e) => e.dbValue == value, orElse: () => ConnectionStatus.pending);

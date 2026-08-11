@@ -14,6 +14,7 @@ import '../../../core/constants/enums.dart';
 import '../../../core/theme/app_colors.dart';
 import '../../../core/theme/app_text_styles.dart';
 import '../../../core/utils/error_mapper.dart';
+import '../../../data/models/consent_record.dart';
 import '../../../data/models/message.dart';
 import '../../../providers/auth_providers.dart';
 import '../../../providers/connections_providers.dart';
@@ -49,6 +50,7 @@ class _ChatScreenState extends ConsumerState<ChatScreen> {
   final _controller = TextEditingController();
   final _scrollController = ScrollController();
   bool _isSending = false;
+  bool _isConsentBusy = false;
   String? _error;
 
   // Typing indicator — pure Realtime Broadcast (see
@@ -139,6 +141,57 @@ class _ChatScreenState extends ConsumerState<ChatScreen> {
     }
     _lastTypingSentAt = now;
     _typingChannel?.sendBroadcastMessage(event: 'typing', payload: {'user_id': userId});
+  }
+
+  /// Mirrors `ConnectionDetailScreen._intentFor` exactly, so tapping the
+  /// locked composer here and using the Shared Unlocks panel there produce
+  /// identical confirmation copy for the same underlying state.
+  ConsentIntent _intentForConsentState(ConsentState state) => switch (state) {
+        ConsentState.granted => ConsentIntent.revoke,
+        ConsentState.waitingOnThem => ConsentIntent.revoke,
+        ConsentState.needsYourResponse => ConsentIntent.agree,
+        _ => ConsentIntent.request,
+      };
+
+  /// The chat composer is always visible once the connection itself allows
+  /// chatting (not `pending`/`ended`) — even without `chat_unlock` consent —
+  /// so the option to ask for it is discoverable instead of the composer
+  /// just disappearing. Tapping it while locked explains the state and
+  /// offers the next action (request / agree / cancel) inline, reusing the
+  /// exact same `ConsentDialog` + `set_consent` RPC path the Shared Unlocks
+  /// panel uses.
+  Future<void> _handleLockedComposerTap(String userId, ConnectionConsents? consents) async {
+    if (_isConsentBusy || consents == null) return;
+
+    final record = consents.recordFor(ConsentType.chatUnlock.dbValue);
+    final isGranted =
+        isConsentGranted(consents.active, widget.connectionId, ConsentType.chatUnlock.dbValue);
+    final state = resolveConsentState(currentUserId: userId, isGranted: isGranted, record: record);
+    final intent = _intentForConsentState(state);
+    final granting = intent != ConsentIntent.revoke;
+
+    final confirmed =
+        await ConsentDialog.show(context, type: ConsentType.chatUnlock, intent: intent);
+    if (!confirmed) return;
+
+    setState(() {
+      _isConsentBusy = true;
+      _error = null;
+    });
+    try {
+      await ref.read(consentRepositoryProvider).setConsent(
+            connectionId: widget.connectionId,
+            type: ConsentType.chatUnlock,
+            consenting: granting,
+          );
+      // Same reasoning as `ConnectionDetailScreen._toggleConsent`: don't
+      // wait on the realtime stream to reflect our own write.
+      ref.invalidate(connectionConsentsProvider(widget.connectionId));
+    } catch (e) {
+      if (mounted) setState(() => _error = ErrorMapper.map(e));
+    } finally {
+      if (mounted) setState(() => _isConsentBusy = false);
+    }
   }
 
   Future<void> _send(String userId) async {
@@ -330,24 +383,12 @@ class _ChatScreenState extends ConsumerState<ChatScreen> {
                   icon: Icons.extension_outlined,
                   message: connection.status == ConnectionStatus.ended
                       ? 'This connection has ended. Chat is read-only.'
-                      : "Chat unlocks once you've broken the ice together.",
-                  action: connection.status == ConnectionStatus.accepted ||
-                          connection.status == ConnectionStatus.iceBreaking
-                      ? TextButton(
-                          onPressed: () => context.push('/connection/${widget.connectionId}/games'),
-                          child: const Text('Play a game'),
-                        )
-                      : null,
-                )
-              else if (!chatUnlockGranted)
-                _NoticeBanner(
-                  icon: Icons.lock_outline,
-                  message: 'Chat is locked. Both of you need to agree to open it.',
-                  action: TextButton(
-                    onPressed: () => context.push('/connection/${widget.connectionId}'),
-                    child: const Text('Open chat request'),
-                  ),
+                      : 'Waiting for the connection request to be accepted.',
                 ),
+              // No separate banner for a missing `chat_unlock` grant — the
+              // locked composer below is now the entry point for that
+              // (always visible, tap to request/agree), so a second,
+              // redundant explanation up here would just be clutter.
               if (connection.status == ConnectionStatus.limitedChat)
                 const _NoticeBanner(
                   icon: Icons.info_outline,
@@ -398,7 +439,14 @@ class _ChatScreenState extends ConsumerState<ChatScreen> {
                   padding: const EdgeInsets.symmetric(horizontal: 16),
                   child: ErrorBanner(message: _error!),
                 ),
-              if (canChat)
+              // Shown for the whole "not pending, not ended" range, even
+              // without `chat_unlock` consent — the composer used to just
+              // disappear when locked, which hid the one thing a user
+              // actually needed to do next. Locked, it's dimmed and
+              // non-interactive underneath (`AbsorbPointer`) with a
+              // full-bar tap target on top explaining the state and
+              // offering the next action, instead of a passive banner.
+              if (connection.status.canChat)
                 Container(
                   decoration: const BoxDecoration(
                     color: AppColors.surface,
@@ -406,60 +454,95 @@ class _ChatScreenState extends ConsumerState<ChatScreen> {
                   ),
                   child: SafeArea(
                     minimum: const EdgeInsets.all(12),
-                    child: Row(
-                      crossAxisAlignment: CrossAxisAlignment.end,
+                    child: Stack(
                       children: [
-                        IconButton(
-                          onPressed: _isSending
-                              ? null
-                              : canShareMedia
-                                  ? () => _pickAndSendMedia(userId)
-                                  : () => _showMediaLocked(mediaLockReason),
-                          icon: Icon(
-                            canShareMedia
-                                ? Icons.add_photo_alternate_outlined
-                                : Icons.lock_outline,
-                            color: canShareMedia ? AppColors.primary : AppColors.textSecondary,
-                          ),
-                          tooltip: canShareMedia
-                              ? 'Share photo or video'
-                              : 'Photo sharing needs both of you verified',
-                        ),
-                        Expanded(
-                          child: TextField(
-                            controller: _controller,
-                            minLines: 1,
-                            maxLines: 4,
-                            decoration: const InputDecoration(hintText: 'Type a message...'),
-                          ),
-                        ),
-                        const SizedBox(width: 10),
-                        _isSending
-                            ? Container(
-                                width: 48,
-                                height: 48,
-                                padding: const EdgeInsets.all(14),
-                                decoration: const BoxDecoration(
-                                  color: AppColors.primaryLight,
-                                  shape: BoxShape.circle,
+                        AbsorbPointer(
+                          absorbing: !canChat,
+                          child: Opacity(
+                            opacity: canChat ? 1 : 0.55,
+                            child: Row(
+                              crossAxisAlignment: CrossAxisAlignment.end,
+                              children: [
+                                IconButton(
+                                  onPressed: _isSending
+                                      ? null
+                                      : canShareMedia
+                                          ? () => _pickAndSendMedia(userId)
+                                          : () => _showMediaLocked(mediaLockReason),
+                                  icon: Icon(
+                                    canShareMedia
+                                        ? Icons.add_photo_alternate_outlined
+                                        : Icons.lock_outline,
+                                    color:
+                                        canShareMedia ? AppColors.primary : AppColors.textSecondary,
+                                  ),
+                                  tooltip: canShareMedia
+                                      ? 'Share photo or video'
+                                      : 'Photo sharing needs both of you verified',
                                 ),
-                                child: const CircularProgressIndicator(
-                                    strokeWidth: 2, color: AppColors.primary),
-                              )
-                            : Material(
-                                color: AppColors.primary,
-                                shape: const CircleBorder(),
-                                child: InkWell(
-                                  customBorder: const CircleBorder(),
-                                  onTap: () => _send(userId),
-                                  child: const SizedBox(
-                                    width: 48,
-                                    height: 48,
-                                    child: Icon(Icons.send_rounded,
-                                        color: Colors.white, size: 22),
+                                Expanded(
+                                  child: TextField(
+                                    controller: _controller,
+                                    minLines: 1,
+                                    maxLines: 4,
+                                    enabled: canChat,
+                                    decoration: InputDecoration(
+                                      hintText: canChat
+                                          ? 'Type a message...'
+                                          : 'Chat is locked — tap to open it',
+                                    ),
                                   ),
                                 ),
+                                const SizedBox(width: 10),
+                                _isSending || _isConsentBusy
+                                    ? Container(
+                                        width: 48,
+                                        height: 48,
+                                        padding: const EdgeInsets.all(14),
+                                        decoration: const BoxDecoration(
+                                          color: AppColors.primaryLight,
+                                          shape: BoxShape.circle,
+                                        ),
+                                        child: const CircularProgressIndicator(
+                                            strokeWidth: 2, color: AppColors.primary),
+                                      )
+                                    : Material(
+                                        color: canChat
+                                            ? AppColors.primary
+                                            : AppColors.surfaceMuted,
+                                        shape: const CircleBorder(),
+                                        child: InkWell(
+                                          customBorder: const CircleBorder(),
+                                          onTap: canChat ? () => _send(userId) : null,
+                                          child: SizedBox(
+                                            width: 48,
+                                            height: 48,
+                                            child: Icon(
+                                              canChat ? Icons.send_rounded : Icons.lock_outline,
+                                              color: canChat
+                                                  ? Colors.white
+                                                  : AppColors.textSecondary,
+                                              size: 22,
+                                            ),
+                                          ),
+                                        ),
+                                      ),
+                              ],
+                            ),
+                          ),
+                        ),
+                        if (!canChat)
+                          Positioned.fill(
+                            child: Material(
+                              color: Colors.transparent,
+                              child: InkWell(
+                                onTap: _isConsentBusy
+                                    ? null
+                                    : () => _handleLockedComposerTap(userId, consents),
+                                child: const SizedBox.expand(),
                               ),
+                            ),
+                          ),
                       ],
                     ),
                   ),
@@ -540,11 +623,10 @@ class _TypingIndicatorState extends State<_TypingIndicator>
 }
 
 class _NoticeBanner extends StatelessWidget {
-  const _NoticeBanner({required this.icon, required this.message, this.action});
+  const _NoticeBanner({required this.icon, required this.message});
 
   final IconData icon;
   final String message;
-  final Widget? action;
 
   @override
   Widget build(BuildContext context) {
@@ -566,7 +648,6 @@ class _NoticeBanner extends StatelessWidget {
               style: AppTextStyles.caption.copyWith(color: AppColors.textPrimary),
             ),
           ),
-          ?action,
         ],
       ),
     );

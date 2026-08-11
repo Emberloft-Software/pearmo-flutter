@@ -2461,3 +2461,116 @@ messages the moment status reaches `limited_chat`, regardless of whether
 `chat_unlock` was ever granted. Worth a real RLS-level fix later if that
 threat model matters; out of scope for this pass, which was about the
 in-app experience.
+
+## `limited_chat` pipeline stage was never implemented — consent replaces it as the real chat gate (2026-08-11)
+
+**Bug found via a real stuck connection:** a connection accepted on both
+sides, with `chat_unlock` mutually granted (`consent_records.user_a/b_consented`
+both `true`, `active_consents.is_granted` `true`), still couldn't chat —
+stuck at `status = 'ice_breaking'` indefinitely. Diagnosed by introspection,
+not guessing, per this file's standing rule:
+
+```sql
+select proname, pg_get_functiondef(oid) from pg_proc where prosrc ilike '%limited_chat%';
+select event_object_table, trigger_name, action_statement from information_schema.triggers
+  where event_object_table in ('ice_breaker_sessions', 'connections');
+select ice_breaker_score from public.connections where id = '<id>';
+```
+
+Result: the only function anywhere that even mentions `'limited_chat'` is
+`enforce_message_cap` (the 5-message-cap trigger), and it only *reads*
+status to decide whether to cap — it never writes `limited_chat`.
+`ice_breaker_score` was `null`. **Confirmed: nothing in this database —
+no function, no trigger, no cron job — ever advances a connection from
+`ice_breaking` to `limited_chat`.** That transition was never built, full
+stop — not a timer, not a threshold, not something the user failed to do.
+Same category as the date-checkin escalation gap found earlier in this
+project (a status/column that's clearly meant to change but has no code
+anywhere that changes it).
+
+**Decision, per the user's explicit call:** rather than build the missing
+`ice_breaking → limited_chat` transition, drop the status-pipeline
+requirement entirely and make mutual `chat_unlock` consent the sole real
+gate for chat — matching what the Shared Unlocks UI already implied it
+did. **Confirmed run 2026-08-11:**
+
+```sql
+drop policy if exists messages_insert_participant on public.messages;
+create policy messages_insert_participant on public.messages
+  for insert
+  with check (
+    sender_id = auth.uid()
+    and exists (
+      select 1 from public.connections c
+      where c.id = messages.connection_id
+        and (c.initiator_id = auth.uid() or c.receiver_id = auth.uid())
+        and c.status <> all (array['pending'::connection_status, 'ended'::connection_status])
+    )
+    and exists (
+      select 1 from public.active_consents ac
+      where ac.connection_id = messages.connection_id
+        and ac.consent_type = 'chat_unlock'
+        and ac.is_granted
+    )
+  );
+```
+
+**Client-side, done (`flutter analyze` clean):** `ConnectionStatus.canChat`
+([enums.dart](lib/core/constants/enums.dart)) changed from "`status` is
+`limitedChat`/`openChat`/`mediaUnlocked`/`datePlanned`" to "`status` is not
+`pending` and not `ended`" — mirrors the new RLS policy's status half
+exactly. `chat_screen.dart`'s locked-chat banner dropped the "Play a game"
+action tied to `accepted`/`iceBreaking` (that copy implied playing a game
+was the unlock path, which was never true and is even less true now) —
+replaced with a plain "Waiting for the connection request to be accepted"
+message for the one remaining `!canChat` case that's actually reachable in
+practice (`ended`; `pending` shouldn't normally reach the chat screen at
+all).
+
+**Side effects worth knowing, not bugs:**
+- **Ice-breaker games are now fully optional for chat, not just less
+  strict.** Two participants can request+agree `chat_unlock` the moment a
+  connection is `accepted` and start chatting without ever playing a game.
+  Games are still fully reachable (connection detail screen tile + chat
+  AppBar icon, both already unconditional on `status != ended` per the
+  2026-07-10 entry above) — just no longer required for anything.
+- **The 5-message cap effectively never applies now.** `enforce_message_cap`
+  only caps when `status = 'limited_chat'` exactly; every other allowed
+  status is uncapped. Since nothing writes `limited_chat` (see above),
+  every connection chats uncapped from the moment `chat_unlock` is granted.
+  This was already latently true before this change too (nothing ever
+  reached `limited_chat` to begin with) — just calling it out explicitly
+  now that consent-gating makes chat actually reachable.
+- `limited_chat`/`open_chat`/`media_unlocked`/`date_planned` remain valid
+  enum values and the message cap logic still keys off `limited_chat`
+  specifically — nothing was removed from the schema or the pipeline
+  definition, only the requirement to reach those stages before chatting.
+  If a future feature ever does write `limited_chat` (e.g. a manual
+  moderation action), the message cap will apply exactly as before.
+
+**Correction to the "Shared Unlocks was cosmetic" section above:** its
+closing paragraph said RLS on `messages` "has no idea `consent_records`
+exists" and called that "worth a real RLS-level fix later." That fix is
+now done — the policy above checks `active_consents` directly, so
+revoking `chat_unlock` now actually blocks sending at the database level,
+not just in the UI.
+
+## Chat composer always visible, locked state made actionable (2026-08-11)
+
+Per the user's explicit request, for friendliness: `chat_screen.dart`'s
+composer no longer disappears when `chat_unlock` isn't granted — it stays
+visible for the whole `connection.status.canChat` range (`accepted`
+through `date_planned`), dimmed and non-interactive (`AbsorbPointer`) with
+a full-bar tap target on top when locked. Tapping it resolves the same
+[ConsentState](lib/data/models/consent_record.dart) the Shared Unlocks
+panel uses and opens the identical `ConsentDialog` + `set_consent` RPC path
+`ConnectionDetailScreen._toggleConsent` already uses (`_intentForConsentState`
+mirrors `_intentFor` there exactly: request if never asked/revoked, agree
+if they asked, cancel-via-revoke if waiting on them) — so requesting or
+agreeing to open chat is now reachable from inside the chat screen itself,
+not only via navigating to the connection detail screen. The old
+`!chatUnlockGranted` banner ("Chat is locked. Both of you need to agree to
+open it.") was removed since the locked composer now serves that role
+without duplicating it. The `status`-based banner (not yet accepted /
+ended) is unchanged — that case still hides the composer entirely, since
+there's no consent action to take in either state.
